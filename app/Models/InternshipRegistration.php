@@ -43,15 +43,13 @@ class InternshipRegistration extends Model
 
     /**
      * Catatan casts:
-     * - JANGAN cast born_date/start_date/end_date sebagai 'date' karena input bisa beragam format.
+     * - JANGAN cast born_date/start_date/end_date sebagai 'date' karena sudah ditangani
+     *   oleh Accessor/Mutator di bawah. Casting ganda akan menyebabkan konflik di Laravel 9+.
      * - Simpan created_at/updated_at saja sebagai datetime.
      */
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
-        'born_date'  => 'date',
-        'start_date' => 'date',
-        'end_date'   => 'date',
     ];
 
     /* ============================================================

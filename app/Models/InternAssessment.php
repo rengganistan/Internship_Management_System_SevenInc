@@ -11,6 +11,7 @@ class InternAssessment extends Model
 
     // Menambahkan properti $fillable untuk semua kolom yang bisa diisi
     protected $fillable = [
+        'intern_id',
         'fullname',
         'nim_or_nis',
         'study_program',
@@ -23,7 +24,6 @@ class InternAssessment extends Model
         'signature_name',
         'signature_position',
         'signature_image_path',
-
     ];
 
     protected $casts = [
