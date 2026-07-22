@@ -95,8 +95,6 @@ class DashboardController extends Controller
      */
     public function showReports(User $user, Request $request)
     {
-        // Optional: otorisasi admin
-        $this->authorize('viewAny', DailyReport::class);
 
         $q         = trim($request->get('q', ''));
         $from      = $request->get('from');   // format: Y-m-d
@@ -129,8 +127,6 @@ class DashboardController extends Controller
      */
     public function showLeaves(User $user, Request $request)
     {
-        // Optional: otorisasi admin
-        $this->authorize('viewAny', LeaveRequest::class);
 
         $q         = trim($request->get('q', ''));
         $from      = $request->get('from');      // Y-m-d
@@ -167,8 +163,6 @@ class DashboardController extends Controller
      */
     public function showTasks(User $user, Request $request)
     {
-        // Optional: otorisasi admin
-        $this->authorize('viewAny', PendingTask::class);
 
         $q      = trim($request->get('q', ''));
         $from   = $request->get('from');   // Y-m-d

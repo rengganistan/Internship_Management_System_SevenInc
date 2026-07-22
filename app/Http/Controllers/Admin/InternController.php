@@ -282,7 +282,7 @@ class InternController extends Controller
             $interns = $query->get();
         } else {
             // Jika tidak ada pencarian, gunakan pagination
-            $interns = $query->paginate(1000)->withQueryString();
+            $interns = $query->paginate(25)->withQueryString();
         }
 
         return view('interns.index', [
