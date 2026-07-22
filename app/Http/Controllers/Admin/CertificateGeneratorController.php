@@ -2,9 +2,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\InternshipRegistration as IR;
+use App\Models\Certificate;
 use Illuminate\Http\Request;
-use Spatie\Browsershot\Browsershot;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\DB;
@@ -90,44 +89,55 @@ class CertificateGeneratorController extends Controller
     public function generatePDF($id)
     {
         // Fetch the certificate record from the database
-        $certificate = IR::findOrFail($id);
+        // Menggunakan model Certificate (bukan InternshipRegistration)
+        $certificate = Certificate::findOrFail($id);
+
+        // Increment running number per-bulan
+        $endDate = Carbon::parse($certificate->end_date);
+        $run = $this->nextRunningNumber((int) $endDate->format('Y'), (int) $endDate->format('n'));
+
+        // Build serial number
+        $serialNumber = $this->buildSerial(
+            $run,
+            $certificate->division,
+            $certificate->company,
+            $certificate->brand,
+            $endDate
+        );
+
+        // Update serial number di database
+        $certificate->serial_number = $serialNumber;
+        $certificate->save();
 
         // Prepare data for the PDF
         $data = [
-            'certificate' => $certificate,
-            'name'        => $certificate->name,
-            'division'    => $certificate->division,
-            'company'     => $certificate->company,
-            'brand'       => $certificate->brand,
+            'certificate'      => $certificate,
+            'name'             => $certificate->name,
+            'division'         => $certificate->division,
+            'company'          => $certificate->company,
+            'brand'            => $certificate->brand,
             'background_image' => $certificate->background_image,
-            'start_date'  => $certificate->start_date,
-            'end_date'    => $certificate->end_date,
-            'city'        => $certificate->city,
-            'logo1'       => $certificate->logo1,
-            'logo2'       => $certificate->logo2,
-            'role1'       => $certificate->role1,
+            'start_date'       => $certificate->start_date,
+            'end_date'         => $certificate->end_date,
+            'city'             => $certificate->city,
+            'logo1'            => $certificate->logo1,
+            'logo2'            => $certificate->logo2,
+            'role1'            => $certificate->role1,
             'signature_image1' => $certificate->signature_image1,
-            'role2'       => $certificate->role2,
+            'role2'            => $certificate->role2,
             'signature_image2' => $certificate->signature_image2,
-            'name_signatory1' => $certificate->name_signatory1,
-            'name_signatory2' => $certificate->name_signatory2,
+            'name_signatory1'  => $certificate->name_signatory1,
+            'name_signatory2'  => $certificate->name_signatory2,
+            'serial_number'    => $serialNumber,
         ];
 
-        // Render the HTML for the PDF view
-        $html = view('certificates.generator_preview', $data)->render();
+        // Generate PDF menggunakan DomPDF (bukan Browsershot)
+        $pdf = Pdf::loadView('certificates.generator_preview', $data)
+            ->setPaper('a4', 'landscape');
 
-        // Generate the PDF content using Browsershot
-        $pdfContent = Browsershot::html($html)
-            ->waitUntilNetworkIdle()
-            ->setOption('no-sandbox', true)
-            ->pdf();
+        $filename = 'Sertifikat_' . uniqid('cert_') . '.pdf';
 
-        // Save the PDF file to storage
-        $filePath = 'certificates/' . uniqid('cert_') . '.pdf';
-        Storage::disk('public')->put($filePath, $pdfContent);
-
-        // Return the response to download the PDF
-        return response()->download(storage_path('app/public/' . $filePath));
+        return $pdf->download($filename);
     }
 
     // ---------- PRIVATE HELPERS ----------
