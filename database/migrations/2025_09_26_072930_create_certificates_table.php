@@ -24,9 +24,9 @@ class CreateCertificatesTable extends Migration
             $table->string('signature_image1')->nullable();
             $table->string('signature_image2')->nullable();
             $table->string('name_signatory1');
-            $table->string('name_signatory2');
+            $table->string('name_signatory2')->nullable();
             $table->string('role1');
-            $table->string('role2');
+            $table->string('role2')->nullable();
             $table->timestamps();
         });
     }
