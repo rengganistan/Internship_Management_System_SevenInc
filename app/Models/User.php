@@ -77,9 +77,10 @@ class User extends Authenticatable
     protected static function booted()
     {
         static::updated(function ($user) {
-            // Check if the user is a 'pemagang' and their status is 'active' or 'completed'
-            if ($user->role === 'pemagang' && in_array($user->internship_status, ['active', 'completed'])) {
-                // Trigger the method to create a member card
+            // internship_status bukan kolom di tabel users,
+            // status magang ada di InternshipRegistration.
+            // Cukup cek role saja; member card dibuat dari InternController saat status berubah.
+            if ($user->role === 'pemagang') {
                 $user->createMemberCard();
             }
         });

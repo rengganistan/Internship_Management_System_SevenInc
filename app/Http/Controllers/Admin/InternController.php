@@ -471,8 +471,10 @@ class InternController extends Controller
                 $this->syncPemagangRole($intern);
 
                 if ($old !== IR::STATUS_ACCEPTED && $intern->internship_status === IR::STATUS_ACCEPTED) {
-                    if ($to = $this->sendAcceptedEmail($intern)) {
-                        $mailCount++;
+                    $this->sendAcceptedEmail($intern);
+                    $mailCount++;
+                    $to = $intern->email ?: optional($intern->user)->email;
+                    if ($to) {
                         $mailList[] = ['to' => $to, 'name' => $intern->fullname];
                     }
                 }

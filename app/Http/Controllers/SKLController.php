@@ -55,6 +55,19 @@ class SKLController extends Controller
         // Ambil data konfigurasi SKL yang ada
         $config = SKLSetting::first();
 
+        // Jika belum ada konfigurasi, buat default terlebih dahulu
+        if (!$config) {
+            $config = SKLSetting::create([
+                'company_name'    => 'Seven Inc',
+                'company_address' => 'Jl. Raya Janti Gg. Harjuna No.59, Jaranan, Karangjambe, Kec. Banguntapan, Kabupaten Bantul, Daerah Istimewa Yogyakarta 55198',
+                'company_city'    => 'Yogyakarta',
+                'leader_name'     => 'Nama Pimpinan / HRD',
+                'leader_title'    => 'Manajer HRD',
+                'logo_path'       => 'storage/images/logos/logo_seveninc.png',
+                'stamp_path'      => 'storage/images/signature/ttd_rekariodanny.png',
+            ]);
+        }
+
         // Perbarui data teks (nama perusahaan, alamat, dll)
         $config->company_name    = $request->company_name;
         $config->company_address = $request->company_address;
@@ -225,7 +238,7 @@ class SKLController extends Controller
                 ->showBackground()
                 ->waitUntilNetworkIdle()
                 ->timeout(180)
-                ->savePDF($tempPath);
+                ->savePdf($tempPath);
             
             
             // Log Download Sukses
