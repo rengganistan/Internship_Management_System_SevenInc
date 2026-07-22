@@ -9,15 +9,6 @@ use Illuminate\Support\Facades\Storage;
 
 class SuratPenilaianController extends Controller
 {
-    // Menampilkan form untuk mengisi data dan mengenerate PDF
-    public function showForm()
-    {
-        // Pastikan hanya admin yang bisa mengakses halaman ini
-        auth()->user()->role !== 'admin'; // Anda bisa menggunakan middleware atau policy di sini
-
-        return view('admin.form-penilaian');
-    }
-
     // Fungsi untuk menghasilkan PDF berdasarkan inputan admin
     public function generatePdf(Request $request)
     {
