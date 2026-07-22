@@ -34,11 +34,17 @@ return new class extends Migration
               ->delete();
         }
 
-        // 3) Now you can safely add unique index
+        // 3) Now you can safely add unique index (only if not already exists)
         Schema::table('downloads', function ($table) {
-            $table->string('code')->change();     // ensure not nullable
-            $table->unique('code');
+            $table->string('code')->nullable(false)->change();
         });
+
+        $indexExists = collect(DB::select("SHOW INDEX FROM `downloads` WHERE Key_name = 'downloads_code_unique'"))->isNotEmpty();
+        if (!$indexExists) {
+            Schema::table('downloads', function ($table) {
+                $table->unique('code');
+            });
+        }
     }
 
     public function down(): void

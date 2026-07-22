@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('downloads', function (Blueprint $table) {
-            $table->string('model_url')->nullable()->after('brand'); // Tambah setelah 'brand'
-        });
+        if (!Schema::hasColumn('downloads', 'model_url')) {
+            Schema::table('downloads', function (Blueprint $table) {
+                $table->string('model_url')->nullable()->after('brand');
+            });
+        }
     }
 
     /**
