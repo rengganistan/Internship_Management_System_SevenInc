@@ -272,49 +272,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin', 'preve
     Route::post('/uploads/logos',       [CertificateController::class, 'uploadLogo'])->name('uploads.logos.store');
     Route::post('/uploads/signatures',  [CertificateController::class, 'uploadSignature'])->name('uploads.signatures.store');
 
-    // (Opsional) Dashboard khusus di area admin -> admin.user.dashboard
-    Route::get('/user/dashboard', [AdminUserController::class, 'index'])->name('user.dashboard');
-
-    Route::put('/admin/users/{id}', [AdminUserController::class, 'update'])->name('user.update');
-
-    Route::middleware(['auth', 'role:user'])->group(function () {
-    // Route untuk dashboard pengguna
-        Route::get('/user/dashboard', [UserController::class, 'index'])->name('user.dashboard');
-        // Form pendaftaran magang
-        Route::get('/user/internship/form', [PublicRegController::class, 'create'])->name('user.internship.form');
-    });
-
-    Route::middleware(['auth'])->group(function () {
-        // Dashboard untuk pengguna
-        Route::get('/user/dashboard', [UserController::class, 'index'])->name('user.dashboard');
-        
-        // Form pendaftaran magang
-        Route::get('/user/internship/form', [PublicRegController::class, 'create'])->name('user.internship.form');
-    });
-
-    Route::middleware(['auth', 'role:user'])->group(function () {
-        // Cek apakah pengguna sudah mengisi form pendaftaran magang
-        Route::get('/user/dashboard', [UserController::class, 'index'])->name('user.dashboard');
-        
-        // Rute untuk form pendaftaran magang jika pengguna belum mengisi form
-        Route::get('/user/internship/form', [PublicRegController::class, 'create'])->name('user.internship.form');
-    });
-
-    Route::middleware(['auth'])->group(function () {
-        // Sidebar untuk Daftar Magang
-        Route::get('/user/internship/form', [UserController::class, 'showForm'])->name('user.internship.form');
-    });
-
-    Route::middleware(['auth'])->group(function () {
-        // Rute untuk form pendaftaran magang (menampilkan user/form.blade.php)
-        Route::get('/user/internship/form', [PublicRegController::class, 'showForm'])
-            ->name('user.internship.form')
-            ->middleware('auth');
-    });
-
-    Route::get('/admin/user/{user}/daily-reports', [DashboardController::class, 'showReports'])->name('user.dailyReports');
-    Route::get('/admin/user/{user}/leave-requests', [DashboardController::class, 'showLeaves'])->name('user.leaveRequests');
-    Route::get('/admin/user/{user}/pending-tasks', [DashboardController::class, 'showTasks'])->name('user.pendingTasks');
+    Route::get('/user/{user}/daily-reports', [DashboardController::class, 'showReports'])->name('user.dailyReports');
+    Route::get('/user/{user}/leave-requests', [DashboardController::class, 'showLeaves'])->name('user.leaveRequests');
+    Route::get('/user/{user}/pending-tasks', [DashboardController::class, 'showTasks'])->name('user.pendingTasks');
 
     Route::get('/skl/editor', [SKLController::class, 'edit'])->name('skl.editor');
     Route::post('/skl/editor', [SKLController::class, 'update'])->name('skl.update');

@@ -9,6 +9,12 @@ use Illuminate\Support\Facades\Storage;
 
 class SuratPenilaianController extends Controller
 {
+    // Menampilkan form untuk mengisi data dan mengenerate PDF
+    public function showForm()
+    {
+        return view('admin.form-penilaian');
+    }
+
     // Fungsi untuk menghasilkan PDF berdasarkan inputan admin
     public function generatePdf(Request $request)
     {
