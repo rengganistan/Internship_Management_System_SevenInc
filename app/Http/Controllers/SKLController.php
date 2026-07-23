@@ -137,8 +137,17 @@ class SKLController extends Controller
         $letterNumber  = 'SKL/'.Carbon::parse($endAt)->format('Y').'/DEMO';
 
         // Assets
-        $logoPath = public_path('storage/images/logos/logo_seveninc.png');
-        $stampPath = public_path('storage/images/signature/ttd_arisetiahusbana.png');
+        $logoFile  = public_path('storage/images/logos/logo_seveninc.png');
+        $stampFile = public_path('storage/images/signature/ttd_arisetiahusbana.png');
+
+        // Fallback stamp ke file TTD lain yang ada
+        if (!file_exists($stampFile)) {
+            $candidates = glob(public_path('storage/images/signature/*.{png,jpg,jpeg}'), GLOB_BRACE);
+            $stampFile  = !empty($candidates) ? $candidates[0] : null;
+        }
+
+        $logoPath  = $logoFile;
+        $stampPath = $stampFile;
 
         // Mendapatkan data dari request atau menggunakan default value
         $activityDescription = $request->get('activity_description', $config->activity_description);
@@ -181,13 +190,22 @@ class SKLController extends Controller
             $leaderName     = $config->leader_name ?? 'Nama Pimpinan / HRD';
             $leaderTitle    = $config->leader_title ?? 'Manajer HRD';
 
-            // Path logo dan stempel
-            // Ubah gambar menjadi Base64
-            $logoPath = base64_encode(file_get_contents(storage_path('app/public/images/logos/logo_seveninc.png')));
-            $logoData = 'data:image/png;base64,' . $logoPath;
+            // Path logo dan stempel — encode ke Base64
+            $logoFile = storage_path('app/public/images/logos/logo_seveninc.png');
+            $logoData = file_exists($logoFile)
+                ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoFile))
+                : null;
 
-            $stampPath = base64_encode(file_get_contents(storage_path('app/public/images/signature/ttd_arisetiahusbana.png')));
-            $stampData = 'data:image/png;base64,' . $stampPath;
+            $stampFile = storage_path('app/public/images/signature/ttd_arisetiahusbana.png');
+            if (!file_exists($stampFile)) {
+                $candidates = glob(storage_path('app/public/images/signature/*.{png,jpg,jpeg}'), GLOB_BRACE);
+                $stampFile  = !empty($candidates) ? $candidates[0] : null;
+            }
+            $stampExt  = $stampFile ? strtolower(pathinfo($stampFile, PATHINFO_EXTENSION)) : 'png';
+            $stampMime = in_array($stampExt, ['jpg','jpeg']) ? 'image/jpeg' : 'image/png';
+            $stampData = $stampFile && file_exists($stampFile)
+                ? "data:{$stampMime};base64," . base64_encode(file_get_contents($stampFile))
+                : null;
 
             // Data peserta magang
             $participantName      = $targetUser->name;

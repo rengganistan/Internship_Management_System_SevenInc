@@ -69,13 +69,17 @@ class LoaController extends Controller
 
         $user = $request->user();
 
-        // Fetch the internship registration for the given user and intern_id
-        $intern = IR::where('id', $validated['intern_id'])
-            ->where('user_id', $user->id) // Ensure it's for the logged-in user
-            ->firstOrFail();
-
-        // Ensure the intern has completed the internship
-        $this->ensureCanAccessCompletedDocs($user, $intern);
+        // Admin bisa generate LOA untuk intern siapapun
+        // Pemagang hanya bisa generate untuk dirinya sendiri
+        if ($user->role === 'admin') {
+            $intern = IR::where('id', $validated['intern_id'])->firstOrFail();
+        } else {
+            $intern = IR::where('id', $validated['intern_id'])
+                ->where('user_id', $user->id)
+                ->firstOrFail();
+            // Pastikan pemagang sudah completed
+            $this->ensureCanAccessCompletedDocs($user, $intern);
+        }
 
         // Get the LOA settings (e.g., logo, signature)
         $loaSettings = LoaSettings::first();
@@ -113,11 +117,20 @@ class LoaController extends Controller
 
         try {
             // Read the image files and encode them to base64
-            $logoPath = base64_encode(file_get_contents(storage_path('app/public/images/logos/logo_seveninc.png')));
-            $logoData = 'data:image/png;base64,' . $logoPath;
+            $logoFile = storage_path('app/public/images/logos/logo_seveninc.png');
+            $logoData = file_exists($logoFile)
+                ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoFile))
+                : null;
 
-            $stampPath = base64_encode(file_get_contents(storage_path('app/public/images/signature/ttd_arisetiahusbana.png')));
-            $stampData = 'data:image/png;base64,' . $stampPath;
+            $stampFile = storage_path('app/public/images/signature/ttd_arisetiahusbana.png');
+            // fallback ke file TTD lain yang ada jika ttd_arisetiahusbana.png tidak ditemukan
+            if (!file_exists($stampFile)) {
+                $candidates = glob(storage_path('app/public/images/signature/*.{png,jpg,jpeg}'), GLOB_BRACE);
+                $stampFile = !empty($candidates) ? $candidates[0] : null;
+            }
+            $stampData = $stampFile && file_exists($stampFile)
+                ? 'data:image/' . (str_ends_with($stampFile, '.png') ? 'png' : 'jpeg') . ';base64,' . base64_encode(file_get_contents($stampFile))
+                : null;
 
             // Generate the PDF from the view, passing the required data
             $pdf = Pdf::loadView('user.loa', [
@@ -202,18 +215,25 @@ class LoaController extends Controller
 
         $user = $request->user();
 
-        // Ambil list intern milik user & completed
-        $interns = IR::whereIn('id', $validated['intern_ids'])
-            ->where('user_id', $user->id)
-            ->get();
+        // Admin bisa generate LOA untuk intern siapapun
+        // Pemagang hanya bisa untuk intern miliknya sendiri
+        if ($user->role === 'admin') {
+            $interns = IR::whereIn('id', $validated['intern_ids'])->get();
+        } else {
+            $interns = IR::whereIn('id', $validated['intern_ids'])
+                ->where('user_id', $user->id)
+                ->get();
+        }
 
         if ($interns->isEmpty()) {
             return back()->with('error', 'Data pemagang tidak ditemukan atau tidak berhak diakses.');
         }
 
-        // Pastikan semuanya completed & milik user
-        foreach ($interns as $intern) {
-            $this->ensureCanAccessCompletedDocs($user, $intern);
+        // Pemagang: pastikan semuanya completed & milik user
+        if ($user->role !== 'admin') {
+            foreach ($interns as $intern) {
+                $this->ensureCanAccessCompletedDocs($user, $intern);
+            }
         }
 
         $loaSettings = LoaSettings::first();

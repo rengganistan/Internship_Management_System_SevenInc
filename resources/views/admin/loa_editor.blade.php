@@ -102,7 +102,13 @@
           @csrf
           <div class="grid grid-cols-3 gap-4">
             <div class="col-span-2">
-              <label>Pilih Pemagang (bisa lebih dari satu)</label>
+              <div class="flex items-center justify-between mb-1">
+                <label>Pilih Pemagang (bisa lebih dari satu)</label>
+                <label class="text-sm text-gray-500 cursor-pointer flex items-center gap-1">
+                  <input type="checkbox" id="selectAllInterns"> Pilih Semua
+                </label>
+              </div>
+              <p class="text-xs text-gray-400 mb-1">Tahan <kbd class="bg-gray-100 border px-1 rounded">Ctrl</kbd> (Windows) atau <kbd class="bg-gray-100 border px-1 rounded">⌘ Cmd</kbd> (Mac) untuk pilih lebih dari satu.</p>
               <select name="intern_ids[]" id="intern_ids" class="form-multiselect w-full" multiple size="10">
                 @foreach($registrations as $r)
                   <option
@@ -203,6 +209,20 @@
     if (!$iframe || !$iframe.contentWindow) return;
     const rows = collectRows();
     $iframe.contentWindow.postMessage({ type: 'updateLOA', rows }, window.location.origin);
+  }
+
+  // Checkbox select all
+  const $selectAll = document.getElementById('selectAllInterns');
+  if ($selectAll && $multi) {
+    $selectAll.addEventListener('change', function() {
+      Array.from($multi.options).forEach(opt => opt.selected = $selectAll.checked);
+      postRowsToIframe();
+    });
+    // Kalau user deselect manual, uncheck "Pilih Semua"
+    $multi.addEventListener('change', function() {
+      $selectAll.checked = Array.from($multi.options).every(opt => opt.selected);
+      postRowsToIframe();
+    });
   }
 
   // Event: perubahan pilihan = update preview
