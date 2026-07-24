@@ -199,12 +199,17 @@ class DashboardController extends Controller
 
         // Ringkasan hitungan (berdasarkan workflow status)
         $counts = [
+            'total'     => IR::count(),
             'waiting'   => IR::where('internship_status', IR::STATUS_WAITING)->count(),
+            'pending'   => IR::where('internship_status', IR::STATUS_PENDING)->count(),
+            'accepted'  => IR::where('internship_status', IR::STATUS_ACCEPTED)->count(),
             'active'    => IR::where('internship_status', IR::STATUS_ACTIVE)->count(),
             'completed' => IR::where('internship_status', IR::STATUS_COMPLETED)->count(),
             'exited'    => IR::where('internship_status', IR::STATUS_EXITED)->count(),
-            'pending'   => IR::where('internship_status', IR::STATUS_PENDING)->count(),
+            'rejected'  => IR::where('internship_status', IR::STATUS_REJECTED)->count(),
         ];
+
+        $recentInterns = IR::latest('created_at')->limit(5)->get();
 
         // ===========================
         // Line chart: total pendaftar per bulan (6 bulan terakhir, termasuk bulan ini)
@@ -254,6 +259,14 @@ class DashboardController extends Controller
             ? $me->pendingTasks()->latest()->limit(5)->get()
             : PendingTask::latest()->limit(5)->get();
 
-        return view('dashboard.index', compact('counts', 'chart', 'users', 'allReports', 'allLeaves', 'allTasks'));
+        return view('dashboard.index', compact(
+            'counts',
+            'chart',
+            'users',
+            'allReports',
+            'allLeaves',
+            'allTasks',
+            'recentInterns'
+        ));
     }
 }

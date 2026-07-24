@@ -1,140 +1,98 @@
-<nav class="fixed z-50 w-full bg-white border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700">
-    <div class="px-3 py-3 lg:px-5 lg:pl-3">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center justify-start">
-                <button id="toggleSidebarMobile" aria-expanded="true" aria-controls="sidebar" class="p-2 text-gray-600 rounded cursor-pointer lg:hidden hover:text-gray-900 hover:bg-gray-100 focus:bg-gray-100 dark:focus:bg-gray-700 focus:ring-2 focus:ring-gray-100 dark:focus:ring-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
-                    <svg id="toggleSidebarMobileHamburger" class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                        <path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
-                    </svg>
-                    <svg id="toggleSidebarMobileClose" class="hidden w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
-                    </svg>
-                </button>                    
-                <a href="/admin/dashboard" class="flex ml-2 md:mr-24">
-                    <img src="{{ asset('storage/images/logos/logo_seveninc.png') }}" class="h-11 mr-3" alt="Internship Admin Logo" />
-                    @if (Auth::check() && Auth::user()->role === 'admin')
-                        <span class="self-center text-xl font-semibold sm:text-2xl whitespace-nowrap dark:text-white">
-                            Internship Admin
-                        </span>
-                    @else
-                        <span class="self-center text-xl font-semibold sm:text-2xl whitespace-nowrap dark:text-white">
-                            Internship
-                        </span>
-                    @endif
-                </a>
-                <form action="#" method="GET" class="hidden lg:block lg:pl-3.5">
-                    <label for="topbar-search" class="sr-only">Search</label>
-                    <div class="relative mt-1 lg:w-96">
-                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                            <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"></path>
-                            </svg>
-                        </div>
-                        <input type="text" name="email" id="topbar-search" class="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full pl-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Search">
-                    </div>
-                </form>
-            </div>
+@php
+    $user = auth()->user();
+@endphp
 
+<header id="admin-topbar" class="fixed inset-x-0 top-0 z-30 h-16 border-b border-admin-border bg-white transition-[left] duration-300 lg:left-[272px]">
+    <div class="flex h-full items-center justify-between px-4 sm:px-6 lg:px-7">
+        <div class="flex min-w-0 items-center gap-3">
+            <button
+                id="admin-sidebar-mobile-toggle"
+                type="button"
+                class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-admin-border text-admin-text-mid lg:hidden"
+                aria-label="Buka menu"
+            >
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M4 7h16M4 12h16M4 17h16"/>
+                </svg>
+            </button>
+
+            <div class="min-w-0">
+                <p class="truncate text-[17px] font-bold text-admin-text-dark">Panel Administrasi</p>
+                <p class="hidden truncate text-xs text-admin-text-mid sm:block">Listmagang / Seveninc</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3">
             <div class="relative">
-                <!-- Profile Picture Button -->
-                <button id="profilePictureButton" class="flex items-center gap-2 px-3 py-2 text-gray-600 rounded-lg hover:bg-gray-200 focus:outline-none">
-                    <img src="{{ asset('storage/' . (auth()->user()->profile_picture ?? 'default-avatar.png')) }}" alt="User Profile" class="w-10 h-10 rounded-full border-2 border-primary-600 object-cover">
+                <button
+                    id="admin-notification-toggle"
+                    type="button"
+                    class="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-admin-border text-admin-text-mid transition hover:bg-admin-secondary"
+                    aria-label="Notifikasi"
+                >
+                    <svg class="h-[17px] w-[17px]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>
+                    </svg>
+                    <span class="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-admin-accent ring-2 ring-white"></span>
                 </button>
 
-                <!-- Dropdown Menu -->
-                <div id="profileDropdown"
-                    class="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden transition-all duration-300 ease-in-out"
-                    style="max-height: 0; opacity: 0; pointer-events: none;">
-                    <ul class="py-1">
-                        <li><a href="{{ route('user.profile') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profil</a></li>
-                        
-                    </ul>
+                <div id="admin-notification-menu" class="absolute right-0 mt-2 hidden w-80 overflow-hidden rounded-xl border border-admin-border bg-white shadow-[0_12px_32px_rgba(27,58,52,0.14)]">
+                    <div class="flex items-center justify-between border-b border-admin-border px-4 py-3">
+                        <p class="text-sm font-bold text-admin-text-dark">Notifikasi</p>
+                        <button type="button" class="text-xs font-semibold text-admin-primary">Tandai dibaca</button>
+                    </div>
+
+                    <div class="divide-y divide-admin-border">
+                        <div class="px-4 py-3">
+                            <p class="text-sm font-semibold text-admin-text-dark">Pendaftaran baru masuk</p>
+                            <p class="mt-1 text-xs leading-5 text-admin-text-mid">Ada pendaftar baru yang menunggu review.</p>
+                        </div>
+                        <div class="px-4 py-3">
+                            <p class="text-sm font-semibold text-admin-text-dark">Feedback baru diterima</p>
+                            <p class="mt-1 text-xs leading-5 text-admin-text-mid">Pemagang mengirim masukan tentang program magang.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
+            <div class="relative">
+                <button
+                    id="admin-profile-toggle"
+                    type="button"
+                    class="flex items-center gap-2 rounded-full border border-admin-border py-1 pl-1 pr-2.5 transition hover:bg-admin-secondary"
+                >
+                    <span class="flex h-7 w-7 items-center justify-center rounded-full bg-admin-secondary text-xs font-bold text-admin-primary-dark">
+                        {{ strtoupper(substr($user->name ?? 'A', 0, 1)) }}
+                    </span>
+
+                    <span class="hidden text-left sm:block">
+                        <span class="block max-w-28 truncate text-[13px] font-semibold text-admin-text-dark">{{ $user->name ?? 'Admin' }}</span>
+                        <span class="block text-[11px] text-admin-text-mid">Administrator</span>
+                    </span>
+
+                    <svg class="hidden h-4 w-4 text-admin-text-mid sm:block" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="m6 9 6 6 6-6"/>
+                    </svg>
+                </button>
+
+                <div id="admin-profile-menu" class="absolute right-0 mt-2 hidden w-56 overflow-hidden rounded-xl border border-admin-border bg-white py-2 shadow-[0_12px_32px_rgba(27,58,52,0.14)]">
+                    <div class="border-b border-admin-border px-4 py-3">
+                        <p class="truncate text-sm font-semibold text-admin-text-dark">{{ $user->name ?? 'Admin' }}</p>
+                        <p class="truncate text-xs text-admin-text-mid">{{ $user->email ?? '' }}</p>
+                    </div>
+
+                    <a href="{{ route('user.profile') }}" class="block px-4 py-2.5 text-sm text-admin-text-mid hover:bg-admin-secondary hover:text-admin-primary-dark">
+                        Edit Profil
+                    </a>
+
+                    <form action="{{ route('user.logout') }}" method="POST" class="border-t border-admin-border">
+                        @csrf
+                        <button type="submit" class="w-full px-4 py-2.5 text-left text-sm font-medium text-admin-error hover:bg-red-50">
+                            Logout
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
-</nav>
-
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-
-    const toggleBtn = document.getElementById("toggleSidebarMobile");
-    const sidebar = document.getElementById("sidebar");
-    const backdrop = document.getElementById("sidebarBackdrop");
-
-    const iconHamburger = document.getElementById("toggleSidebarMobileHamburger");
-    const iconClose = document.getElementById("toggleSidebarMobileClose");
-
-    const button = document.getElementById("profilePictureButton");
-    const dropdown = document.getElementById("profileDropdown");
-
-    /* ==============================
-       SIDEBAR MOBILE (ANIMASI SLIDE)
-    ============================== */
-
-    function openSidebar() {
-        sidebar.classList.remove("-translate-x-full");
-        backdrop.classList.remove("hidden");
-        iconHamburger.classList.add("hidden");
-        iconClose.classList.remove("hidden");
-    }
-
-    function closeSidebar() {
-        sidebar.classList.add("-translate-x-full");
-        backdrop.classList.add("hidden");
-        iconHamburger.classList.remove("hidden");
-        iconClose.classList.add("hidden");
-    }
-
-    toggleBtn.addEventListener("click", function (e) {
-        e.stopPropagation();
-
-        const closed = sidebar.classList.contains("-translate-x-full");
-        closed ? openSidebar() : closeSidebar();
-    });
-
-    // Klik backdrop → tutup sidebar
-    backdrop.addEventListener("click", closeSidebar);
-
-    // Klik di luar sidebar → tutup sidebar
-    document.addEventListener("click", function (e) {
-        const closed = sidebar.classList.contains("-translate-x-full");
-
-        if (!closed && !sidebar.contains(e.target) && !toggleBtn.contains(e.target)) {
-            closeSidebar();
-        }
-    });
-
-    /* ==============================
-       PROFILE DROPDOWN
-    ============================== */
-
-    button.addEventListener("click", function (e) {
-        e.stopPropagation();
-
-        const opened = dropdown.style.maxHeight && dropdown.style.maxHeight !== "0px";
-
-        if (!opened) {
-            dropdown.style.maxHeight = "200px";
-            dropdown.style.opacity = "1";
-            dropdown.style.pointerEvents = "auto";
-        } else {
-            dropdown.style.maxHeight = "0";
-            dropdown.style.opacity = "0";
-            dropdown.style.pointerEvents = "none";
-        }
-    });
-
-    // Klik luar → tutup dropdown
-    document.addEventListener("click", function (e) {
-        if (!dropdown.contains(e.target) && !button.contains(e.target)) {
-            dropdown.style.maxHeight = "0";
-            dropdown.style.opacity = "0";
-            dropdown.style.pointerEvents = "none";
-        }
-    });
-
-});
-</script>
-
+</header>

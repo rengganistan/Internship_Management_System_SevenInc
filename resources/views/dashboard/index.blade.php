@@ -1,351 +1,316 @@
 @extends('layouts.dashboard')
 
+@php
+    $statusMeta = [
+        'waiting' => [
+            'label' => 'Menunggu Review',
+            'badge' => 'bg-amber-50 text-amber-700',
+            'bar' => 'bg-amber-400',
+        ],
+        'pending' => [
+            'label' => 'Pending',
+            'badge' => 'bg-amber-50 text-amber-700',
+            'bar' => 'bg-amber-400',
+        ],
+        'accepted' => [
+            'label' => 'Diterima',
+            'badge' => 'bg-emerald-50 text-emerald-700',
+            'bar' => 'bg-emerald-500',
+        ],
+        'active' => [
+            'label' => 'Aktif',
+            'badge' => 'bg-blue-50 text-blue-700',
+            'bar' => 'bg-blue-500',
+        ],
+        'completed' => [
+            'label' => 'Selesai',
+            'badge' => 'bg-slate-100 text-slate-700',
+            'bar' => 'bg-slate-500',
+        ],
+        'rejected' => [
+            'label' => 'Ditolak',
+            'badge' => 'bg-red-50 text-red-700',
+            'bar' => 'bg-red-500',
+        ],
+        'exited' => [
+            'label' => 'Keluar',
+            'badge' => 'bg-red-50 text-red-700',
+            'bar' => 'bg-red-500',
+        ],
+    ];
+
+    $totalInterns = max((int) ($counts['total'] ?? 0), 1);
+@endphp
+
 @section('content')
-<div class="px-4 pt-6 pb-6 bg-primary-300">
+<div class="min-h-screen bg-admin-bg p-4 sm:p-6 lg:p-7">
 
-  <!-- Header -->
-  <div class="mb-6 flex items-center justify-between">
-      <div>
-          <h1 class="text-2xl font-bold text-gray-900 ">Dashboard Admin</h1>
-          <p class="text-gray-600 ">Ringkasan aktivitas dan statistik pemagang.</p>
-      </div>
+    <div class="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+            <p class="mb-1 text-xs font-bold uppercase tracking-[0.08em] text-admin-primary">
+                Dashboard
+            </p>
+            <h1 class="text-2xl font-extrabold tracking-tight text-admin-text-dark sm:text-[28px]">
+                Ringkasan & Statistik
+            </h1>
+            <p class="mt-1 text-sm text-admin-text-mid">
+                Pantau pendaftaran dan aktivitas pemagang dalam satu tempat.
+            </p>
+        </div>
 
-      <!-- Quick Nav -->
-      <div class="flex gap-2">
-          <a href="{{ route('admin.interns.index') }}"
-              class="px-3 py-2 rounded-lg text-sm bg-gray-200 ">Semua</a>
-          <a href="{{ route('admin.interns.active') }}"
-              class="px-3 py-2 rounded-lg text-sm bg-gray-200 ">Aktif</a>
-          <a href="{{ route('admin.interns.completed') }}"
-              class="px-3 py-2 rounded-lg text-sm bg-gray-200 ">Selesai</a>
-          <a href="{{ route('admin.interns.exited') }}"
-              class="px-3 py-2 rounded-lg text-sm bg-gray-200 ">Keluar</a>
-          <a href="{{ route('admin.interns.pending') }}"
-              class="px-3 py-2 rounded-lg text-sm bg-gray-200 ">Pending</a>
-      </div>
-  </div>
-
-  <!-- Statistik Cards -->
-  <div class="grid gap-6 mb-8 md:grid-cols-2 xl:grid-cols-5">
-
-    <!-- Pendaftar Baru -->
-    <a href="{{ route('admin.interns.index') }}"
-      class="block cursor-pointer rounded-lg shadow-lg bg-primary-600 p-6 transition transform hover:scale-105 hover:shadow-xl hover:bg-primary-900 duration-300"
-      aria-label="Lihat semua pendaftar">
-      <div class="flex justify-between items-center">
-        <p class="mb-2 text-sm font-medium text-gray-100">Pendaftar Baru</p>
-        <i class="fas fa-user-plus text-gray-100 text-2xl"></i>
-      </div>
-      <p class="text-4xl font-bold text-gray-100">{{ $counts['waiting'] ?? 0 }}</p>
-    </a>
-
-    <!-- Pemagang Aktif -->
-    <a href="{{ route('admin.interns.active') }}"
-      class="block cursor-pointer rounded-lg shadow-lg bg-blue-600 p-6 transition transform hover:scale-105 hover:shadow-xl hover:bg-blue-900 duration-300"
-      aria-label="Lihat pemagang aktif">
-      <div class="flex justify-between items-center">
-        <p class="mb-2 text-sm font-medium text-gray-100">Pemagang Aktif</p>
-        <i class="fas fa-users text-gray-100 text-2xl"></i>
-      </div>
-      <p class="text-4xl font-bold text-gray-100">{{ $counts['active'] ?? 0 }}</p>
-    </a>
-
-    <!-- Selesai -->
-    <a href="{{ route('admin.interns.completed') }}"
-      class="block cursor-pointer rounded-lg shadow-lg bg-indigo-600 p-6 transition transform hover:scale-105 hover:shadow-xl hover:bg-indigo-900 duration-300"
-      aria-label="Lihat pemagang selesai">
-      <div class="flex justify-between items-center">
-        <p class="mb-2 text-sm font-medium text-gray-100">Selesai</p>
-        <i class="fas fa-check-circle text-gray-100 text-2xl"></i>
-      </div>
-      <p class="text-4xl font-bold text-gray-100">{{ $counts['completed'] ?? 0 }}</p>
-    </a>
-
-    <!-- Keluar -->
-    <a href="{{ route('admin.interns.exited') }}"
-      class="block cursor-pointer rounded-lg shadow-lg bg-rose-600 p-6 transition transform hover:scale-105 hover:shadow-xl hover:bg-rose-900 duration-300"
-      aria-label="Lihat pemagang keluar">
-      <div class="flex justify-between items-center">
-        <p class="mb-2 text-sm font-medium text-gray-100">Keluar</p>
-        <i class="fas fa-sign-out-alt text-gray-100 text-2xl"></i>
-      </div>
-      <p class="text-4xl font-bold text-gray-100">{{ $counts['exited'] ?? 0 }}</p>
-    </a>
-
-    <!-- Pending -->
-    <a href="{{ route('admin.interns.pending') }}"
-      class="block cursor-pointer rounded-lg shadow-lg bg-amber-600 p-6 transition transform hover:scale-105 hover:shadow-xl hover:bg-amber-900 duration-300"
-      aria-label="Lihat pemagang pending">
-      <div class="flex justify-between items-center">
-        <p class="mb-2 text-sm font-medium text-gray-100">Pending</p>
-        <i class="fas fa-clock text-gray-100 text-2xl"></i>
-      </div>
-      <p class="text-4xl font-bold text-gray-100">{{ $counts['pending'] ?? 0 }}</p>
-    </a>
-  </div>
-
-  <!-- Chart: 1 Line Chart Total Pendaftar / Bulan -->
-  <div class="grid grid-cols-1 gap-6 mb-8">
-    <div class="bg-white rounded-lg shadow p-6">
-      <h2 class="text-lg font-semibold text-gray-800 mb-4">
-        Tren Total Pendaftar (6 Bulan)
-      </h2>
-      <!-- KUNCI TINGGI DI KONTENER -->
-      <div class="relative h-64">
-        <canvas id="chartApplicants" class="w-full h-full"></canvas>
-      </div>
-    </div>
-  </div>
-
-
-  {{-- <!-- === DATA LENGKAP DI BAWAH CHART === -->
-  <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-
-    <!-- === A. USERS + STATUS MAGANG === -->
-    <div class="bg-white rounded-2xl shadow p-6 ring-1 ring-primary-100 overflow-hidden">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-semibold text-primary-900">Daftar Pengguna & Status Magang</h2>
-      </div>
-
-      <div class="overflow-x-auto rounded-xl border border-primary-100">
-        <table class="min-w-full text-sm divide-y divide-primary-100">
-          <thead class="bg-primary-50 text-primary-700 text-xs font-semibold uppercase">
-            <tr>
-              <th class="w-1/4 px-4 py-3 text-left">Nama</th>
-              <th class="w-1/4 px-4 py-3 text-left">Email</th>
-              <th class="w-1/4 px-4 py-3 text-center">Status</th>
-              <th class="w-1/4 px-4 py-3 text-center">Aksi</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-primary-50">
-            @forelse($users as $u)
-              @php
-                $st = optional($u->internshipRegistration)->internship_status ?? 'Not Registered';
-                $badge = match($st) {
-                  'active'   => 'bg-primary-100 text-primary-800 border-primary-200',
-                  'inactive' => 'bg-amber-100 text-amber-800 border-amber-200',
-                  'ended'    => 'bg-zinc-100 text-zinc-800 border-zinc-200',
-                  default    => 'bg-zinc-50 text-zinc-700 border-zinc-200',
-                };
-              @endphp
-              <tr class="hover:bg-primary-50/50">
-                <td class="px-4 py-3 text-zinc-900">{{ $u->name }}</td>
-                <td class="px-4 py-3 text-zinc-600">{{ $u->email }}</td>
-                <td class="px-4 py-3 text-center">
-                  <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold border {{ $badge }}">
-                    {{ ucfirst($st) }}
-                  </span>
-                </td>
-                <td class="px-4 py-3 text-center">
-                  <div class="flex items-center justify-center gap-2">
-                    <a href="{{ route('admin.user.dailyReports', $u->id) }}"
-                      class="px-2 py-1 bg-primary-100 text-primary-700 rounded-lg text-xs hover:bg-primary-200 transition">
-                      Laporan
-                    </a>
-                    <a href="{{ route('admin.user.leaveRequests', $u->id) }}"
-                      class="px-2 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs hover:bg-blue-200 transition">
-                      Izin
-                    </a>
-                    <a href="{{ route('admin.user.pendingTasks', $u->id) }}"
-                      class="px-2 py-1 bg-amber-100 text-amber-700 rounded-lg text-xs hover:bg-amber-200 transition">
-                      Tugas
-                    </a>
-                  </div>
-                </td>
-              </tr>
-            @empty
-              <tr><td colspan="4" class="px-4 py-6 text-center text-zinc-500">Belum ada pengguna.</td></tr>
-            @endforelse
-          </tbody>
-        </table>
-      </div>
+        <a
+            href="{{ route('admin.interns.index') }}"
+            class="inline-flex items-center justify-center gap-2 rounded-lg bg-admin-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-admin-primary-dark"
+        >
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M12 5v14M5 12h14"/>
+            </svg>
+            Kelola Pemagang
+        </a>
     </div>
 
-    <!-- === B. SEMUA DATA (GLOBAL VIEW) === -->
-    <div class="bg-white rounded-2xl shadow p-6 ring-1 ring-primary-100 space-y-8">
+    <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <a href="{{ route('admin.interns.index') }}" class="group rounded-xl border border-admin-border bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+            <div class="mb-4 flex items-start justify-between">
+                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-admin-secondary text-admin-primary-dark">
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M19 8v6M22 11h-6"/>
+                    </svg>
+                </div>
+                <span class="text-xs font-semibold text-admin-primary">Semua data</span>
+            </div>
+            <p class="text-3xl font-extrabold text-admin-text-dark">{{ $counts['total'] ?? 0 }}</p>
+            <p class="mt-1 text-sm font-medium text-admin-text-mid">Total Pendaftar</p>
+        </a>
 
-      <!-- Daily Reports -->
-      <div>
-        <h3 class="font-semibold text-primary-800 mb-2 flex items-center gap-2">
-          <i class="fa-solid fa-clipboard-list"></i> Semua Laporan Harian
-        </h3>
-        <div class="overflow-hidden rounded-xl border border-primary-100">
-          <table class="min-w-full text-sm divide-y divide-primary-100">
-            <thead class="bg-primary-50 text-primary-700 text-xs font-semibold uppercase">
-              <tr>
-                <th class="px-4 py-3 text-left w-40">Nama User</th>
-                <th class="px-4 py-3 text-left w-28">Tanggal</th>
-                <th class="px-4 py-3 text-left">Aktivitas</th>
-                <th class="px-4 py-3 text-left w-40">Tantangan</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-primary-50">
-              @forelse($allReports ?? [] as $r)
-                <tr class="hover:bg-primary-50/50">
-                  <td class="px-4 py-3 font-medium text-zinc-800">{{ $r->user->name ?? '-' }}</td>
-                  <td class="px-4 py-3 text-zinc-700">{{ \Carbon\Carbon::parse($r->date)->isoFormat('D MMM Y') }}</td>
-                  <td class="px-4 py-3 text-zinc-800 whitespace-pre-line">{{ $r->activities }}</td>
-                  <td class="px-4 py-3 text-zinc-700 whitespace-pre-line">{{ $r->challenges }}</td>
-                </tr>
-              @empty
-                <tr><td colspan="4" class="px-4 py-4 text-center text-zinc-500">Belum ada laporan harian.</td></tr>
-              @endforelse
-            </tbody>
-          </table>
-        </div>
-      </div>
+        <a href="{{ route('admin.interns.pending') }}" class="group rounded-xl border border-admin-border bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+            <div class="mb-4 flex items-start justify-between">
+                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <circle cx="12" cy="12" r="8"/>
+                        <path d="M12 7v5l3 2"/>
+                    </svg>
+                </div>
+                <span class="rounded-full bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-700">Perlu review</span>
+            </div>
+            <p class="text-3xl font-extrabold text-admin-text-dark">{{ $counts['waiting'] ?? 0 }}</p>
+            <p class="mt-1 text-sm font-medium text-admin-text-mid">Menunggu Review</p>
+        </a>
 
-      <!-- Leave Requests -->
-      <div>
-        <h3 class="font-semibold text-primary-800 mb-2 flex items-center gap-2">
-          <i class="fa-solid fa-calendar-days"></i> Semua Permintaan Izin
-        </h3>
-        <div class="overflow-hidden rounded-xl border border-primary-100">
-          <table class="min-w-full text-sm divide-y divide-primary-100">
-            <thead class="bg-primary-50 text-primary-700 text-xs font-semibold uppercase">
-              <tr>
-                <th class="px-4 py-3 text-left w-40">Nama User</th>
-                <th class="px-4 py-3 text-left w-28">Tanggal</th>
-                <th class="px-4 py-3 text-left w-36">Jenis</th>
-                <th class="px-4 py-3 text-left">Alasan</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-primary-50">
-              @forelse($allLeaves ?? [] as $l)
-                <tr class="hover:bg-primary-50/50">
-                  <td class="px-4 py-3 font-medium text-zinc-800">{{ $l->user->name ?? '-' }}</td>
-                  <td class="px-4 py-3 text-zinc-700">{{ \Carbon\Carbon::parse($l->leave_date)->isoFormat('D MMM Y') }}</td>
-                  <td class="px-4 py-3 text-zinc-800">{{ $l->leave_type }}</td>
-                  <td class="px-4 py-3 text-zinc-700 whitespace-pre-line">{{ $l->reason }}</td>
-                </tr>
-              @empty
-                <tr><td colspan="4" class="px-4 py-4 text-center text-zinc-500">Belum ada data izin.</td></tr>
-              @endforelse
-            </tbody>
-          </table>
-        </div>
-      </div>
+        <a href="{{ route('admin.interns.active') }}" class="group rounded-xl border border-admin-border bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+            <div class="mb-4 flex items-start justify-between">
+                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M17 8h4M19 6v4"/>
+                    </svg>
+                </div>
+                <span class="rounded-full bg-blue-50 px-2 py-1 text-[11px] font-bold text-blue-700">Berjalan</span>
+            </div>
+            <p class="text-3xl font-extrabold text-admin-text-dark">{{ $counts['active'] ?? 0 }}</p>
+            <p class="mt-1 text-sm font-medium text-admin-text-mid">Pemagang Aktif</p>
+        </a>
 
-      <!-- Pending Tasks -->
-      <div>
-        <h3 class="font-semibold text-primary-800 mb-2 flex items-center gap-2">
-          <i class="fa-solid fa-list-check"></i> Semua Tugas Pending
-        </h3>
-        <div class="overflow-hidden rounded-xl border border-primary-100">
-          <table class="min-w-full text-sm divide-y divide-primary-100">
-            <thead class="bg-primary-50 text-primary-700 text-xs font-semibold uppercase">
-              <tr>
-                <th class="px-4 py-3 text-left w-40">Nama User</th>
-                <th class="px-4 py-3 text-left w-60">Judul</th>
-                <th class="px-4 py-3 text-left">Deskripsi</th>
-                <th class="px-4 py-3 text-left w-36">Dibuat</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-primary-50">
-              @forelse($allTasks ?? [] as $t)
-                <tr class="hover:bg-primary-50/50">
-                  <td class="px-4 py-3 font-medium text-zinc-800">{{ $t->user->name ?? '-' }}</td>
-                  <td class="px-4 py-3 text-zinc-900">{{ $t->title }}</td>
-                  <td class="px-4 py-3 text-zinc-700 whitespace-pre-line">{{ $t->description }}</td>
-                  <td class="px-4 py-3 text-zinc-600">{{ \Carbon\Carbon::parse($t->created_at)->isoFormat('D MMM Y, HH:mm') }}</td>
-                </tr>
-              @empty
-                <tr><td colspan="4" class="px-4 py-4 text-center text-zinc-500">Tidak ada tugas pending.</td></tr>
-              @endforelse
-            </tbody>
-          </table>
-        </div>
-      </div>
-
+        <a href="{{ route('admin.interns.rejected') }}" class="group rounded-xl border border-admin-border bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+            <div class="mb-4 flex items-start justify-between">
+                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50 text-admin-error">
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <circle cx="12" cy="12" r="8"/>
+                        <path d="m9 9 6 6m0-6-6 6"/>
+                    </svg>
+                </div>
+                <span class="rounded-full bg-red-50 px-2 py-1 text-[11px] font-bold text-admin-error">Tidak lolos</span>
+            </div>
+            <p class="text-3xl font-extrabold text-admin-text-dark">{{ $counts['rejected'] ?? 0 }}</p>
+            <p class="mt-1 text-sm font-medium text-admin-text-mid">Pendaftar Ditolak</p>
+        </a>
     </div>
-  </div> --}}
 
+    <div class="mb-6 grid gap-6 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,0.85fr)]">
+        <section class="rounded-xl border border-admin-border bg-white p-5 shadow-sm sm:p-6">
+            <div class="mb-5">
+                <h2 class="text-base font-bold text-admin-text-dark">Tren Pendaftar</h2>
+                <p class="mt-1 text-sm text-admin-text-mid">Jumlah pendaftaran dalam enam bulan terakhir.</p>
+            </div>
+
+            <div class="h-72">
+                <canvas id="admin-applicants-chart"></canvas>
+            </div>
+        </section>
+
+        <section class="rounded-xl border border-admin-border bg-white p-5 shadow-sm sm:p-6">
+            <div class="mb-5">
+                <h2 class="text-base font-bold text-admin-text-dark">Distribusi Status</h2>
+                <p class="mt-1 text-sm text-admin-text-mid">Kondisi pendaftar saat ini.</p>
+            </div>
+
+            <div class="space-y-4">
+                @foreach (['waiting', 'accepted', 'active', 'completed', 'rejected', 'exited'] as $status)
+                    @php
+                        $value = (int) ($counts[$status] ?? 0);
+                        $percent = round(($value / $totalInterns) * 100);
+                        $meta = $statusMeta[$status];
+                    @endphp
+
+                    <div>
+                        <div class="mb-1.5 flex items-center justify-between text-xs">
+                            <span class="font-semibold text-admin-text-dark">{{ $meta['label'] }}</span>
+                            <span class="text-admin-text-mid">{{ $value }} · {{ $percent }}%</span>
+                        </div>
+                        <div class="h-2 overflow-hidden rounded-full bg-slate-100">
+                            <div class="h-full rounded-full {{ $meta['bar'] }}" style="width: {{ $percent }}%"></div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </section>
+    </div>
+
+    <section class="overflow-hidden rounded-xl border border-admin-border bg-white shadow-sm">
+        <div class="flex flex-col gap-3 border-b border-admin-border px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <div>
+                <h2 class="text-base font-bold text-admin-text-dark">Pendaftaran Terbaru</h2>
+                <p class="mt-1 text-sm text-admin-text-mid">Lima pengajuan magang yang paling baru masuk.</p>
+            </div>
+
+            <a href="{{ route('admin.interns.index') }}" class="text-sm font-semibold text-admin-primary hover:text-admin-primary-dark">
+                Lihat semua →
+            </a>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-[760px] w-full">
+                <thead class="bg-admin-text-dark text-left">
+                    <tr>
+                        <th class="px-5 py-3 text-[11px] font-bold uppercase tracking-[0.06em] text-white">Pendaftar</th>
+                        <th class="px-5 py-3 text-[11px] font-bold uppercase tracking-[0.06em] text-white">Divisi</th>
+                        <th class="px-5 py-3 text-[11px] font-bold uppercase tracking-[0.06em] text-white">Institusi</th>
+                        <th class="px-5 py-3 text-[11px] font-bold uppercase tracking-[0.06em] text-white">Tanggal Daftar</th>
+                        <th class="px-5 py-3 text-[11px] font-bold uppercase tracking-[0.06em] text-white">Status</th>
+                    </tr>
+                </thead>
+
+                <tbody class="divide-y divide-admin-border">
+                    @forelse ($recentInterns ?? [] as $intern)
+                        @php
+                            $status = $intern->internship_status ?? 'waiting';
+                            $meta = $statusMeta[$status] ?? $statusMeta['waiting'];
+                            $initial = strtoupper(substr($intern->fullname ?? 'P', 0, 1));
+                        @endphp
+
+                        <tr class="transition hover:bg-admin-bg">
+                            <td class="px-5 py-4">
+                                <div class="flex items-center gap-3">
+                                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-admin-secondary text-xs font-bold text-admin-primary-dark">
+                                        {{ $initial }}
+                                    </span>
+                                    <div>
+                                        <p class="font-semibold text-admin-text-dark">{{ $intern->fullname }}</p>
+                                        <p class="mt-0.5 text-xs text-admin-text-mid">{{ $intern->email }}</p>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td class="px-5 py-4 text-sm text-admin-text-mid">
+                                {{ $intern->internship_interest ?: '-' }}
+                            </td>
+
+                            <td class="px-5 py-4 text-sm text-admin-text-mid">
+                                {{ $intern->institution_name ?: '-' }}
+                            </td>
+
+                            <td class="px-5 py-4 text-sm text-admin-text-mid">
+                                {{ optional($intern->created_at)->format('d M Y') }}
+                            </td>
+
+                            <td class="px-5 py-4">
+                                <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-bold {{ $meta['badge'] }}">
+                                    {{ $meta['label'] }}
+                                </span>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="px-5 py-12 text-center">
+                                <p class="font-semibold text-admin-text-dark">Belum ada pendaftaran.</p>
+                                <p class="mt-1 text-sm text-admin-text-mid">Data pendaftar akan muncul di halaman ini.</p>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </section>
 </div>
-
 @endsection
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
 (() => {
-  const el = document.getElementById('chartApplicants');
-  if (!el) return;
+    const canvas = document.getElementById('admin-applicants-chart');
 
-  // Data dari controller
-  const labelsRaw = @json($chart['labels'] ?? []);
-  const totalsRaw = @json($chart['total']  ?? []);
+    if (!canvas || typeof Chart === 'undefined') {
+        return;
+    }
 
-  // Jaga-jaga: pastikan panjang sama & konversi ke number
-  const len = Math.min(labelsRaw.length, totalsRaw.length);
-  const labels = labelsRaw.slice(0, len);
-  const totals = totalsRaw.slice(0, len).map(v => {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : null; // biar null, bukan 0
-  });
-
-  function getColors() {
-    const dark = document.documentElement.classList.contains('dark');
-    return {
-      axis: dark ? '#d1d5db' : '#374151',
-      grid: dark ? 'rgba(209,213,219,.15)' : 'rgba(107,114,128,.15)',
-      line: 'rgb(16,185,129)',           // primary
-      fill: 'rgba(16,185,129,.20)',
-    };
-  }
-
-  function getSuggestedMax(values) {
-    const valid = values.filter(v => Number.isFinite(v));
-    const max = valid.length ? Math.max(...valid) : 10;
-    return max <= 0 ? 10 : Math.ceil(max * 1.2);
-  }
-
-  let chart;
-  function render() {
-    const c = getColors();
-    if (chart) chart.destroy();
-
-    chart = new Chart(el, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          label: 'Total Pendaftar',
-          data: totals,
-          borderColor: c.line,
-          backgroundColor: c.fill,
-          borderWidth: 2,
-          tension: 0.35,
-          fill: true,
-          pointRadius: 3,
-          pointHoverRadius: 5,
-          spanGaps: true, // lewati gap, jangan turun ke bawah
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false, // biar ikut h-64
-        animation: { duration: 500 },
-        plugins: { legend: { labels: { color: c.axis } } },
-        scales: {
-          x: { ticks: { color: c.axis }, grid: { color: c.grid } },
-          y: {
-            min: 0,                      // KUNCI DARI 0
-            suggestedMax: getSuggestedMax(totals),
-            ticks: { color: c.axis, precision: 0, beginAtZero: true },
-            grid: { color: c.grid }
-          },
+    new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: @json($chart['labels'] ?? []),
+            datasets: [{
+                label: 'Total Pendaftar',
+                data: @json($chart['total'] ?? []),
+                borderColor: '#2D8659',
+                backgroundColor: 'rgba(45, 134, 89, 0.12)',
+                fill: true,
+                tension: 0.35,
+                borderWidth: 2.5,
+                pointRadius: 3,
+                pointHoverRadius: 5,
+                pointBackgroundColor: '#FFFFFF',
+                pointBorderColor: '#2D8659',
+                pointBorderWidth: 2,
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false,
+                },
+                tooltip: {
+                    backgroundColor: '#1B3A34',
+                    padding: 10,
+                    displayColors: false,
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false,
+                    },
+                    ticks: {
+                        color: '#4B5F5A',
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0,
+                        color: '#4B5F5A',
+                    },
+                    grid: {
+                        color: 'rgba(75, 95, 90, 0.12)',
+                    }
+                }
+            }
         }
-      }
     });
-  }
-
-  render();
-
-  // Re-render saat theme (dark/light) berubah
-  const obs = new MutationObserver((muts) => {
-    if (muts.some(m => m.attributeName === 'class')) render();
-  });
-  obs.observe(document.documentElement, { attributes: true });
 })();
 </script>
 @endpush
