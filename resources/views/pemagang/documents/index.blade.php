@@ -103,13 +103,6 @@
            style="background-color:#1a5c38;">
           <i class="fas fa-download text-xs"></i> Unduh PDF
         </a>
-      @elseif($doc['available'] && $key === 'bukti_pendaftaran')
-        {{-- Bukti pendaftaran: generate dari data registrasi --}}
-        <a href="{{ route('user.loa.preview') }}"
-           class="flex items-center justify-center gap-2 w-full py-2 text-sm font-medium text-white rounded-lg"
-           style="background-color:#1a5c38;">
-          <i class="fas fa-download text-xs"></i> Unduh PDF
-        </a>
       @elseif($doc['available'])
         <span class="flex items-center justify-center gap-2 w-full py-2 text-sm font-medium text-gray-500 bg-gray-100 rounded-lg cursor-not-allowed">
           <i class="fas fa-check text-xs text-green-600"></i> Tersedia

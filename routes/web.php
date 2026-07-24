@@ -403,6 +403,9 @@ Route::middleware(['auth'])->prefix('pemagang')->name('pemagang.')->group(functi
     // Dokumen Saya
     Route::get('/dokumen', [PemagangDocument::class, 'index'])->name('documents');
 
+    // Download Surat Penilaian (assessment milik pemagang yang login)
+    Route::get('/dokumen/surat-penilaian', [PemagangDocument::class, 'downloadSuratPenilaian'])->name('documents.surat_penilaian');
+
     // Pengaturan Akun
     Route::get('/pengaturan', [PemagangSettings::class, 'index'])->name('settings');
     Route::put('/pengaturan', [PemagangSettings::class, 'update'])->name('settings.update');
