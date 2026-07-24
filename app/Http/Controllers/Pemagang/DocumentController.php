@@ -56,9 +56,8 @@ class DocumentController extends Controller
                 'description' => 'Diberikan setelah magang selesai',
                 'icon'        => 'fa-file-signature',
                 'available'   => $status === IR::STATUS_COMPLETED,
-                'route'       => $status === IR::STATUS_COMPLETED
-                    ? route('user.loa.generate')
-                    : null,
+                'route'       => null, // pakai form POST di view karena butuh intern_id
+                'intern_id'   => $registration?->id,
                 'date'        => null,
             ],
             'skl' => [
@@ -67,7 +66,7 @@ class DocumentController extends Controller
                 'icon'        => 'fa-certificate',
                 'available'   => $status === IR::STATUS_COMPLETED,
                 'route'       => $status === IR::STATUS_COMPLETED
-                    ? route('skl.download')
+                    ? route('user.skl.download')
                     : null,
                 'date'        => null,
             ],

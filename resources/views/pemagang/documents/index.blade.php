@@ -86,7 +86,18 @@
 
     {{-- Action button --}}
     <div class="mt-4">
-      @if($doc['available'] && $doc['route'])
+      @if($doc['available'] && $key === 'loa')
+        {{-- LOA butuh POST dengan intern_id --}}
+        <form action="{{ route('user.loa.generate') }}" method="POST">
+          @csrf
+          <input type="hidden" name="intern_id" value="{{ $doc['intern_id'] ?? '' }}">
+          <button type="submit"
+            class="flex items-center justify-center gap-2 w-full py-2 text-sm font-medium text-white rounded-lg"
+            style="background-color:#1a5c38;">
+            <i class="fas fa-download text-xs"></i> Unduh PDF
+          </button>
+        </form>
+      @elseif($doc['available'] && $doc['route'])
         <a href="{{ $doc['route'] }}"
            class="flex items-center justify-center gap-2 w-full py-2 text-sm font-medium text-white rounded-lg"
            style="background-color:#1a5c38;">
