@@ -38,15 +38,6 @@ class InternshipRegistrationController extends Controller
     }
 
     /**
-     * Tabel pendaftar (publik sederhana).
-     */
-    public function index()
-    {
-        $registrations = IR::orderByDesc('created_at')->get();
-        return view('pages.internship.table', compact('registrations'));
-    }
-
-    /**
      * Form pendaftaran.
      */
     public function create()
