@@ -24,6 +24,12 @@ use App\Http\Controllers\LoaController;
 use App\Http\Controllers\MembercardController;
 use App\Http\Controllers\InternAssessmentController;
 
+// Pemagang area
+use App\Http\Controllers\Pemagang\DashboardController as PemagangDashboard;
+use App\Http\Controllers\Pemagang\RegistrationController as PemagangRegistration;
+use App\Http\Controllers\Pemagang\DocumentController as PemagangDocument;
+use App\Http\Controllers\Pemagang\SettingsController as PemagangSettings;
+
 
 /*
 |---------------------------------------------------------------------- 
@@ -383,3 +389,22 @@ Route::middleware(['auth', 'role:admin'])
 // tetap ada route log-download (tidak di dalam admin group, jika publik)
 Route::post('/log-download', [MembercardController::class, 'logDownload'])->name('log.download');
 Route::view('/loa-preview', 'user.loa');
+
+/* =================== PEMAGANG ROUTES (UI Baru) =================== */
+Route::middleware(['auth'])->prefix('pemagang')->name('pemagang.')->group(function () {
+
+    // Dashboard
+    Route::get('/dashboard', [PemagangDashboard::class, 'index'])->name('dashboard');
+
+    // Form Pendaftaran
+    Route::get('/daftar', [PemagangRegistration::class, 'showForm'])->name('registration.form');
+    Route::post('/daftar', [PemagangRegistration::class, 'store'])->name('registration.store');
+    Route::post('/daftar/draft', [PemagangRegistration::class, 'saveDraft'])->name('registration.draft');
+
+    // Dokumen Saya
+    Route::get('/dokumen', [PemagangDocument::class, 'index'])->name('documents');
+
+    // Pengaturan Akun
+    Route::get('/pengaturan', [PemagangSettings::class, 'index'])->name('settings');
+    Route::put('/pengaturan', [PemagangSettings::class, 'update'])->name('settings.update');
+});
