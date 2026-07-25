@@ -100,6 +100,29 @@ class InternPageController extends Controller
         ]);
     }
 
+    /**
+     * Data Pendaftar Magang — status: waiting, accepted, rejected
+     * Default filter: waiting (menunggu review)
+     */
+    public function pendaftar()
+    {
+        return view('interns.index', [
+            'title' => 'Data Pendaftar Magang',
+            'scope' => 'waiting',           // default tab saat buka halaman
+            'mode'  => 'pendaftar',         // dipakai view untuk tampilkan filter yang tepat
+        ]);
+    }
 
-
+    /**
+     * Data Pemagang — status: active, completed, exited
+     * Default filter: active
+     */
+    public function pemagang()
+    {
+        return view('interns.index', [
+            'title' => 'Data Pemagang',
+            'scope' => 'active',            // default tab saat buka halaman
+            'mode'  => 'pemagang',          // dipakai view untuk tampilkan filter yang tepat
+        ]);
+    }
 }

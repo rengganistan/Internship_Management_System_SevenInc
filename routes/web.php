@@ -212,6 +212,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin', 'preve
         Route::get('accepted', [InternPageController::class, 'accepted'])->name('accepted');
         Route::get('rejected', [InternPageController::class, 'rejected'])->name('rejected');
 
+        // Dua halaman utama baru
+        Route::get('/pendaftar', [InternPageController::class, 'pendaftar'])->name('pendaftar');
+        Route::get('/pemagang',  [InternPageController::class, 'pemagang'])->name('pemagang');
+
         // Update status & data
         Route::patch('/{intern}/status', [InternController::class, 'updateStatus'])->name('status.update');
         Route::patch('/bulk/status', [InternController::class, 'bulkUpdateStatus'])->name('status.bulk');
@@ -239,6 +243,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin', 'preve
     // API Select interns & JSON -> admin.interns.search, admin.interns.api
     Route::get('/interns/search', [InternApiController::class, 'search'])->name('interns.search');
     Route::get('/interns.json',   [InternApiController::class, 'index'])->name('interns.api');
+
+    // Generate dokumen (LOA / SKL / Sertifikat / Penilaian) → reusable endpoint
+    Route::post('/interns/generate-doc', [\App\Http\Controllers\Admin\GenerateDocController::class, 'generate'])
+        ->name('interns.generate.doc');
+
+    // Riwayat dokumen terkirim — dihapus, sudah masuk ke Data SKL & Data LOA masing-masing
 
     // Certificate generator lama (opsional)
     Route::get('/certificate/form',          [CertificateGeneratorController::class, 'showForm'])->name('certificate.form');

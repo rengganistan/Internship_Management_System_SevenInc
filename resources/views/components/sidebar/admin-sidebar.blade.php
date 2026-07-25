@@ -23,17 +23,18 @@
         [
             'label' => 'Pendaftaran & Status',
             'items' => [
-                ['label' => 'Data Pendaftar Magang', 'route' => 'admin.interns.index', 'icon' => 'file'],
+                ['label' => 'Data Pendaftar Magang', 'route' => 'admin.interns.pendaftar', 'icon' => 'file'],
+                ['label' => 'Data Pemagang',          'route' => 'admin.interns.pemagang',  'icon' => 'users'],
             ],
         ],
         [
             'label' => 'Dokumen & Sertifikat',
             'items' => [
-                ['label' => 'Sertifikat', 'route' => 'admin.certificate.index', 'icon' => 'award'],
-                ['label' => 'Member Card', 'route' => 'admin.membercards.index', 'icon' => 'award'],
-                ['label' => 'Surat Penilaian', 'route' => 'interns.assessment.index', 'icon' => 'file'],
-                ['label' => 'Data SKL', 'route' => 'admin.documents.skls', 'icon' => 'file'],
-                ['label' => 'Data LOA', 'route' => 'admin.documents.loas', 'icon' => 'file'],
+                ['label' => 'Sertifikat',     'route' => 'admin.certificate.index',  'icon' => 'award'],
+                ['label' => 'Member Card',    'route' => 'admin.membercards.index',  'icon' => 'award'],
+                ['label' => 'Surat Penilaian','route' => 'interns.assessment.index', 'icon' => 'file'],
+                ['label' => 'Data SKL',       'route' => 'admin.documents.skls',     'icon' => 'file'],
+                ['label' => 'Data LOA',       'route' => 'admin.documents.loas',     'icon' => 'file'],
             ],
         ],
         [
@@ -72,9 +73,11 @@
             @php
                 $isGroupActive = collect($group['items'])
                     ->contains(fn ($item) =>
-                        $item['route'] === 'admin.interns.index'
-                            ? request()->routeIs('admin.interns.*')
-                            : request()->routeIs($item['route'])
+                        match($item['route'] ?? '') {
+                            'admin.interns.pendaftar' => request()->routeIs('admin.interns.pendaftar'),
+                            'admin.interns.pemagang'  => request()->routeIs('admin.interns.pemagang'),
+                            default => request()->routeIs($item['route'])
+                        }
                     );
             @endphp
 
@@ -97,10 +100,14 @@
                 <div class="{{ $isGroupActive ? '' : 'hidden' }} space-y-1" data-nav-group-items>
                     @foreach ($group['items'] as $item)
                         @php
-                            // Untuk "Data Pendaftar Magang": aktif jika route manapun di admin.interns.*
-                            $isActive = $item['route'] === 'admin.interns.index'
-                                ? request()->routeIs('admin.interns.*')
-                                : request()->routeIs($item['route']);
+                            // Data Pendaftar: aktif di route pendaftar.* (waiting/accepted/rejected)
+                            // Data Pemagang: aktif di route pemagang.* (active/completed/exited)
+                            // Fallback: cek route persis
+                            $isActive = match($item['route']) {
+                                'admin.interns.pendaftar' => request()->routeIs('admin.interns.pendaftar'),
+                                'admin.interns.pemagang'  => request()->routeIs('admin.interns.pemagang'),
+                                default => request()->routeIs($item['route']),
+                            };
                         @endphp
 
                         <a
