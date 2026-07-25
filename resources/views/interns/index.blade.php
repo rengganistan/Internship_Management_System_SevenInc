@@ -3,21 +3,40 @@
 @php
     use Illuminate\Support\Str;
 
-    if (!isset($scope)) {
-        $scope = 'all';
-        $route = request()->route()?->getName();
-        $mapRouteScope = [
-            'admin.interns.active'    => 'active',
-            'admin.interns.completed' => 'completed',
-            'admin.interns.exited'    => 'exited',
-            'admin.interns.pending'   => 'pending',
-            'admin.interns.accepted'  => 'accepted',
-            'admin.interns.rejected'  => 'rejected',
-        ];
-        if ($route && isset($mapRouteScope[$route])) {
-            $scope = $mapRouteScope[$route];
-        }
-    }
+    // Mode: 'pendaftar' (waiting/accepted/rejected) atau 'pemagang' (active/completed/exited)
+    $mode  = $mode  ?? 'all';
+    $scope = $scope ?? 'all';
+
+    // Filter tabs berdasarkan mode
+    $filterTabs = match($mode) {
+        'pendaftar' => [
+            'waiting'  => 'Menunggu Review',
+            'accepted' => 'Diterima',
+            'rejected' => 'Ditolak',
+        ],
+        'pemagang' => [
+            'active'    => 'Aktif',
+            'completed' => 'Selesai',
+            'exited'    => 'Keluar',
+        ],
+        default => [
+            'all'       => 'Semua',
+            'waiting'   => 'Menunggu',
+            'pending'   => 'Pending',
+            'accepted'  => 'Diterima',
+            'active'    => 'Aktif',
+            'completed' => 'Selesai',
+            'rejected'  => 'Ditolak',
+            'exited'    => 'Keluar',
+        ],
+    };
+
+    // Breadcrumb label
+    $breadcrumb = match($mode) {
+        'pendaftar' => 'Pendaftaran & Status',
+        'pemagang'  => 'Pendaftaran & Status',
+        default     => 'Data Pemagang',
+    };
 @endphp
 
 @section('content')
@@ -66,6 +85,81 @@
     </div>
 </div>
 
+{{-- ===================================================
+     MODAL GENERATE DOKUMEN — 1 modal, 4 jenis surat
+     Dibuka via openGenerateModal(internId, jenisSurat)
+     Jenis: 'loa' | 'skl' | 'sertifikat' | 'penilaian'
+     =================================================== --}}
+<div id="generateModal" class="fixed inset-0 z-[120] hidden">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onclick="closeGenerateModal()"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+        <div class="w-full max-w-lg rounded-[16px] bg-white shadow-xl overflow-hidden">
+
+            {{-- Header --}}
+            <div class="flex items-center justify-between border-b border-[#DCE7E1] px-5 py-4">
+                <div class="flex items-center gap-3">
+                    <div id="genModalIcon" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] bg-[#E8F5E9]">
+                        <svg class="h-5 w-5 text-[#2D8659]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/></svg>
+                    </div>
+                    <div>
+                        <h3 id="genModalTitle" class="text-[15px] font-bold text-[#1B3A34]">Generate Dokumen</h3>
+                        <p id="genModalSubtitle" class="text-[11.5px] text-[#4B5F5A]">Buat dan kirim dokumen ke pemagang</p>
+                    </div>
+                </div>
+                <button onclick="closeGenerateModal()"
+                    class="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F4F8F6] text-[#4B5F5A] hover:bg-[#DCE7E1]">
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+
+            {{-- Body --}}
+            <div class="p-5 space-y-4">
+
+                {{-- Preview data pemagang --}}
+                <div id="genInternPreview" class="rounded-[10px] bg-[#F4F8F6] px-4 py-3">
+                    <div class="flex items-center gap-3">
+                        <div id="genInternAvatar" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#E8F5E9] text-sm font-bold text-[#1F5F3F]">—</div>
+                        <div>
+                            <p id="genInternName" class="font-semibold text-[#1B3A34]">—</p>
+                            <p id="genInternMeta" class="text-[11.5px] text-[#4B5F5A]">—</p>
+                        </div>
+                        <span id="genInternBadge" class="ml-auto inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold bg-[#F4F8F6] text-[#4B5F5A] border border-[#DCE7E1]">—</span>
+                    </div>
+                    <div class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-[12.5px]">
+                        <div><span class="font-semibold text-[#4B5F5A]">Institusi:</span> <span id="genInternInstitution" class="text-[#1B3A34]">—</span></div>
+                        <div><span class="font-semibold text-[#4B5F5A]">Divisi:</span> <span id="genInternDivision" class="text-[#1B3A34]">—</span></div>
+                        <div><span class="font-semibold text-[#4B5F5A]">Mulai:</span> <span id="genInternStart" class="text-[#1B3A34]">—</span></div>
+                        <div><span class="font-semibold text-[#4B5F5A]">Selesai:</span> <span id="genInternEnd" class="text-[#1B3A34]">—</span></div>
+                    </div>
+                </div>
+
+                {{-- Pilih jenis surat --}}
+                <div>
+                    <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Jenis Dokumen</label>
+                    <div id="genDocOptions" class="grid grid-cols-2 gap-2"></div>
+                </div>
+
+                {{-- Info --}}
+                <div id="genDocInfo" class="hidden rounded-[9px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2.5 text-[12.5px] text-[#4B5F5A]"></div>
+
+            </div>
+
+            {{-- Footer --}}
+            <div class="flex items-center justify-end gap-3 border-t border-[#DCE7E1] px-5 py-4">
+                <button type="button" onclick="closeGenerateModal()"
+                    class="rounded-[9px] border border-[#DCE7E1] bg-white px-4 py-2 text-sm font-semibold text-[#4B5F5A] hover:bg-[#F4F8F6]">
+                    Batal
+                </button>
+                <button id="genModalBtn" type="button" disabled
+                    class="flex items-center gap-2 rounded-[9px] bg-[#2D8659] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1F5F3F] disabled:cursor-not-allowed disabled:opacity-50">
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Generate PDF
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endpush
 
 {{-- ===== TOAST ===== --}}
@@ -76,12 +170,18 @@
 
     {{-- Header --}}
     <div class="mb-6">
-        <p class="mb-1 text-[11px] font-bold uppercase tracking-[0.08em] text-[#2D8659]">Data Pemagang</p>
+        <p class="mb-1 text-[11px] font-bold uppercase tracking-[0.08em] text-[#2D8659]">{{ $breadcrumb }}</p>
         <h1 class="text-2xl font-extrabold tracking-tight text-[#1B3A34] sm:text-[28px]">
-            {{ $title ?? 'Semua Pemagang' }}
+            {{ $title ?? 'Data Pemagang' }}
         </h1>
         <p class="mt-1 text-sm text-[#4B5F5A]">
-            Pantau daftar pemagang, status, dan tindakan admin dalam satu tampilan.
+            @if($mode === 'pendaftar')
+                Kelola status pendaftar magang — Menunggu Review, Diterima, atau Ditolak.
+            @elseif($mode === 'pemagang')
+                Pantau pemagang aktif, yang sudah selesai, dan yang keluar.
+            @else
+                Pantau daftar pemagang, status, dan tindakan admin dalam satu tampilan.
+            @endif
         </p>
     </div>
 
@@ -91,27 +191,19 @@
         {{-- Toolbar: filter tab + search --}}
         <div class="flex flex-col gap-3 border-b border-[#DCE7E1] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
 
-            {{-- Filter tabs --}}
+            {{-- Filter tabs — sesuai mode --}}
             <div id="filterTabs" class="flex flex-wrap gap-1.5 rounded-[9px] border border-[#DCE7E1] bg-[#F4F8F6] p-1">
-                @foreach([
-                    'all'       => 'Semua',
-                    'pending'   => 'Pending',
-                    'accepted'  => 'Diterima',
-                    'rejected'  => 'Ditolak',
-                    'active'    => 'Aktif',
-                    'completed' => 'Selesai',
-                    'exited'    => 'Keluar',
-                ] as $key => $label)
+                @foreach($filterTabs as $key => $label)
                 <button type="button"
                     data-filter="{{ $key }}"
                     class="filter-tab rounded-[6px] px-3 py-1.5 text-[12.5px] font-semibold transition
-                        {{ ($scope === $key || ($key === 'all' && $scope === 'all')) ? 'bg-white text-[#1F5F3F] shadow-sm' : 'text-[#4B5F5A] hover:text-[#1B3A34]' }}">
+                        {{ $scope === $key ? 'bg-white text-[#1F5F3F] shadow-sm' : 'text-[#4B5F5A] hover:text-[#1B3A34]' }}">
                     {{ $label }}
                 </button>
                 @endforeach
             </div>
 
-            {{-- Search + Tambah --}}
+            {{-- Search --}}
             <div class="flex items-center gap-2">
                 <label class="flex items-center gap-2 rounded-[9px] border border-[#DCE7E1] bg-white px-3 py-2">
                     <svg class="h-4 w-4 text-[#4B5F5A]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
@@ -181,6 +273,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const ADMIN_INTERNS_BASE = @json(url('/admin/interns'));
     const API_URL            = @json(route('admin.interns.api'));
     const SCOPE              = @json($scope ?? 'all');
+    const MODE               = @json($mode  ?? 'all');
+    const GENERATE_URL       = @json(route('admin.interns.generate.doc'));
     const csrf               = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
     const rowsEl       = document.getElementById('rows');
@@ -279,8 +373,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ── Build action cell ───────────────────────────────────────────────────────
     function buildActionCell(it) {
+        const status = String(it.internship_status || 'waiting').toLowerCase();
+
+        // Tombol generate berdasarkan status & mode
+        let genButtons = '';
+
+        if (MODE === 'pendaftar' && status === 'accepted') {
+            genButtons = `
+            <button type="button" title="Generate LOA"
+                class="flex items-center gap-1.5 rounded-[8px] border border-[#2D8659] bg-[#E8F5E9] px-2.5 py-1.5 text-[11px] font-semibold text-[#1F5F3F] transition hover:bg-[#2D8659] hover:text-white js-gen-doc"
+                data-id="${it.id}" data-jenis="loa">
+                <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/></svg>
+                LOA
+            </button>`;
+        }
+
+        if (MODE === 'pemagang' && status === 'completed') {
+            genButtons = `
+            <button type="button" title="Generate Dokumen Selesai"
+                class="flex items-center gap-1.5 rounded-[8px] border border-[#2D8659] bg-[#E8F5E9] px-2.5 py-1.5 text-[11px] font-semibold text-[#1F5F3F] transition hover:bg-[#2D8659] hover:text-white js-gen-doc"
+                data-id="${it.id}" data-jenis="skl">
+                <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/></svg>
+                Dokumen
+            </button>`;
+        }
+
         return `
-        <div class="flex items-center justify-end gap-1.5">
+        <div class="flex items-center justify-end gap-1.5 flex-wrap">
+            ${genButtons}
             <button type="button" title="Lihat Detail"
                 class="flex h-8 w-8 items-center justify-center rounded-[8px] border border-[#DCE7E1] bg-white text-[#4B5F5A] transition hover:border-[#2D8659] hover:text-[#1F5F3F] js-detail"
                 data-id="${it.id}">
@@ -300,11 +420,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ── Build status cell (badge + select) ──────────────────────────────────────
+    // Filter opsi dropdown sesuai mode
+    function allowedStatuses() {
+        if (MODE === 'pendaftar') return ['waiting', 'accepted', 'rejected'];
+        if (MODE === 'pemagang')  return ['accepted', 'active', 'completed', 'exited'];
+        return Object.keys(STATUS_META);
+    }
+
     function buildStatusCell(it) {
         const cur = it.internship_status || 'waiting';
-        const statusOptions = Object.entries(STATUS_META).map(([val, m]) =>
-            `<option value="${val}" ${val === cur ? 'selected' : ''}>${m.label}</option>`
-        ).join('');
+        const allowed = allowedStatuses();
+        const statusOptions = allowed.map(val => {
+            const m = STATUS_META[val] || { label: val };
+            return `<option value="${val}" ${val === cur ? 'selected' : ''}>${m.label}</option>`;
+        }).join('');
 
         return `
         <div class="flex flex-wrap items-center gap-2">
@@ -312,7 +441,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <select
                 class="js-status-select rounded-[8px] border border-[#DCE7E1] bg-white px-2 py-1.5 text-[11px] font-semibold text-[#1B3A34] outline-none focus:border-[#2D8659]"
                 data-url="${it.status_update_url || `${ADMIN_INTERNS_BASE}/${it.id}/status`}"
-                data-id="${it.id}" data-current="${cur}">
+                data-id="${it.id}" data-current="${cur}" data-intern-id="${it.id}">
                 ${statusOptions}
             </select>
         </div>`;
@@ -416,8 +545,56 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 markSelect(this, true);
                 updatePendingBar();
+
+                // Setelah status berubah, update tombol generate di baris ini secara real-time
+                const row = this.closest('tr[data-row-id]');
+                if (row) {
+                    refreshGenerateButtons(row, id, to);
+                }
             };
         });
+    }
+
+    // Refresh tombol generate di baris setelah status berubah
+    function refreshGenerateButtons(row, id, newStatus) {
+        const actionsCell = row.querySelector('td:last-child');
+        if (!actionsCell) return;
+
+        // Hapus tombol generate lama
+        actionsCell.querySelectorAll('.js-gen-doc').forEach(b => b.remove());
+
+        // Tambah tombol baru sesuai status baru
+        const wrapper = actionsCell.querySelector('div');
+        if (!wrapper) return;
+
+        if (MODE === 'pendaftar' && newStatus === 'accepted') {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.title = 'Generate LOA';
+            btn.className = 'flex items-center gap-1.5 rounded-[8px] border border-[#2D8659] bg-[#E8F5E9] px-2.5 py-1.5 text-[11px] font-semibold text-[#1F5F3F] transition hover:bg-[#2D8659] hover:text-white js-gen-doc';
+            btn.dataset.id    = id;
+            btn.dataset.jenis = 'loa';
+            btn.innerHTML = `<svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/></svg> LOA`;
+            wrapper.prepend(btn);
+            btn.addEventListener('click', () => openGenerateModal(id, 'loa'));
+
+            // Notif reminder
+            pushToast(`Status ${name || 'pemagang'} diubah ke Diterima — jangan lupa generate LOA.`, 'success');
+        }
+
+        if (MODE === 'pemagang' && newStatus === 'completed') {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.title = 'Generate Dokumen Selesai';
+            btn.className = 'flex items-center gap-1.5 rounded-[8px] border border-[#2D8659] bg-[#E8F5E9] px-2.5 py-1.5 text-[11px] font-semibold text-[#1F5F3F] transition hover:bg-[#2D8659] hover:text-white js-gen-doc';
+            btn.dataset.id    = id;
+            btn.dataset.jenis = 'skl';
+            btn.innerHTML = `<svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/></svg> Dokumen`;
+            wrapper.prepend(btn);
+            btn.addEventListener('click', () => openGenerateModal(id, 'skl'));
+
+            pushToast(`Status ${name || 'pemagang'} diubah ke Selesai — generate SKL, Sertifikat, dan Surat Penilaian.`, 'success');
+        }
     }
 
     // ── Bind aksi baris (detail / edit / hapus) ──────────────────────────────────
@@ -450,7 +627,200 @@ document.addEventListener('DOMContentLoaded', () => {
                 openConfirmDelete(id, data?.fullname || 'pemagang ini');
             });
         });
+
+        // Generate dokumen
+        document.querySelectorAll('.js-gen-doc').forEach(btn => {
+            btn.addEventListener('click', () => {
+                openGenerateModal(Number(btn.dataset.id), btn.dataset.jenis);
+            });
+        });
     }
+
+    // ── ============================================================
+    //    MODAL GENERATE DOKUMEN — reusable untuk 4 jenis surat
+    // ── ============================================================
+
+    const GEN_CONFIG = {
+        loa: {
+            title:    'Generate LOA',
+            subtitle: 'Letter of Acceptance — surat penerimaan magang',
+            info:     'LOA akan dikirim ke data dokumen pemagang setelah di-generate. Pastikan data pemagang sudah lengkap.',
+            url:      (id) => `{{ route('admin.loa.generate') }}`,
+            method:   'POST',
+            body:     (id) => ({ intern_id: id }),
+        },
+        skl: {
+            title:    'Generate SKL',
+            subtitle: 'Surat Keterangan Selesai Magang',
+            info:     'SKL hanya bisa di-generate untuk pemagang dengan status Selesai.',
+            url:      (id) => `{{ url('/admin/interns') }}/${id}/skl`,
+            method:   'GET',
+        },
+        sertifikat: {
+            title:    'Generate Sertifikat',
+            subtitle: 'Sertifikat Magang',
+            info:     'Anda akan diarahkan ke halaman buat sertifikat dengan data pemagang sudah terisi otomatis.',
+            url:      (id) => `{{ route('admin.certificate.create') }}?intern_id=${id}`,
+            method:   'REDIRECT',
+        },
+        penilaian: {
+            title:    'Buat Surat Penilaian',
+            subtitle: 'Surat Penilaian Magang',
+            info:     'Anda akan diarahkan ke halaman buat penilaian dengan data pemagang sudah terisi otomatis.',
+            url:      (id) => `{{ route('interns.assessment.create') }}?intern_id=${id}`,
+            method:   'REDIRECT',
+        },
+    };
+
+    // Opsi yang tersedia per mode
+    const GEN_OPTIONS_BY_MODE = {
+        pendaftar: ['loa'],
+        pemagang:  ['skl', 'sertifikat', 'penilaian'],
+        all:       ['loa', 'skl', 'sertifikat', 'penilaian'],
+    };
+
+    let _genInternId  = null;
+    let _genJenis     = null;
+
+    function openGenerateModal(internId, defaultJenis = null) {
+        _genInternId = internId;
+        _genJenis    = defaultJenis;
+
+        const data = window.rowData.get(internId);
+        if (!data) { pushToast('Data pemagang tidak ditemukan.', 'error'); return; }
+
+        // Isi preview pemagang
+        const ini = initials(data.fullname);
+        document.getElementById('genInternAvatar').textContent = ini;
+        document.getElementById('genInternName').textContent   = data.fullname || '-';
+        document.getElementById('genInternMeta').textContent   = data.email || '-';
+        document.getElementById('genInternInstitution').textContent = data.institution_name || '-';
+        document.getElementById('genInternDivision').textContent    = data.internship_interest || '-';
+        document.getElementById('genInternStart').textContent  = data.start_date || '-';
+        document.getElementById('genInternEnd').textContent    = data.end_date || '-';
+
+        // Badge status
+        const status = String(data.internship_status || 'waiting').toLowerCase();
+        const sm = STATUS_META[status] || { label: status, cls: 'bg-gray-100 text-gray-700' };
+        const badge = document.getElementById('genInternBadge');
+        badge.textContent  = sm.label;
+        badge.className    = `ml-auto inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${sm.cls}`;
+
+        // Render opsi jenis surat
+        const optContainer = document.getElementById('genDocOptions');
+        const modeKey = MODE in GEN_OPTIONS_BY_MODE ? MODE : 'all';
+        const allowed  = GEN_OPTIONS_BY_MODE[modeKey];
+
+        optContainer.innerHTML = allowed.map(jenis => {
+            const cfg     = GEN_CONFIG[jenis];
+            const isActive = jenis === (defaultJenis || allowed[0]);
+            return `
+            <button type="button" data-jenis="${jenis}"
+                class="gen-opt-btn flex items-center gap-2 rounded-[9px] border px-3 py-2.5 text-left text-[12.5px] font-semibold transition
+                    ${isActive
+                        ? 'border-[#2D8659] bg-[#E8F5E9] text-[#1F5F3F]'
+                        : 'border-[#DCE7E1] bg-white text-[#4B5F5A] hover:border-[#2D8659] hover:text-[#1F5F3F]'}">
+                <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/></svg>
+                ${cfg.title}
+            </button>`;
+        }).join('');
+
+        // Bind pilih opsi
+        optContainer.querySelectorAll('.gen-opt-btn').forEach(b => {
+            b.addEventListener('click', () => {
+                _genJenis = b.dataset.jenis;
+                optContainer.querySelectorAll('.gen-opt-btn').forEach(x => {
+                    x.classList.toggle('border-[#2D8659]',  x === b);
+                    x.classList.toggle('bg-[#E8F5E9]',      x === b);
+                    x.classList.toggle('text-[#1F5F3F]',    x === b);
+                    x.classList.toggle('border-[#DCE7E1]',  x !== b);
+                    x.classList.toggle('bg-white',           x !== b);
+                    x.classList.toggle('text-[#4B5F5A]',    x !== b);
+                });
+                updateGenModalInfo();
+            });
+        });
+
+        if (!_genJenis && allowed.length) _genJenis = allowed[0];
+        updateGenModalInfo();
+
+        document.getElementById('generateModal').classList.remove('hidden');
+    }
+
+    function updateGenModalInfo() {
+        if (!_genJenis) return;
+        const cfg = GEN_CONFIG[_genJenis];
+        if (!cfg) return;
+
+        document.getElementById('genModalTitle').textContent    = cfg.title;
+        document.getElementById('genModalSubtitle').textContent = cfg.subtitle;
+
+        const infoEl = document.getElementById('genDocInfo');
+        infoEl.textContent = cfg.info;
+        infoEl.classList.remove('hidden');
+
+        const btn = document.getElementById('genModalBtn');
+        btn.disabled = false;
+
+        if (cfg.method === 'REDIRECT') {
+            btn.innerHTML = `<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> Buka Halaman`;
+        } else {
+            btn.innerHTML = `<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Generate PDF`;
+        }
+    }
+
+    function closeGenerateModal() {
+        document.getElementById('generateModal').classList.add('hidden');
+        _genInternId = null;
+        _genJenis    = null;
+    }
+
+    document.getElementById('genModalBtn').addEventListener('click', async () => {
+        if (!_genInternId || !_genJenis) return;
+        const cfg  = GEN_CONFIG[_genJenis];
+        const data = window.rowData.get(_genInternId);
+        const name = data?.fullname || 'pemagang';
+
+        if (cfg.method === 'REDIRECT') {
+            closeGenerateModal();
+            window.location.href = cfg.url(_genInternId);
+            return;
+        }
+
+        if (cfg.method === 'GET') {
+            closeGenerateModal();
+            window.open(cfg.url(_genInternId), '_blank');
+            return;
+        }
+
+        // POST
+        const btn = document.getElementById('genModalBtn');
+        btn.disabled = true;
+        btn.textContent = 'Memproses...';
+
+        try {
+            const body = cfg.body ? cfg.body(_genInternId) : { intern_id: _genInternId };
+            const fd   = new FormData();
+            fd.append('_token', csrf);
+            Object.entries(body).forEach(([k, v]) => fd.append(k, v));
+
+            const res = await fetch(cfg.url(_genInternId), {
+                method: 'POST',
+                body: fd,
+                headers: { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+            });
+
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            closeGenerateModal();
+            pushToast(`${cfg.title} untuk ${name} berhasil di-generate.`);
+            loadPage(window.__CURRENT_PAGE || 1);
+        } catch (e) {
+            pushToast(`Gagal generate: ${e.message}`, 'error');
+            updateGenModalInfo(); // restore button
+        }
+    });
 
     // ── Modal helpers ─────────────────────────────────────────────────────────────
     const appModal    = document.getElementById('appModal');

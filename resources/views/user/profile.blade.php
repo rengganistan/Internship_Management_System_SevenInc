@@ -1,163 +1,177 @@
 @extends('layouts.dashboard')
 
 @section('content')
-<div class="min-h-screen bg-primary-300 py-10">
-  <div class="max-w-7xl mx-auto p-6 bg-white rounded-3xl shadow-xl ring-1 ring-primary-200">
+<div class="min-h-screen bg-[#F4F8F6] p-4 sm:p-6 lg:p-7">
 
-    {{-- Flash Messages --}}
-    @if(session('success'))
-      <div class="mb-4 bg-primary-50 text-primary-800 p-3 rounded-xl shadow-sm border border-primary-200">
-        {{ session('success') }}
-      </div>
-    @elseif(session('error'))
-      <div class="mb-4 bg-red-50 text-red-800 p-3 rounded-xl shadow-sm border border-red-200">
-        {{ session('error') }}
-      </div>
-    @endif
-
-    {{-- Profile Header --}}
-    <div class="flex items-center gap-6 mb-8">
-      <div class="w-16 h-16 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-full overflow-hidden ring-4 ring-primary-300 ring-offset-2 ring-offset-white">
-        <img
-          src="{{ asset('storage/' . (auth()->user()->profile_picture ?? 'default-avatar.png')) }}"
-          alt="Profile Picture"
-          class="w-full h-full object-cover"
-        >
-      </div>
-      <div>
-        <h2 class="text-3xl font-semibold text-primary-900">{{ auth()->user()->name }}</h2>
-        <p class="text-zinc-600 text-lg">{{ auth()->user()->email }}</p>
-
-        {{-- Role and Status (aman dari null) --}}
-        <div class="mt-3 flex flex-wrap items-center gap-3">
-          <span class="inline-flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full bg-primary-100 text-primary-800 border border-primary-200">
-            <i class="fa-solid fa-user-shield"></i>
-            Role: <span class="font-semibold text-primary-900">{{ auth()->user()->role }}</span>
-          </span>
-
-          @php
-            $internStatus = optional(auth()->user()->internshipRegistration)->internship_status ?? 'Not Registered';
-            $statusColor  = match($internStatus) {
-              'active'   => 'bg-primary-100 text-primary-800 border-primary-200',
-              'inactive' => 'bg-yellow-100 text-yellow-800 border-yellow-200',
-              'ended'    => 'bg-zinc-100 text-zinc-800 border-zinc-200',
-              default    => 'bg-zinc-100 text-zinc-700 border-zinc-200'
-            };
-          @endphp
-
-          <span class="inline-flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full border {{ $statusColor }}">
-            <i class="fa-solid fa-circle-dot"></i>
-            Status: <span class="font-semibold">{{ $internStatus }}</span>
-          </span>
-        </div>
-      </div>
+    {{-- Header --}}
+    <div class="mb-6">
+        <p class="mb-1 text-[11px] font-bold uppercase tracking-[0.08em] text-[#2D8659]">Akun</p>
+        <h1 class="text-2xl font-extrabold tracking-tight text-[#1B3A34] sm:text-[28px]">Edit Profil</h1>
+        <p class="mt-1 text-sm text-[#4B5F5A]">Perbarui informasi akun dan foto profil kamu.</p>
     </div>
 
-    {{-- Profile Form --}}
-    <form action="{{ route('user.profile.update') }}" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      @csrf
-      @method('PUT')
+    @if(session('success'))
+    <div class="mb-4 flex items-center gap-3 rounded-[10px] border border-[#A5D6A7] bg-[#E8F5E9] px-4 py-3 text-sm font-semibold text-[#1F5F3F]">
+        <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        {{ session('success') }}
+    </div>
+    @endif
 
-      {{-- Name --}}
-      <div class="md:col-span-1">
-        <label for="name" class="block text-sm font-medium text-primary-800">Nama Lengkap</label>
-        <input
-          type="text" id="name" name="name" value="{{ old('name', auth()->user()->name) }}"
-          class="mt-1 p-3 w-full rounded-lg border border-primary-200 shadow-sm
-                 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-        >
-        @error('name') <p class="text-red-600 text-sm mt-1">{{ $message }}</p> @enderror
-      </div>
+    @if(session('error'))
+    <div class="mb-4 flex items-center gap-3 rounded-[10px] border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-[#D32F2F]">
+        <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        {{ session('error') }}
+    </div>
+    @endif
 
-      {{-- Email --}}
-      <div class="md:col-span-1">
-        <label for="email" class="block text-sm font-medium text-primary-800">Email</label>
-        <input
-          type="email" id="email" name="email" value="{{ old('email', auth()->user()->email) }}"
-          class="mt-1 p-3 w-full rounded-lg border border-primary-200 shadow-sm
-                 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-        >
-        @error('email') <p class="text-red-600 text-sm mt-1">{{ $message }}</p> @enderror
-      </div>
+    @if($errors->any())
+    <div class="mb-4 rounded-[10px] border border-red-200 bg-red-50 px-4 py-3">
+        <ul class="space-y-1 text-[13px] text-[#D32F2F]">
+            @foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach
+        </ul>
+    </div>
+    @endif
 
-      {{-- Phone Number --}}
-      <div class="md:col-span-1">
-        <label for="phone_number" class="block text-sm font-medium text-primary-800">Nomor Telepon</label>
-        <input
-          type="text" id="phone_number" name="phone_number" value="{{ old('phone_number', auth()->user()->phone_number) }}"
-          class="mt-1 p-3 w-full rounded-lg border border-primary-200 shadow-sm
-                 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-        >
-        @error('phone_number') <p class="text-red-600 text-sm mt-1">{{ $message }}</p> @enderror
-      </div>
+    <div class="max-w-2xl">
 
-      {{-- Password --}}
-      <div class="md:col-span-1">
-        <label for="password" class="block text-sm font-medium text-primary-800">Password Baru</label>
-        <input
-          type="password" id="password" name="password"
-          class="mt-1 p-3 w-full rounded-lg border border-primary-200 shadow-sm
-                 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-        >
-        @error('password') <p class="text-red-600 text-sm mt-1">{{ $message }}</p> @enderror
-      </div>
+        <form action="{{ route('user.profile.update') }}" method="POST" enctype="multipart/form-data">
+        @csrf @method('PUT')
+        <div class="space-y-5">
 
-      {{-- Confirm Password --}}
-      <div class="md:col-span-1">
-        <label for="password_confirmation" class="block text-sm font-medium text-primary-800">Konfirmasi Password</label>
-        <input
-          type="password" id="password_confirmation" name="password_confirmation"
-          class="mt-1 p-3 w-full rounded-lg border border-primary-200 shadow-sm
-                 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-        >
-        @error('password_confirmation') <p class="text-red-600 text-sm mt-1">{{ $message }}</p> @enderror
-      </div>
+            {{-- Card: Info Profil --}}
+            <div class="rounded-[12px] border border-[#DCE7E1] bg-white p-5 shadow-sm">
+                <p class="mb-4 text-[11px] font-bold uppercase tracking-[0.08em] text-[#2D8659]">Foto & Identitas</p>
 
-      {{-- Profile Picture --}}
-      <div class="md:col-span-2">
-        <label for="profile_picture" class="block text-sm font-medium text-primary-800">Foto Profil</label>
-        <input
-          type="file" id="profile_picture" name="profile_picture" accept="image/*"
-          class="mt-1 p-3 w-full rounded-lg border border-primary-200 shadow-sm
-                 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-          onchange="previewImage()"
-        >
-        @error('profile_picture') <p class="text-red-600 text-sm mt-1">{{ $message }}</p> @enderror
+                {{-- Avatar + upload --}}
+                <div class="flex items-center gap-5 mb-5">
+                    <div class="relative">
+                        @php
+                            $pic = auth()->user()->profile_picture;
+                            $hasImg = $pic && Storage::disk('public')->exists($pic);
+                            $initials = collect(explode(' ', auth()->user()->name))->take(2)->map(fn($w)=>strtoupper($w[0]??''))->implode('');
+                        @endphp
+                        @if($hasImg)
+                        <img id="avatarPreview"
+                            src="{{ asset('storage/'.auth()->user()->profile_picture) }}"
+                            alt="Foto Profil"
+                            class="h-20 w-20 rounded-full object-cover border-4 border-[#E8F5E9]">
+                        @else
+                        <div id="avatarFallback" class="flex h-20 w-20 items-center justify-center rounded-full bg-[#E8F5E9] text-xl font-bold text-[#1F5F3F] border-4 border-[#E8F5E9]">
+                            {{ $initials }}
+                        </div>
+                        <img id="avatarPreview" class="hidden h-20 w-20 rounded-full object-cover border-4 border-[#E8F5E9]" alt="Foto Profil">
+                        @endif
+                    </div>
+                    <div class="flex-1">
+                        <label class="mb-1 block text-[12.5px] font-semibold text-[#1B3A34]">Ganti Foto Profil</label>
+                        <input type="file" name="profile_picture" accept="image/*"
+                            onchange="previewAvatar(event)"
+                            class="block w-full text-[12.5px] text-[#4B5F5A]">
+                        <p class="mt-1 text-[11px] text-[#4B5F5A]">Format JPG/PNG, maks. 10 MB.</p>
+                    </div>
+                </div>
 
-        <div id="image-preview-container" class="mt-4 hidden">
-          <img id="image-preview" class="w-32 h-32 object-cover rounded-xl ring-2 ring-primary-300" alt="Profile Picture Preview">
+                {{-- Badge role & status --}}
+                <div class="flex flex-wrap gap-2">
+                    @php
+                        $role = auth()->user()->role ?? 'user';
+                        $roleCls = match($role) {
+                            'admin'    => 'bg-purple-50 text-purple-700 border border-purple-200',
+                            'pemagang' => 'bg-[#E8F5E9] text-[#1F5F3F] border border-[#A5D6A7]',
+                            default    => 'bg-blue-50 text-blue-700 border border-blue-200',
+                        };
+                        $internStatus = optional(auth()->user()->internshipRegistration)->internship_status ?? 'Belum terdaftar';
+                        $statusCls = match($internStatus) {
+                            'active'    => 'bg-blue-50 text-blue-700 border border-blue-200',
+                            'completed' => 'bg-slate-100 text-slate-700 border border-slate-300',
+                            'accepted'  => 'bg-[#E8F5E9] text-[#1F5F3F] border border-[#A5D6A7]',
+                            default     => 'bg-[#F4F8F6] text-[#4B5F5A] border border-[#DCE7E1]',
+                        };
+                    @endphp
+                    <span class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold {{ $roleCls }}">
+                        Role: {{ ucfirst($role) }}
+                    </span>
+                    <span class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold {{ $statusCls }}">
+                        Status: {{ ucfirst($internStatus) }}
+                    </span>
+                </div>
+            </div>
+
+            {{-- Card: Data Diri --}}
+            <div class="rounded-[12px] border border-[#DCE7E1] bg-white p-5 shadow-sm">
+                <p class="mb-4 text-[11px] font-bold uppercase tracking-[0.08em] text-[#2D8659]">Data Diri</p>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+
+                    <div>
+                        <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Nama Lengkap</label>
+                        <input type="text" name="name" value="{{ old('name', auth()->user()->name) }}"
+                            class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
+                    </div>
+
+                    <div>
+                        <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Email</label>
+                        <input type="email" name="email" value="{{ old('email', auth()->user()->email) }}"
+                            class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Nomor Telepon</label>
+                        <input type="text" name="phone_number" value="{{ old('phone_number', auth()->user()->phone_number) }}"
+                            placeholder="Contoh: 0812 3456 7890"
+                            class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
+                    </div>
+                </div>
+            </div>
+
+            {{-- Card: Ubah Password --}}
+            <div class="rounded-[12px] border border-[#DCE7E1] bg-white p-5 shadow-sm">
+                <p class="mb-1 text-[11px] font-bold uppercase tracking-[0.08em] text-[#2D8659]">Ubah Password</p>
+                <p class="mb-4 text-[12px] text-[#4B5F5A]">Kosongkan jika tidak ingin mengganti password.</p>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+
+                    <div>
+                        <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Password Baru</label>
+                        <input type="password" name="password"
+                            class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
+                    </div>
+
+                    <div>
+                        <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Konfirmasi Password</label>
+                        <input type="password" name="password_confirmation"
+                            class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
+                    </div>
+                </div>
+            </div>
+
+            {{-- Actions --}}
+            <div class="flex items-center justify-end gap-3">
+                <button type="submit"
+                    class="flex items-center gap-2 rounded-[9px] bg-[#2D8659] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1F5F3F]">
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+                    Simpan Perubahan
+                </button>
+            </div>
+
         </div>
-      </div>
-
-      {{-- Submit Button --}}
-      <div class="md:col-span-2 mt-2 flex justify-end">
-        <button
-          type="submit"
-          class="px-6 py-2.5 bg-primary-600 text-white rounded-xl shadow
-                 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-        >
-          Simpan Perubahan
-        </button>
-      </div>
-    </form>
-  </div>
+        </form>
+    </div>
 </div>
 
 <script>
-  // Menampilkan preview gambar sebelum disubmit
-  function previewImage() {
-    const fileInput = document.getElementById('profile_picture');
-    const file = fileInput?.files?.[0];
+function previewAvatar(e) {
+    const file = e.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
-    reader.onload = function (e) {
-      const imagePreview = document.getElementById('image-preview');
-      const container = document.getElementById('image-preview-container');
-      imagePreview.src = e.target.result;
-      container.classList.remove('hidden');
+    reader.onload = ev => {
+        const preview  = document.getElementById('avatarPreview');
+        const fallback = document.getElementById('avatarFallback');
+        if (preview) {
+            preview.src = ev.target.result;
+            preview.classList.remove('hidden');
+        }
+        if (fallback) fallback.classList.add('hidden');
     };
     reader.readAsDataURL(file);
-  }
+}
 </script>
 @endsection
