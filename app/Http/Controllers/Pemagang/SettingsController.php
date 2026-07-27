@@ -24,14 +24,13 @@ class SettingsController extends Controller
         $user = auth()->user();
 
         $validated = $request->validate([
-            'name'            => 'required|string|max:255',
             'email'           => 'required|email|unique:users,email,' . $user->id,
             'phone_number'    => 'nullable|string|max:20',
             'password'        => 'nullable|string|min:8|confirmed',
             'profile_picture' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
-        $user->name         = $validated['name'];
+        // Nama lengkap TIDAK boleh diubah melalui pengaturan
         $user->email        = $validated['email'];
         $user->phone_number = $validated['phone_number'] ?? $user->phone_number;
 

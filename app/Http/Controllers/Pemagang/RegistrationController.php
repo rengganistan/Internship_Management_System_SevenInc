@@ -152,7 +152,7 @@ class RegistrationController extends Controller
             'student_id'         => 'nullable|string|max:50',
             'email'              => 'nullable|string|max:255',
             'gender'             => 'nullable|string|max:50',
-            'phone_number'       => 'nullable|string|max:30',
+            'phone_number'       => 'nullable|regex:/^[0-9]{0,15}$/',
             'institution_name'   => 'nullable|string|max:255',
             'study_program'      => 'nullable|string|max:255',
             'faculty'            => 'nullable|string|max:255',
@@ -172,8 +172,11 @@ class RegistrationController extends Controller
             'video_software'     => 'nullable|string|max:255',
             'programming_languages' => 'nullable|string|max:255',
             'family_status'      => 'nullable|string|max:50',
-            'parent_wa_contact'  => 'nullable|string|max:255',
+            'boarding_info'      => 'nullable|string|max:50',
+            'parent_wa_contact'  => 'nullable|regex:/^[0-9]{0,15}$/',
             'social_media_instagram' => 'nullable|string|max:255',
+            'internship_info_sources' => 'nullable|array',
+            'internship_info_sources.*' => 'nullable|string|max:100',
         ];
     }
 
@@ -186,7 +189,7 @@ class RegistrationController extends Controller
             'student_id'         => 'required|string|max:50',
             'email'              => 'required|string|max:255',
             'gender'             => 'required|string|max:50',
-            'phone_number'       => 'required|string|max:30',
+            'phone_number'       => 'required|regex:/^[0-9]{10,15}$/',
             'institution_name'   => 'required|string|max:255',
             'study_program'      => 'required|string|max:255',
             'faculty'            => 'required|string|max:255',
@@ -210,12 +213,13 @@ class RegistrationController extends Controller
     private function storeFile(\Illuminate\Http\UploadedFile $file, string $dir): string
     {
         $original = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-        $ext      = $file->getClientOriginalExtension();
+        $ext      = strtolower($file->getClientOriginalExtension());
+        // Gunakan slug dengan underscore, hindari karakter spesial termasuk tanda kurung
         $safe     = Str::slug($original, '_');
         $i = 0;
 
         do {
-            $name = $i === 0 ? "{$safe}.{$ext}" : "{$safe}({$i}).{$ext}";
+            $name = $i === 0 ? "{$safe}.{$ext}" : "{$safe}_{$i}.{$ext}";
             $path = "{$dir}/{$name}";
             $i++;
         } while (Storage::disk('public')->exists($path));

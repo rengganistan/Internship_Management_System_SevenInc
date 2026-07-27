@@ -54,7 +54,9 @@
         <div>
           <label class="{{ $label }}">NIM / NPM <span class="text-red-500">*</span></label>
           <input type="text" name="student_id" required placeholder="21552011045"
+            pattern="[0-9A-Za-z\-]+" inputmode="text"
             class="{{ $input }}" value="{{ $old('student_id') }}">
+          <p class="mt-1 text-xs text-gray-400">Contoh: 21552011045</p>
         </div>
         <div>
           <label class="{{ $label }}">Tanggal Lahir <span class="text-red-500">*</span></label>
@@ -100,8 +102,10 @@
         </div>
         <div>
           <label class="{{ $label }}">No. HP (WhatsApp) <span class="text-red-500">*</span></label>
-          <input type="text" name="phone_number" required placeholder="08xxxxxxxxxx"
+          <input type="tel" name="phone_number" required placeholder="08xxxxxxxxxx"
+            pattern="[0-9]{10,15}" inputmode="numeric" title="Hanya boleh angka, 10-15 digit"
             class="{{ $input }}" value="{{ $old('phone_number') }}">
+          <p class="mt-1 text-xs text-gray-400">Hanya angka, contoh: 08123456789</p>
         </div>
       </div>
 
@@ -247,12 +251,76 @@
       <p class="text-xs text-gray-400 -mt-3">Maks. 2MB per file, format PDF saja</p>
 
       {{-- Hidden fields dengan nilai default yang tidak tampil di form --}}
-      <input type="hidden" name="family_status" value="Tidak">
       <input type="hidden" name="supervisor_contact" value="-">
-      <input type="hidden" name="parent_wa_contact" value="-">
-      <input type="hidden" name="social_media_instagram" value="-">
-      <input type="hidden" name="boarding_info" value="Tidak">
       <input type="hidden" name="current_activities" value="-">
+
+      {{-- ===== INFORMASI TAMBAHAN ===== --}}
+      <div class="border-t border-gray-100 pt-5">
+        <h3 class="text-sm font-semibold text-gray-700 mb-4">Informasi Tambahan</h3>
+        <div class="space-y-4">
+
+          {{-- Status Keluarga --}}
+          <div>
+            <label class="{{ $label }}">Status Keluarga</label>
+            <select name="family_status" class="{{ $input }}">
+              <option value="Tidak" @selected(($old('family_status') ?: 'Tidak') === 'Tidak')>Belum Menikah</option>
+              <option value="Ya"    @selected($old('family_status') === 'Ya')>Sudah Menikah</option>
+            </select>
+          </div>
+
+          {{-- Butuh Info Kost --}}
+          <div>
+            <label class="{{ $label }}">Butuh Informasi Kost?</label>
+            <select name="boarding_info" class="{{ $input }}">
+              <option value="Tidak" @selected(($old('boarding_info') ?: 'Tidak') === 'Tidak')>Tidak</option>
+              <option value="Ya"    @selected($old('boarding_info') === 'Ya')>Ya</option>
+            </select>
+          </div>
+
+          {{-- No WA Wali / Orang Tua --}}
+          <div>
+            <label class="{{ $label }}">No. WA Wali / Orang Tua</label>
+            <input type="tel" name="parent_wa_contact" placeholder="08xxxxxxxxxx"
+              pattern="[0-9]*" inputmode="numeric" title="Hanya boleh angka"
+              class="{{ $input }}" value="{{ $old('parent_wa_contact', $reg?->parent_wa_contact !== '-' ? $reg?->parent_wa_contact : '') }}">
+            <p class="mt-1 text-xs text-gray-400">Hanya angka, opsional</p>
+          </div>
+
+          {{-- Instagram --}}
+          <div>
+            <label class="{{ $label }}">Instagram</label>
+            <div class="flex items-center gap-0">
+              <span class="inline-flex items-center px-3 py-2.5 rounded-l-lg border border-r-0 border-gray-200 bg-gray-50 text-sm text-gray-500">@</span>
+              <input type="text" name="social_media_instagram" placeholder="username_kamu"
+                class="block flex-1 rounded-r-lg border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 px-3 py-2.5 text-sm"
+                value="{{ $old('social_media_instagram', $reg?->social_media_instagram !== '-' ? $reg?->social_media_instagram : '') }}">
+            </div>
+          </div>
+
+          {{-- Info Magang Dari Mana --}}
+          <div>
+            <label class="{{ $label }}">Tahu Info Magang Dari</label>
+            <div class="{{ $group }}">
+              @foreach([
+                'Instagram'           => 'Instagram',
+                'TikTok'              => 'TikTok',
+                'LinkedIn'            => 'LinkedIn',
+                'Referral Teman'      => 'Referral Teman',
+                'Website'             => 'Website',
+                'Campus'              => 'Kampus/Universitas',
+                'Lainnya'             => 'Lainnya',
+              ] as $val => $lbl)
+              <label class="{{ $item }}">
+                <input type="checkbox" name="internship_info_sources[]" value="{{ $val }}" class="{{ $check }}"
+                  @checked(in_array($val, explode(', ', $old('internship_info_sources', $reg?->internship_info_sources ?? ''))))>
+                <span class="text-sm text-gray-700">{{ $lbl }}</span>
+              </label>
+              @endforeach
+            </div>
+          </div>
+
+        </div>
+      </div>
 
       {{-- Info unpaid --}}
       @if(!$registration || $registration->is_draft || $registration->internship_status === 'waiting')
