@@ -81,7 +81,7 @@
                         <p class="truncate text-xs text-admin-text-mid">{{ $user->email ?? '' }}</p>
                     </div>
 
-                    <a href="{{ route('user.profile') }}" class="block px-4 py-2.5 text-sm text-admin-text-mid hover:bg-admin-secondary hover:text-admin-primary-dark">
+                    <a href="{{ route('admin.users.edit', auth()->id()) }}" class="block px-4 py-2.5 text-sm text-admin-text-mid hover:bg-admin-secondary hover:text-admin-primary-dark">
                         Edit Profil
                     </a>
 

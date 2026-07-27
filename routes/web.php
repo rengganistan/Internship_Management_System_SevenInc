@@ -70,74 +70,38 @@ Route::post('/register', [AuthController::class, 'register'])
 Route::post('/logout', [AuthController::class, 'logout'])
     ->name('user.logout');
 
-/* =================== USER ROUTES =================== */
-// HANYA SATU route bernama user.dashboard (hindari duplikasi!)
-Route::get('/user/dashboard', [UserController::class, 'index'])
+/* =================== USER ROUTES (Legacy — dipertahankan untuk kompatibilitas) =================== */
+// Redirect user.dashboard ke pemagang.dashboard supaya link lama tidak broken
+Route::get('/user/dashboard', fn() => redirect()->route('pemagang.dashboard'))
     ->name('user.dashboard')
     ->middleware('auth');
 
-// Edit profil user
-Route::get('/user/edit-profile', [PublicRegController::class, 'editProfile'])
-    ->name('user.editProfile')
-    ->middleware('auth');
-
-Route::post('/user/update-profile', [PublicRegController::class, 'updateProfile'])
-    ->name('user.updateProfile')
-    ->middleware('auth');
-
 Route::middleware(['auth'])->group(function () {
-    // Halaman untuk melihat profil pengguna
-    Route::get('/user/profile', [UserController::class, 'editUserProfile'])->name('user.profile');
-    
-    // Menangani pembaruan profil pengguna
-    Route::post('/user/profile/update', [UserController::class, 'updateUserProfile'])->name('user.profile.update');
+    // Laporan harian, izin, tugas — tetap di sini karena dipakai UserController
+    Route::get('/user/daily-report', [UserController::class, 'dailyReport'])->name('user.dailyReport');
+    Route::post('/user/daily-report', [UserController::class, 'storeDailyReport'])->name('user.storeDailyReport');
 
-    Route::put('/user/profile/update', [UserController::class, 'updateUserProfile'])->name('user.profile.update');
+    Route::get('/user/leave-request', [UserController::class, 'leaveRequest'])->name('user.leaveRequest');
+    Route::post('/user/leave-request', [UserController::class, 'storeLeaveRequest'])->name('user.storeLeaveRequest');
 
-
-    // Daftar Magang Form
-    Route::get('/user/internship/form', [PublicRegController::class, 'showForm'])->name('user.internship.form');
-
-    // Halaman Dashboard Completed
-    Route::get('/user/dashboard/completed', [UserController::class, 'userCompleted'])->name('user.dashboard.completed');
-
-    // Routes untuk Menampilkan dan Menyimpan Laporan Harian
-    Route::get('/user/daily-report', [UserController::class, 'dailyReport'])->name('user.dailyReport'); // Menampilkan laporan harian
-    Route::post('/user/daily-report', [UserController::class, 'storeDailyReport'])->name('user.storeDailyReport'); // Menyimpan laporan harian
-
-    // Routes untuk Menampilkan dan Menyimpan Permintaan Izin
-    Route::get('/user/leave-request', [UserController::class, 'leaveRequest'])->name('user.leaveRequest'); // Menampilkan permintaan izin
-    Route::post('/user/leave-request', [UserController::class, 'storeLeaveRequest'])->name('user.storeLeaveRequest'); // Menyimpan permintaan izin
-
-    // Routes untuk Menampilkan dan Menyimpan Tugas Pending
-    Route::get('/user/pending-tasks', [UserController::class, 'pendingTasks'])->name('user.pendingTasks'); // Menampilkan tugas pending
-    Route::post('/user/pending-tasks', [UserController::class, 'storePendingTask'])->name('user.storePendingTask'); // Menyimpan tugas pending
-
-    Route::get('/dashboard-active', [UserController::class, 'userActive'])->name('user.dashboard-active');
-
+    Route::get('/user/pending-tasks', [UserController::class, 'pendingTasks'])->name('user.pendingTasks');
+    Route::post('/user/pending-tasks', [UserController::class, 'storePendingTask'])->name('user.storePendingTask');
 });
 
 
 Route::middleware(['auth'])->group(function () {
     Route::post('/user/loa/generate', [LoaController::class, 'generate'])
         ->name('user.loa.generate');
-
-    Route::get('/user/loa/preview/{id}', [LoaController::class, 'preview'])
-        ->name('user.loa');
 });
 
 
-/* =================== INTERNSHIP (USER) =================== */
-// Form & store harus login
-Route::get('/internship', [PublicRegController::class, 'create'])
+/* =================== INTERNSHIP (Legacy redirect) =================== */
+// Redirect form lama ke form baru pemagang
+Route::get('/internship', fn() => redirect()->route('pemagang.registration.form'))
     ->name('internship.form')
     ->middleware('auth');
 
-Route::post('/internship/store', [PublicRegController::class, 'store'])
-    ->name('internship.store')
-    ->middleware('auth');
-
-// Submitted page (butuh login)
+// Submitted page masih dipakai InternshipRegistrationController lama
 Route::view('/internship/submitted', 'pages.internship.submitted-page')
     ->name('internship.submitted')
     ->middleware('auth');
@@ -296,14 +260,15 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin', 'preve
     // Preview untuk panel editor (dipanggil dari iframe)
     Route::get('/skl/preview', [SKLController::class, 'preview'])->name('skl.preview');
 
+    // Download SKL atas nama pemagang (khusus admin)
+    Route::get('/skl/download/{user}', [SKLController::class, 'download'])
+        ->name('skl.download.for_user');
+
 });
 
 
-Route::middleware(['auth', 'role:admin'])->prefix('admin/skl')->group(function () {
-    Route::get('/edit', [SKLController::class, 'edit'])->name('admin.skl.edit');
-    Route::post('/update', [SKLController::class, 'update'])->name('admin.skl.update');
-    Route::get('/preview', [SKLController::class, 'preview'])->name('admin.skl.preview');
-});
+
+
 
 Route::get('/skl-preview', function () {
     return view('user.skl');
@@ -377,19 +342,14 @@ Route::middleware(['auth', 'role:admin'])
     Route::post('/assessment/store', [InternAssessmentController::class, 'store'])->name('interns.assessment.store');
 
     // === PDF Routes ===
-    Route::get('/assessment/{id}/pdf', [InternAssessmentController::class, 'downloadPdf'])->name('interns.assessment.pdf');
+    Route::get('/assessment/{id}/pdf', [InternAssessmentController::class, 'downloadPDF'])->name('interns.assessment.pdf');
     Route::get('/assessment/{id}/preview', [InternAssessmentController::class, 'previewPDF'])->name('interns.assessment.preview');
-
-    // === Settings Routes ===
-    Route::get('/assessment/settings', [InternAssessmentController::class, 'createAssessment'])->name('interns.assessment.settings');
-    Route::post('/assessment/settings/save', [InternAssessmentController::class, 'saveSettings'])->name('interns.assessment.settings.save');
-    Route::post('/assessment/settings/update', [InternAssessmentController::class, 'updateSettings'])->name('interns.assessment.settings.update');
 
     // === AJAX Route untuk Aspek Berdasarkan Divisi ===
     Route::get('/ajax/aspek', [InternAssessmentController::class, 'getAspekByDivision'])->name('ajax.aspek');
 
     Route::get('/assessment/{id}/edit', [InternAssessmentController::class, 'edit'])->name('interns.assessment.edit');
-    Route::put('/interns/assessment/{id}', [InternAssessmentController::class, 'update'])->name('interns.assessment.update');
+    Route::put('/assessment/{id}', [InternAssessmentController::class, 'update'])->name('interns.assessment.update');
     Route::delete('/assessment/{id}', [InternAssessmentController::class, 'destroy'])->name('interns.assessment.destroy');
 
 });
@@ -415,6 +375,9 @@ Route::middleware(['auth'])->prefix('pemagang')->name('pemagang.')->group(functi
 
     // Download Surat Penilaian (assessment milik pemagang yang login)
     Route::get('/dokumen/surat-penilaian', [PemagangDocument::class, 'downloadSuratPenilaian'])->name('documents.surat_penilaian');
+
+    // Download Sertifikat
+    Route::get('/dokumen/sertifikat', [PemagangDocument::class, 'downloadSertifikat'])->name('documents.sertifikat');
 
     // Pengaturan Akun
     Route::get('/pengaturan', [PemagangSettings::class, 'index'])->name('settings');
