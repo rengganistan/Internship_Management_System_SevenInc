@@ -296,7 +296,7 @@ class InternAssessmentController extends Controller
         // =======================
         // Menyimpan Data Penilaian ke Database
         // =======================
-        InternAssessment::create([
+        $assessment = InternAssessment::create([
             'fullname' => $validated['fullname'],
             'nim_or_nis' => $validated['nim_or_nis'] ?? null,
             'study_program' => $validated['study_program'] ?? null,
@@ -307,12 +307,31 @@ class InternAssessmentController extends Controller
             'signature_position' => $validated['signature_position'] ?? null,
             'company_logo_path' => $companyLogoPath,
             'signature_image_path' => $signatureImagePath,
-            'aspek_penilaian' => json_encode($data),  // Simpan dalam format JSON
-            'rata_rata' => $rataRata,  // Simpan rata-rata
+            'aspek_penilaian' => json_encode($data),
+            'rata_rata' => $rataRata,
+            'intern_id' => $request->input('intern_id'),
         ]);
 
-        // Redirect ke halaman penilaian dengan pesan sukses
-        return redirect()->route('interns.assessment.index')->with('success', 'Penilaian berhasil disimpan.');
+        // Simpan ke document_downloads supaya masuk ke halaman Dokumen pemagang
+        if ($assessment->intern_id) {
+            $intern = \App\Models\InternshipRegistration::find($assessment->intern_id);
+            if ($intern?->user_id) {
+                \App\Models\DocumentDownload::create([
+                    'user_id'                    => $intern->user_id,
+                    'internship_registration_id' => $intern->id,
+                    'doc_type'                   => \App\Models\DocumentDownload::TYPE_PENILAIAN,
+                    'file_path'                  => null,
+                    'file_url'                   => route('interns.assessment.pdf', $assessment->id),
+                    'downloaded_at'              => now(),
+                    'status'                     => 'success',
+                ]);
+            }
+        }
+
+        return redirect()->route('interns.assessment.index')->with('success',
+            '✅ Penilaian berhasil disimpan.' .
+            ($assessment->intern_id ? ' Surat penilaian sudah tersedia di halaman Dokumen pemagang.' : '')
+        );
     }
 
 

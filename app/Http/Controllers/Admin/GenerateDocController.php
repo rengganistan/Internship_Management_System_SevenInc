@@ -29,10 +29,16 @@ class GenerateDocController extends Controller
         // Map jenis surat → URL generate yang sudah ada
         $url = match($jenis) {
             'loa'       => route('admin.loa.generate', ['intern_id' => $intern->id]),
-            'skl'       => route('user.skl.download', ['user_id' => $intern->user_id]),
+            'skl'       => $intern->user_id
+                            ? route('admin.skl.download.for_user', ['user' => $intern->user_id])
+                            : null,
             'sertifikat'=> route('admin.certificate.create') . '?intern_id=' . $intern->id,
             'penilaian' => route('interns.assessment.create') . '?intern_id=' . $intern->id,
         };
+
+        if (!$url) {
+            return back()->with('error', 'User pemagang tidak ditemukan untuk intern ini.');
+        }
 
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
