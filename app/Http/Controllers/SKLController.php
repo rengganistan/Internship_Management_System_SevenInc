@@ -162,18 +162,21 @@ class SKLController extends Controller
         ));
     }
 
-    public function download(Request $request)
+    public function download(Request $request, $userId = null)
     {
         try {
             $authUser = auth()->user();
             $targetUser = $authUser;
 
-            // Jika admin / staff download untuk user lain
-            if ($request->filled('user_id')) {
+            // Support route param {user} dari admin route
+            $resolvedUserId = $userId ?? $request->get('user_id');
+
+            // Jika ada user_id (admin generate untuk pemagang)
+            if ($resolvedUserId) {
                 if (!in_array($authUser->role, ['admin','staff','hrd'])) {
                     abort(403, 'Hanya admin/staff yang dapat mengunduh SKL untuk user lain.');
                 }
-                $targetUser = User::findOrFail($request->user_id);
+                $targetUser = User::findOrFail($resolvedUserId);
             }
 
             // Ambil data magang
@@ -261,28 +264,37 @@ class SKLController extends Controller
             
             // Log Download Sukses
             DocumentDownload::create([
-                'user_id' => $targetUser->id,
-                'doc_type' => DocumentDownload::TYPE_SKL,
-                'file_path' => $tempPath,
-                'file_url' => asset('storage/tmp/'.$fileName),
-                'downloaded_at' => now(),
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'status' => 'success',
+                'user_id'                    => $targetUser->id,
+                'internship_registration_id' => $ir->id,
+                'doc_type'                   => DocumentDownload::TYPE_SKL,
+                'file_path'                  => $tempPath,
+                'file_url'                   => asset('storage/tmp/'.$fileName),
+                'downloaded_at'              => now(),
+                'ip_address'                 => $request->ip(),
+                'user_agent'                 => $request->userAgent(),
+                'status'                     => 'success',
             ]);
 
             // Unduh file PDF dan hapus file setelah pengunduhan
+            // Kalau admin → tidak perlu download, cukup simpan dan kasih notifikasi
+            if (in_array($authUser->role, ['admin','staff','hrd']) && $resolvedUserId) {
+                return back()->with('success',
+                    "✅ SKL untuk <strong>{$targetUser->name}</strong> berhasil dibuat dan sudah tersedia di halaman Dokumen pemagang."
+                );
+            }
+
             return response()->download($tempPath)->deleteFileAfterSend(true);
         }  catch (\Exception $e) {
             // Log error jika gagal
             DocumentDownload::create([
-                'user_id' => $targetUser->id,
-                'doc_type' => DocumentDownload::TYPE_SKL,
-                'status' => 'failed',
-                'error_message' => $e->getMessage(),
-                'downloaded_at' => now(),
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
+                'user_id'                    => $targetUser->id,
+                'internship_registration_id' => $ir->id ?? null,
+                'doc_type'                   => DocumentDownload::TYPE_SKL,
+                'status'                     => 'failed',
+                'error_message'              => $e->getMessage(),
+                'downloaded_at'              => now(),
+                'ip_address'                 => $request->ip(),
+                'user_agent'                 => $request->userAgent(),
             ]);
             
             return back()->with('error', 'Terjadi kesalahan saat membuat SKL. Silakan coba lagi.');

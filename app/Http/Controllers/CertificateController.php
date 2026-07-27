@@ -451,7 +451,7 @@ class CertificateController extends Controller
                     // Serial: NNN/SERT/DIV/COMP.BRAND/ROMAWI/TAHUN
                     $serial = "{$seqStr}/SERT/{$divisionCode}/{$companyCode}.{$brandCode}/".$roman[$end->month]."/".$end->year;
 
-                    Certificate::create([
+                    $cert = Certificate::create([
                         'name'              => $name,
                         'division'          => $divisionCode,
                         'company'           => $company,
@@ -470,10 +470,24 @@ class CertificateController extends Controller
                         'role1'             => $data['role1'],
                         'role2'             => $data['role2'] ?? null,
                     ]);
+
+                    // Simpan ke document_downloads supaya pemagang bisa lihat di Dokumen Saya
+                    if ($ir->user_id) {
+                        \App\Models\DocumentDownload::create([
+                            'user_id'                    => $ir->user_id,
+                            'internship_registration_id' => $ir->id,
+                            'doc_type'                   => \App\Models\DocumentDownload::TYPE_SERTIFIKAT,
+                            'file_path'                  => null,
+                            'file_url'                   => route('admin.certificate.pdf', $cert->id),
+                            'downloaded_at'              => now(),
+                            'status'                     => 'success',
+                        ]);
+                    }
                 }
             });
 
-            return redirect()->route('admin.certificate.index')->with('success', 'Sertifikat untuk pemagang terpilih berhasil dibuat.');
+            return redirect()->route('admin.certificate.index')->with('success',
+                '✅ Sertifikat untuk pemagang terpilih berhasil dibuat dan sudah tersedia di halaman Dokumen masing-masing pemagang.');
         }
 
         /** Map internship_interest → kode divisi (sinkron dengan InternApiController::search) */
