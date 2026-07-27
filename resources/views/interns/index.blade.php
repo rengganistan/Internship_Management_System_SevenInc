@@ -376,20 +376,30 @@ document.addEventListener('DOMContentLoaded', () => {
         const status = String(it.internship_status || 'waiting').toLowerCase();
 
         // Tombol generate berdasarkan status & mode
-        let genButtons = '';
+        let extraButtons = '';
 
         if (MODE === 'pendaftar' && status === 'accepted') {
-            genButtons = `
+            // Tombol LOA
+            extraButtons += `
             <button type="button" title="Generate LOA"
                 class="flex items-center gap-1.5 rounded-[8px] border border-[#2D8659] bg-[#E8F5E9] px-2.5 py-1.5 text-[11px] font-semibold text-[#1F5F3F] transition hover:bg-[#2D8659] hover:text-white js-gen-doc"
                 data-id="${it.id}" data-jenis="loa">
                 <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/></svg>
                 LOA
             </button>`;
+            // Tombol Aktifkan → pindah ke Data Pemagang
+            extraButtons += `
+            <button type="button" title="Aktifkan sebagai Pemagang"
+                class="flex items-center gap-1.5 rounded-[8px] border border-blue-400 bg-blue-50 px-2.5 py-1.5 text-[11px] font-semibold text-blue-700 transition hover:bg-blue-600 hover:text-white js-activate"
+                data-id="${it.id}"
+                data-url="${it.status_update_url || `${ADMIN_INTERNS_BASE}/${it.id}/status`}">
+                <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                Aktifkan
+            </button>`;
         }
 
         if (MODE === 'pemagang' && status === 'completed') {
-            genButtons = `
+            extraButtons = `
             <button type="button" title="Generate Dokumen Selesai"
                 class="flex items-center gap-1.5 rounded-[8px] border border-[#2D8659] bg-[#E8F5E9] px-2.5 py-1.5 text-[11px] font-semibold text-[#1F5F3F] transition hover:bg-[#2D8659] hover:text-white js-gen-doc"
                 data-id="${it.id}" data-jenis="skl">
@@ -400,7 +410,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return `
         <div class="flex items-center justify-end gap-1.5 flex-wrap">
-            ${genButtons}
+            ${extraButtons}
             <button type="button" title="Lihat Detail"
                 class="flex h-8 w-8 items-center justify-center rounded-[8px] border border-[#DCE7E1] bg-white text-[#4B5F5A] transition hover:border-[#2D8659] hover:text-[#1F5F3F] js-detail"
                 data-id="${it.id}">
@@ -568,18 +578,51 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!wrapper) return;
 
         if (MODE === 'pendaftar' && newStatus === 'accepted') {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.title = 'Generate LOA';
-            btn.className = 'flex items-center gap-1.5 rounded-[8px] border border-[#2D8659] bg-[#E8F5E9] px-2.5 py-1.5 text-[11px] font-semibold text-[#1F5F3F] transition hover:bg-[#2D8659] hover:text-white js-gen-doc';
-            btn.dataset.id    = id;
-            btn.dataset.jenis = 'loa';
-            btn.innerHTML = `<svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/></svg> LOA`;
-            wrapper.prepend(btn);
-            btn.addEventListener('click', () => openGenerateModal(id, 'loa'));
+            // Tombol LOA
+            const btnLoa = document.createElement('button');
+            btnLoa.type = 'button';
+            btnLoa.title = 'Generate LOA';
+            btnLoa.className = 'flex items-center gap-1.5 rounded-[8px] border border-[#2D8659] bg-[#E8F5E9] px-2.5 py-1.5 text-[11px] font-semibold text-[#1F5F3F] transition hover:bg-[#2D8659] hover:text-white js-gen-doc';
+            btnLoa.dataset.id    = id;
+            btnLoa.dataset.jenis = 'loa';
+            btnLoa.innerHTML = `<svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/></svg> LOA`;
+            btnLoa.addEventListener('click', () => openGenerateModal(id, 'loa'));
+            wrapper.prepend(btnLoa);
 
-            // Notif reminder
-            pushToast(`Status ${name || 'pemagang'} diubah ke Diterima — jangan lupa generate LOA.`, 'success');
+            // Tombol Aktifkan
+            const internData = window.rowData.get(id);
+            const statusUrl  = internData?.status_update_url || `${ADMIN_INTERNS_BASE}/${id}/status`;
+            const btnAktif = document.createElement('button');
+            btnAktif.type = 'button';
+            btnAktif.title = 'Aktifkan sebagai Pemagang';
+            btnAktif.className = 'flex items-center gap-1.5 rounded-[8px] border border-blue-400 bg-blue-50 px-2.5 py-1.5 text-[11px] font-semibold text-blue-700 transition hover:bg-blue-600 hover:text-white js-activate';
+            btnAktif.dataset.id  = id;
+            btnAktif.dataset.url = statusUrl;
+            btnAktif.innerHTML = `<svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Aktifkan`;
+            btnAktif.addEventListener('click', async () => {
+                const nm = (window.rowData.get(id)?.fullname) || 'pemagang ini';
+                if (!confirm(`Aktifkan "${nm}" sebagai pemagang aktif?\nStatus berubah ke Aktif dan data pindah ke Data Pemagang.`)) return;
+                btnAktif.disabled = true;
+                btnAktif.textContent = 'Memproses...';
+                try {
+                    const res = await fetch(statusUrl, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                        body: JSON.stringify({ internship_status: 'active' }),
+                    });
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    pushToast(`${nm} berhasil diaktifkan!`, 'success');
+                    const row = btnAktif.closest('tr[data-row-id]');
+                    if (row) { row.style.transition = 'opacity 0.4s'; row.style.opacity = '0'; setTimeout(() => row.remove(), 400); }
+                } catch(err) {
+                    pushToast(`Gagal: ${err.message}`, 'error');
+                    btnAktif.disabled = false;
+                    btnAktif.textContent = 'Aktifkan';
+                }
+            });
+            wrapper.prepend(btnAktif);
+
+            pushToast(`Status ${name || 'pemagang'} diubah ke Diterima — klik "Aktifkan" untuk pindah ke Data Pemagang.`, 'success');
         }
 
         if (MODE === 'pemagang' && newStatus === 'completed') {
@@ -634,7 +677,51 @@ document.addEventListener('DOMContentLoaded', () => {
                 openGenerateModal(Number(btn.dataset.id), btn.dataset.jenis);
             });
         });
-    }
+
+        // Aktifkan pemagang — set status accepted → active langsung
+        document.querySelectorAll('.js-activate').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const id   = Number(btn.dataset.id);
+                const url  = btn.dataset.url;
+                const data = window.rowData.get(id);
+                const name = data?.fullname || 'pemagang ini';
+
+                if (!confirm(`Aktifkan "${name}" sebagai pemagang aktif?\nStatus akan berubah dari Diterima → Aktif dan data akan pindah ke halaman Data Pemagang.`)) return;
+
+                btn.disabled = true;
+                btn.textContent = 'Memproses...';
+
+                try {
+                    const res = await fetch(url, {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrf,
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({ internship_status: 'active' }),
+                    });
+
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+                    pushToast(`${name} berhasil diaktifkan sebagai pemagang aktif!`, 'success');
+
+                    // Hilangkan baris dari tampilan (karena sudah pindah ke Data Pemagang)
+                    const row = btn.closest('tr[data-row-id]');
+                    if (row) {
+                        row.style.transition = 'opacity 0.4s';
+                        row.style.opacity = '0';
+                        setTimeout(() => row.remove(), 400);
+                    }
+                } catch (err) {
+                    pushToast(`Gagal mengaktifkan: ${err.message}`, 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Aktifkan';
+                }
+            });
+        });
+
+    }  // end bindRowActions
 
     // ── ============================================================
     //    MODAL GENERATE DOKUMEN — reusable untuk 4 jenis surat
@@ -1236,6 +1323,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const results = await runWithConcurrency(tasks, 4);
             let ok = 0, fail = 0;
 
+            // Tentukan status yang boleh tampil di mode ini
+            const allowedInCurrentMode = allowedStatuses();
+
             results.forEach((res) => {
                 if (res instanceof Error) { fail++; return; }
                 ok++;
@@ -1243,6 +1333,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 markSelect(res.select, false);
                 applyBadge(res.badge, res.to);
                 pending.delete(res.id);
+
+                // Jika status baru tidak ada di scope mode ini → hilangkan baris
+                if (!allowedInCurrentMode.includes(res.to)) {
+                    const row = res.select.closest('tr[data-row-id]');
+                    if (row) {
+                        row.style.transition = 'opacity 0.5s';
+                        row.style.opacity = '0';
+                        setTimeout(() => row.remove(), 500);
+                    }
+                }
             });
 
             updatePendingBar();
@@ -1262,9 +1362,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const params = new URLSearchParams({
             scope:    activeFilter,
             page:     String(page),
-            per_page: searchQuery ? '1000' : '25',
-            search:   searchQuery,
+            per_page: '25',
         });
+
+        // Hanya tambah q jika ada isi
+        if (searchQuery) {
+            params.set('q', searchQuery);
+            params.set('per_page', '1000');
+        }
 
         rowsEl.innerHTML = `
             <tr><td colspan="6" class="px-5 py-10 text-center text-sm text-[#4B5F5A]">

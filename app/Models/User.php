@@ -80,14 +80,9 @@ class User extends Authenticatable
     // Event to listen to when a user's status changes
     protected static function booted()
     {
-        static::updated(function ($user) {
-            // internship_status bukan kolom di tabel users,
-            // status magang ada di InternshipRegistration.
-            // Cukup cek role saja; member card dibuat dari InternController saat status berubah.
-            if ($user->role === 'pemagang') {
-                $user->createMemberCard();
-            }
-        });
+        // createMemberCard() sekarang dipanggil secara eksplisit dari InternController
+        // saat status berubah ke active atau completed — bukan otomatis di sini.
+        // Ini mencegah kartu dibuat saat status masih 'accepted'.
     }
 
     public function createMemberCard()

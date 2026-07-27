@@ -48,6 +48,14 @@ class UserController extends Controller
         return view('admin.users.index', compact('users'));
     }
 
+    // Menampilkan detail pengguna
+    public function show($id)
+    {
+        $user = User::findOrFail($id);
+        $internship = $user->internshipRegistration;
+        return view('admin.users.show', compact('user', 'internship'));
+    }
+
     // Mengedit data pengguna
     public function edit($id)
     {

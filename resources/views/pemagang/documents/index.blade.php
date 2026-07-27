@@ -5,55 +5,10 @@
 
 @section('content')
 
-@php
-  $membercard = auth()->user()->downloads()->latest()->first() ?? null;
-@endphp
+@php $status = $registration?->internship_status; @endphp
 
 <h2 class="text-lg font-semibold text-gray-800 mb-1">Dokumen Saya</h2>
 <p class="text-sm text-gray-500 mb-6">Unduh surat dan berkas yang berkaitan dengan magang Anda</p>
-
-{{-- ===== MEMBERCARD ===== --}}
-@php $status = $registration?->internship_status; @endphp
-<div class="bg-white rounded-xl border border-gray-100 p-5 mb-6">
-  <div class="flex items-center gap-3 mb-4">
-    <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white"
-         style="background-color:#1a5c38;">
-      <i class="fas fa-id-card text-lg"></i>
-    </div>
-    <div>
-      <p class="text-sm font-semibold text-gray-800">Membercard Digital</p>
-      <p class="text-xs text-gray-400">Kartu anggota alumni magang Seveninc</p>
-    </div>
-  </div>
-
-  @if($membercard && $membercard->code)
-    {{-- Membercard sudah siap — bisa diunduh --}}
-    <div class="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
-      <div>
-        <p class="text-sm font-medium text-gray-700">{{ $membercard->name }}</p>
-        <p class="text-xs text-gray-500">Kode: <span class="font-mono font-semibold">{{ $membercard->code }}</span></p>
-        <p class="text-xs text-gray-500">Angkatan: {{ $membercard->angkatan }} · {{ $membercard->brand }}</p>
-      </div>
-      <a href="{{ route('pemagang.membercard') }}"
-         class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-lg"
-         style="background-color:#1a5c38;">
-        <i class="fas fa-eye text-xs"></i> Lihat
-      </a>
-    </div>
-  @elseif(in_array($status, ['completed', 'active', 'accepted']))
-    {{-- Status memenuhi syarat tapi record belum dibuat --}}
-    <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-      <i class="fas fa-info-circle mr-2"></i>
-      Membercard Anda sedang dibuat secara otomatis. Hubungi admin jika belum muncul dalam 1x24 jam.
-    </div>
-  @else
-    {{-- Belum memenuhi syarat --}}
-    <div class="p-4 bg-gray-50 border border-dashed border-gray-200 rounded-lg text-sm text-gray-500">
-      <i class="fas fa-lock mr-2"></i>
-      Membercard tersedia setelah status magang menjadi <strong>Aktif</strong> atau <strong>Selesai</strong>.
-    </div>
-  @endif
-</div>
 
 {{-- ===== DOCUMENT CARDS ===== --}}
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
@@ -89,6 +44,13 @@
             <i class="fas fa-download text-xs"></i> Unduh PDF
           </button>
         </form>
+      @elseif($doc['available'] && $key === 'membercard')
+        {{-- Membercard → lihat preview dulu --}}
+        <a href="{{ $doc['route'] }}"
+           class="flex items-center justify-center gap-2 w-full py-2 text-sm font-medium text-white rounded-lg"
+           style="background-color:#1a5c38;">
+          <i class="fas fa-eye text-xs"></i> Lihat Kartu
+        </a>
       @elseif($doc['available'] && $doc['route'])
         <a href="{{ $doc['route'] }}"
            class="flex items-center justify-center gap-2 w-full py-2 text-sm font-medium text-white rounded-lg"

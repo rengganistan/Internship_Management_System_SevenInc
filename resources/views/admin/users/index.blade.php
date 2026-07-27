@@ -171,10 +171,10 @@
                         {{-- Aksi --}}
                         <td class="px-5 py-4">
                             <div class="flex items-center justify-end gap-1.5">
-                                {{-- Lihat laporan --}}
-                                <a href="{{ route('admin.user.dailyReports', $user->id) }}" title="Laporan Harian"
+                                {{-- Lihat Detail --}}
+                                <a href="{{ route('admin.users.show', $user->id) }}" title="Lihat Detail"
                                     class="flex h-8 w-8 items-center justify-center rounded-[8px] border border-[#DCE7E1] bg-white text-[#4B5F5A] transition hover:border-[#2D8659] hover:text-[#1F5F3F]">
-                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>
+                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
                                 </a>
                                 {{-- Edit --}}
                                 <a href="{{ route('admin.users.edit', $user->id) }}" title="Edit Pengguna"

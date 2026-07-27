@@ -75,6 +75,16 @@ class DocumentController extends Controller
                     : null,
                 'date'        => null,
             ],
+            'membercard' => [
+                'label'       => 'Membercard Digital',
+                'description' => 'Kartu anggota alumni magang Seveninc',
+                'icon'        => 'fa-id-card',
+                'available'   => $status === IR::STATUS_COMPLETED,
+                'route'       => $status === IR::STATUS_COMPLETED
+                    ? route('pemagang.membercard')
+                    : null,
+                'date'        => null,
+            ],
         ];
 
         // Riwayat download — filter berdasarkan registrasi pemagang ini
@@ -94,12 +104,19 @@ class DocumentController extends Controller
 
     /**
      * Halaman lihat & download Membercard digital milik pemagang (2D PDF).
+     * Hanya tersedia setelah status = completed.
      */
     public function viewMembercard()
     {
         $user       = auth()->user();
-        $membercard = $user->downloads()->latest()->first();
         $reg        = IR::where('user_id', $user->id)->latest('id')->first();
+
+        // Membercard hanya tersedia setelah selesai magang
+        if (!$reg || $reg->internship_status !== IR::STATUS_COMPLETED) {
+            return back()->with('error', 'Membercard hanya tersedia setelah masa magang selesai.');
+        }
+
+        $membercard = $user->downloads()->latest()->first();
 
         if (!$membercard) {
             return back()->with('error', 'Membercard belum tersedia. Hubungi admin.');
@@ -110,15 +127,22 @@ class DocumentController extends Controller
 
     /**
      * Download Membercard sebagai PDF.
+     * Hanya tersedia setelah status = completed.
      */
     public function downloadMembercard()
     {
         $user       = auth()->user();
-        $membercard = $user->downloads()->latest()->first();
         $reg        = IR::where('user_id', $user->id)->latest('id')->first();
 
+        // Membercard hanya tersedia setelah selesai magang
+        if (!$reg || $reg->internship_status !== IR::STATUS_COMPLETED) {
+            abort(403, 'Membercard hanya tersedia setelah masa magang selesai.');
+        }
+
+        $membercard = $user->downloads()->latest()->first();
+
         if (!$membercard) {
-            return back()->with('error', 'Membercard belum tersedia.');
+            return back()->with('error', 'Membercard belum tersedia. Hubungi admin.');
         }
 
         $data = [
