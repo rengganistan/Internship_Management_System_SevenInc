@@ -26,6 +26,30 @@ class GenerateDocController extends Controller
         $intern = IR::findOrFail($validated['intern_id']);
         $jenis  = $validated['jenis_surat'];
 
+        // Validasi status sesuai jenis surat
+        $statusRules = [
+            'loa'        => [IR::STATUS_ACCEPTED, IR::STATUS_ACTIVE, IR::STATUS_COMPLETED],
+            'skl'        => [IR::STATUS_COMPLETED],
+            'sertifikat' => [IR::STATUS_COMPLETED],
+            'penilaian'  => [IR::STATUS_COMPLETED],
+        ];
+
+        $allowedStatuses = $statusRules[$jenis] ?? [];
+        if (!empty($allowedStatuses) && !in_array($intern->internship_status, $allowedStatuses)) {
+            $statusLabel = match($jenis) {
+                'loa'        => 'diterima (accepted)',
+                'skl'        => 'selesai (completed)',
+                'sertifikat' => 'selesai (completed)',
+                'penilaian'  => 'selesai (completed)',
+                default      => 'memenuhi syarat',
+            };
+            $errMsg = "Dokumen '{$jenis}' hanya bisa digenerate jika status pemagang sudah {$statusLabel}. Status saat ini: {$intern->internship_status}.";
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['ok' => false, 'error' => $errMsg], 422);
+            }
+            return back()->with('error', $errMsg);
+        }
+
         // Map jenis surat → URL generate yang sudah ada
         $url = match($jenis) {
             'loa'       => route('admin.loa.generate', ['intern_id' => $intern->id]),

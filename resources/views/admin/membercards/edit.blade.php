@@ -71,32 +71,6 @@
                     <p class="mt-1 text-[11px] text-[#4B5F5A]">Perubahan brand akan memperbarui kode member card secara otomatis.</p>
                 </div>
 
-                {{-- Pilih Model GLB --}}
-                <div>
-                    <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Model 3D (.glb)</label>
-                    <select name="model_url"
-                        class="w-full rounded-[8px] border border-[#DCE7E1] bg-white px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
-                        <option value="">-- Pilih File GLB --</option>
-                        @foreach($glbFiles as $file)
-                        <option value="{{ 'storage/models/'.$file }}"
-                            {{ old('model_url', $download->model_url) === 'storage/models/'.$file ? 'selected' : '' }}>
-                            {{ $file }}
-                        </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                {{-- Upload GLB --}}
-                <div>
-                    <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Upload Model Baru (.glb)</label>
-                    <input type="file" name="model_upload" accept=".glb"
-                        class="block w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2 text-[13px] text-[#4B5F5A] outline-none focus:border-[#2D8659]">
-                    <p class="mt-1 text-[11px] text-[#4B5F5A]">Upload akan mengganti pilihan dropdown di atas.</p>
-                    @error('model_upload')
-                    <p class="mt-1 text-[12px] text-[#D32F2F]">{{ $message }}</p>
-                    @enderror
-                </div>
-
                 {{-- Actions --}}
                 <div class="flex items-center gap-3 border-t border-[#DCE7E1] pt-5">
                     <button type="submit"
