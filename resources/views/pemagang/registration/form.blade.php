@@ -255,26 +255,42 @@
       <input type="hidden" name="current_activities" value="-">
 
       {{-- Info unpaid --}}
+      @if(!$registration || $registration->is_draft || $registration->internship_status === 'waiting')
       <div class="p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
         <strong>Perhatian:</strong> Program magang ini bersifat <strong>unpaid / tidak bergaji</strong>.
         Setelah submit, konfirmasi ke WA Admin <strong>0895 2900 2944</strong> dengan pesan
         <em>"SAYA SUDAH ISI FORM"</em>.
       </div>
+      @endif
 
       {{-- Tombol --}}
       <div class="flex items-center gap-3 pt-2">
-        <button type="submit"
-          class="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-lg"
-          style="background-color:#1a5c38;">
-          <i class="fas fa-paper-plane text-xs"></i>
-          Kirim Pendaftaran
-        </button>
-
-        <button type="button" id="btn-draft"
-          class="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
-          <i class="fas fa-save text-xs"></i>
-          Simpan sebagai Draft
-        </button>
+        @if(!$registration || $registration->is_draft)
+          {{-- Belum submit → tombol kirim + draft --}}
+          <button type="submit"
+            class="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-lg"
+            style="background-color:#1a5c38;">
+            <i class="fas fa-paper-plane text-xs"></i>
+            Kirim Pendaftaran
+          </button>
+          <button type="button" id="btn-draft"
+            class="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
+            <i class="fas fa-save text-xs"></i>
+            Simpan sebagai Draft
+          </button>
+        @else
+          {{-- Sudah submit → hanya bisa update data --}}
+          <button type="submit"
+            class="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-lg"
+            style="background-color:#1a5c38;">
+            <i class="fas fa-save text-xs"></i>
+            Simpan Perubahan Data
+          </button>
+          <a href="{{ route('pemagang.dashboard') }}"
+            class="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
+            Kembali
+          </a>
+        @endif
       </div>
 
     </form>

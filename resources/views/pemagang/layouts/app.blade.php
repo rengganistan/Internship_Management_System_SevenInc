@@ -72,6 +72,9 @@
           <i class="fas fa-cog w-4 text-center text-white/70"></i>
           Pengaturan
         </a>
+
+        {{-- Tampilkan menu aktivitas hanya kalau sudah diterima/aktif/selesai --}}
+        @php $regStatus = auth()->user()->internshipRegistration?->internship_status; @endphp
       </nav>
 
       {{-- Logout --}}
@@ -127,8 +130,10 @@
                 @endphp
                 @if($isAccepted && $reg?->internship_interest)
                   Pemagang · {{ $reg->internship_interest }}
-                @else
+                @elseif($isAccepted)
                   Pemagang
+                @else
+                  Calon Pemagang
                 @endif
               </div>
             </div>

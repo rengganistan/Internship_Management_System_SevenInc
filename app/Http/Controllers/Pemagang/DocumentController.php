@@ -60,7 +60,9 @@ class DocumentController extends Controller
                 'description' => 'Diberikan setelah masa magang selesai',
                 'icon'        => 'fa-award',
                 'available'   => $status === IR::STATUS_COMPLETED,
-                'route'       => null,
+                'route'       => $status === IR::STATUS_COMPLETED
+                    ? route('pemagang.documents.sertifikat')
+                    : null,
                 'date'        => null,
             ],
             'surat_penilaian' => [
@@ -75,10 +77,11 @@ class DocumentController extends Controller
             ],
         ];
 
-        // Riwayat download (opsional untuk ditampilkan)
+        // Riwayat download — filter berdasarkan registrasi pemagang ini
         $downloadHistory = DocumentDownload::where('user_id', $user->id)
+            ->when($registration, fn($q) => $q->orWhere('internship_registration_id', $registration->id))
             ->latest('downloaded_at')
-            ->take(5)
+            ->take(10)
             ->get();
 
         return view('pemagang.documents.index', compact(
@@ -87,6 +90,33 @@ class DocumentController extends Controller
             'docs',
             'downloadHistory'
         ));
+    }
+
+    /**
+     * Download Sertifikat milik pemagang yang login.
+     * Cari sertifikat berdasarkan fullname pemagang di tabel certificates.
+     */
+    public function downloadSertifikat()
+    {
+        $user         = auth()->user();
+        $registration = IR::where('user_id', $user->id)->latest('id')->first();
+
+        if (!$registration || $registration->internship_status !== IR::STATUS_COMPLETED) {
+            abort(403, 'Sertifikat hanya tersedia setelah magang selesai.');
+        }
+
+        // Cari sertifikat berdasarkan nama pemagang
+        $certificate = \App\Models\Certificate::where('name', $registration->fullname)
+            ->latest()
+            ->first();
+
+        if (!$certificate) {
+            return back()->with('error', 'Sertifikat belum tersedia. Hubungi admin.');
+        }
+
+        // Delegate ke CertificateController
+        return app(\App\Http\Controllers\CertificateController::class)
+            ->downloadPdf($certificate);
     }
 
     /**
@@ -102,11 +132,17 @@ class DocumentController extends Controller
             abort(403, 'Surat penilaian hanya tersedia setelah magang selesai.');
         }
 
-        // Cari assessment berdasarkan intern_id
-        $assessment = InternAssessment::where('intern_id', $registration->id)->latest()->first();
+        // Cari assessment berdasarkan intern_id dulu, fallback ke nama pemagang
+        $assessment = InternAssessment::where('intern_id', $registration->id)->latest()->first()
+            ?? InternAssessment::where('fullname', $registration->fullname)->latest()->first();
 
         if (!$assessment) {
             return back()->with('error', 'Surat penilaian belum tersedia. Hubungi admin.');
+        }
+
+        // Jika ditemukan lewat nama tapi intern_id belum diisi, update sekaligus
+        if (!$assessment->intern_id) {
+            $assessment->update(['intern_id' => $registration->id]);
         }
 
         // Delegate ke InternAssessmentController

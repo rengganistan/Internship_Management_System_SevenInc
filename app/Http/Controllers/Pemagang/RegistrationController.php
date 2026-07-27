@@ -25,12 +25,8 @@ class RegistrationController extends Controller
         $user         = auth()->user();
         $registration = IR::where('user_id', $user->id)->latest('id')->first();
 
-        // Kalau sudah submit resmi (bukan draft), tidak bisa edit lagi
-        if ($registration && !$registration->is_draft && $registration->internship_status !== IR::STATUS_WAITING) {
-            return redirect()->route('pemagang.dashboard')
-                ->with('info', 'Pendaftaran Anda sudah dikirim dan sedang diproses.');
-        }
-
+        // Kalau belum punya data registrasi → form kosong
+        // Kalau sudah ada (apapun statusnya) → isi form dengan data yang ada, bisa diedit
         return view('pemagang.registration.form', compact('registration'));
     }
 
@@ -134,6 +130,13 @@ class RegistrationController extends Controller
 
         if ($isDraft) {
             return back()->with('success', 'Draft berhasil disimpan.');
+        }
+
+        // Kalau data sudah ada sebelumnya (update) vs baru submit
+        $isUpdate = IR::where('user_id', $user->id)->exists();
+
+        if ($isUpdate) {
+            return back()->with('success', 'Data pendaftaran berhasil diperbarui.');
         }
 
         return redirect()->route('pemagang.dashboard')

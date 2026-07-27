@@ -91,7 +91,12 @@
     $steps = [
       ['label' => 'Submitted',         'sub' => $reg->created_at?->format('d M Y') ?? ''],
       ['label' => 'Under Review',      'sub' => 'Sedang diproses'],
-      ['label' => 'Diterima / Ditolak','sub' => $reg->internship_status === 'rejected' ? 'Ditolak' : 'Menunggu'],
+      ['label' => 'Diterima / Ditolak','sub' => match($reg->internship_status) {
+        'accepted', 'active', 'completed' => 'Diterima ✓',
+        'rejected'                        => 'Ditolak',
+        'exited'                          => 'Keluar',
+        default                           => 'Menunggu',
+      }],
     ];
 
     // Map status ke step number
@@ -118,12 +123,14 @@
           style="{{ $progressStep > $i + 1
               ? 'background-color:#1a5c38'
               : ($progressStep === $i + 1 && !($isRejected && $i === 2)
-                  ? 'background-color:#f59e0b'
+                  ? ($i === 2 && in_array($reg->internship_status, ['accepted','active','completed','exited']) ? 'background-color:#1a5c38' : 'background-color:#f59e0b')
                   : '') }}">
           @if($progressStep > $i + 1)
             ✓
           @elseif($isRejected && $i === 2 && $progressStep === 3)
             ✕
+          @elseif($i === 2 && $progressStep === 3 && in_array($reg->internship_status, ['accepted','active','completed','exited']))
+            ✓
           @else
             {{ $i + 1 }}
           @endif
