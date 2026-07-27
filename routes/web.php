@@ -379,6 +379,10 @@ Route::middleware(['auth'])->prefix('pemagang')->name('pemagang.')->group(functi
     // Download Sertifikat
     Route::get('/dokumen/sertifikat', [PemagangDocument::class, 'downloadSertifikat'])->name('documents.sertifikat');
 
+    // Lihat Membercard
+    Route::get('/membercard', [PemagangDocument::class, 'viewMembercard'])->name('membercard');
+    Route::get('/membercard/download', [PemagangDocument::class, 'downloadMembercard'])->name('membercard.download');
+
     // Pengaturan Akun
     Route::get('/pengaturan', [PemagangSettings::class, 'index'])->name('settings');
     Route::put('/pengaturan', [PemagangSettings::class, 'update'])->name('settings.update');

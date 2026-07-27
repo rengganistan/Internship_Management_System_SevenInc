@@ -93,6 +93,60 @@ class DocumentController extends Controller
     }
 
     /**
+     * Halaman lihat & download Membercard digital milik pemagang (2D PDF).
+     */
+    public function viewMembercard()
+    {
+        $user       = auth()->user();
+        $membercard = $user->downloads()->latest()->first();
+        $reg        = IR::where('user_id', $user->id)->latest('id')->first();
+
+        if (!$membercard) {
+            return back()->with('error', 'Membercard belum tersedia. Hubungi admin.');
+        }
+
+        return view('pemagang.membercard', compact('membercard', 'reg'));
+    }
+
+    /**
+     * Download Membercard sebagai PDF.
+     */
+    public function downloadMembercard()
+    {
+        $user       = auth()->user();
+        $membercard = $user->downloads()->latest()->first();
+        $reg        = IR::where('user_id', $user->id)->latest('id')->first();
+
+        if (!$membercard) {
+            return back()->with('error', 'Membercard belum tersedia.');
+        }
+
+        $data = [
+            'name'     => $membercard->name,
+            'code'     => $membercard->code,
+            'divisi'   => $reg?->internship_interest ?? 'Magang',
+            'angkatan' => $membercard->angkatan,
+            'instansi' => $membercard->instansi,
+            'brand'    => $membercard->brand ?? 'Seveninc',
+        ];
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pemagang.membercard-pdf', $data)
+            ->setPaper([0, 0, 242.64, 153.07]) // 85.6mm x 53.98mm dalam points
+            ->setOptions(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true]);
+
+        // Update status has_downloaded
+        if (!$membercard->has_downloaded) {
+            $membercard->update([
+                'has_downloaded' => true,
+                'downloaded_at'  => now(),
+            ]);
+        }
+
+        $filename = 'Membercard-' . \Illuminate\Support\Str::slug($membercard->name) . '-' . $membercard->code . '.pdf';
+        return $pdf->download($filename);
+    }
+
+    /**
      * Download Sertifikat milik pemagang yang login.
      * Cari sertifikat berdasarkan fullname pemagang di tabel certificates.
      */

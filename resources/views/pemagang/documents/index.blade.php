@@ -26,27 +26,19 @@
     </div>
   </div>
 
-  @if($membercard && $membercard->model_url)
-    {{-- Membercard sudah siap --}}
+  @if($membercard && $membercard->code)
+    {{-- Membercard sudah siap — bisa diunduh --}}
     <div class="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
       <div>
         <p class="text-sm font-medium text-gray-700">{{ $membercard->name }}</p>
         <p class="text-xs text-gray-500">Kode: <span class="font-mono font-semibold">{{ $membercard->code }}</span></p>
         <p class="text-xs text-gray-500">Angkatan: {{ $membercard->angkatan }} · {{ $membercard->brand }}</p>
       </div>
-      <a href="{{ route('admin.membercards.show', $membercard->code) }}"
-         target="_blank"
+      <a href="{{ route('pemagang.membercard') }}"
          class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-lg"
          style="background-color:#1a5c38;">
         <i class="fas fa-eye text-xs"></i> Lihat
       </a>
-    </div>
-  @elseif($membercard && !$membercard->model_url)
-    {{-- Record ada tapi model 3D belum diupload admin --}}
-    <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
-      <i class="fas fa-clock mr-2"></i>
-      Membercard Anda sedang disiapkan oleh admin. Kode: 
-      <span class="font-mono font-semibold">{{ $membercard->code }}</span>
     </div>
   @elseif(in_array($status, ['completed', 'active', 'accepted']))
     {{-- Status memenuhi syarat tapi record belum dibuat --}}
