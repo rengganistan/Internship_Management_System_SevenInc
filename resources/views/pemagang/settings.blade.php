@@ -134,6 +134,35 @@
       reader.readAsDataURL(input.files[0]);
     }
   }
+
+  // Validasi real-time No. HP
+  document.addEventListener('DOMContentLoaded', function() {
+    const phoneInput = document.querySelector('input[name="phone_number"]');
+    if (!phoneInput) return;
+
+    const msg = document.createElement('p');
+    msg.className = 'text-xs text-red-500 mt-1 hidden';
+    msg.textContent = '⚠ No. HP hanya boleh berisi angka (contoh: 08123456789)';
+    phoneInput.parentNode.appendChild(msg);
+
+    phoneInput.addEventListener('input', function() {
+      const hasLetter = /[a-zA-Z]/.test(this.value);
+      if (hasLetter) {
+        this.classList.add('border-red-400');
+        msg.classList.remove('hidden');
+      } else {
+        this.classList.remove('border-red-400');
+        msg.classList.add('hidden');
+      }
+    });
+
+    phoneInput.addEventListener('paste', function(e) {
+      const pasted = (e.clipboardData || window.clipboardData).getData('text');
+      if (/[a-zA-Z]/.test(pasted)) {
+        e.preventDefault();
+      }
+    });
+  });
 </script>
 @endpush
 
