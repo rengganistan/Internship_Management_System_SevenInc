@@ -59,7 +59,20 @@ class RegistrationController extends Controller
             ? $this->draftRules()
             : $this->submitRules();
 
-        $validated = $request->validate($rules);
+        $validated = $request->validate($rules, [
+            'phone_number.regex'   => 'No. HP hanya boleh berisi angka (10-15 digit).',
+            'phone_number.required' => 'No. HP wajib diisi.',
+            'fullname.required'    => 'Nama lengkap wajib diisi.',
+            'student_id.required'  => 'NIM/NPM wajib diisi.',
+            'email.required'       => 'Email wajib diisi.',
+            'gender.required'      => 'Jenis kelamin wajib dipilih.',
+            'institution_name.required' => 'Nama universitas wajib diisi.',
+            'study_program.required'    => 'Program studi wajib diisi.',
+            'faculty.required'          => 'Fakultas wajib diisi.',
+            'current_city.required'     => 'Kota domisili wajib diisi.',
+            'internship_reason.required' => 'Alasan magang wajib diisi.',
+            'internship_interest.required' => 'Divisi yang diminati wajib dipilih.',
+        ]);
 
         // Normalisasi tanggal
         foreach (['born_date', 'start_date', 'end_date'] as $field) {
@@ -92,6 +105,23 @@ class RegistrationController extends Controller
             'design_software'        => $validated['design_software'] ?? '-',
             'video_software'         => $validated['video_software'] ?? '-',
             'programming_languages'  => $validated['programming_languages'] ?? '-',
+            // Kolom NOT NULL yang bisa kosong saat draft
+            'gender'                 => $validated['gender'] ?? 'Laki-laki',
+            'internship_type'        => $validated['internship_type'] ?? 'Magang Mandiri',
+            'internship_arrangement' => $validated['internship_arrangement'] ?? 'Onsite',
+            'current_status'         => $validated['current_status'] ?? 'Mahasiswa/Pelajar',
+            'english_book_ability'   => $validated['english_book_ability'] ?? 'Saya bisa',
+            'internship_reason'      => $validated['internship_reason'] ?? '-',
+            'fullname'               => $validated['fullname'] ?? '-',
+            'born_date'              => $validated['born_date'] ?? '-',
+            'student_id'             => $validated['student_id'] ?? '-',
+            'email'                  => $validated['email'] ?? (auth()->user()->email ?? '-'),
+            'phone_number'           => $validated['phone_number'] ?? '-',
+            'institution_name'       => $validated['institution_name'] ?? '-',
+            'study_program'          => $validated['study_program'] ?? '-',
+            'faculty'                => $validated['faculty'] ?? '-',
+            'current_city'           => $validated['current_city'] ?? '-',
+            'internship_interest'    => $validated['internship_interest'] ?? '-',
         ];
 
         foreach ($notNullDefaults as $field => $default) {

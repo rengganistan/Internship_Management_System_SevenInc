@@ -30,18 +30,18 @@ class DashboardController extends Controller
 
         if ($registration) {
             $statusLabel = match($registration->internship_status) {
-                IR::STATUS_WAITING   => 'Under Review',
-                IR::STATUS_PENDING   => 'Under Review',
-                IR::STATUS_ACCEPTED  => 'Diterima',
-                IR::STATUS_ACTIVE    => 'Aktif Magang',
-                IR::STATUS_COMPLETED => 'Selesai',
-                IR::STATUS_REJECTED  => 'Ditolak',
-                IR::STATUS_EXITED    => 'Keluar',
-                default              => ucfirst($registration->internship_status),
+                IR::STATUS_WAITING, 'new' => 'Under Review',
+                IR::STATUS_PENDING        => 'Under Review',
+                IR::STATUS_ACCEPTED       => 'Diterima',
+                IR::STATUS_ACTIVE         => 'Aktif Magang',
+                IR::STATUS_COMPLETED      => 'Selesai',
+                IR::STATUS_REJECTED       => 'Ditolak',
+                IR::STATUS_EXITED         => 'Keluar',
+                default                   => ucfirst($registration->internship_status),
             };
 
             $progressStep = match($registration->internship_status) {
-                IR::STATUS_WAITING, IR::STATUS_PENDING => 2,
+                IR::STATUS_WAITING, IR::STATUS_PENDING, 'new' => 2,
                 IR::STATUS_ACCEPTED, IR::STATUS_ACTIVE,
                 IR::STATUS_COMPLETED, IR::STATUS_REJECTED,
                 IR::STATUS_EXITED => 3,

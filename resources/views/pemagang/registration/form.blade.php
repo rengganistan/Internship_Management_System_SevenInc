@@ -24,7 +24,7 @@
     @if($reg && $reg->is_draft)
       <div class="mb-5 flex items-center gap-2 bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm px-4 py-3 rounded-lg">
         <i class="fas fa-save"></i>
-        Draft tersimpan {{ $reg->draft_saved_at?->diffForHumans() ?? '' }}. Lanjutkan dan kirim pendaftaran Anda.
+        Draft tersimpan {{ $reg->draft_saved_at ? \Carbon\Carbon::parse($reg->draft_saved_at)->diffForHumans() : '' }}. Lanjutkan dan kirim pendaftaran Anda.
       </div>
     @endif
 
@@ -301,6 +301,12 @@
           <div>
             <label class="{{ $label }}">Tahu Info Magang Dari</label>
             <div class="{{ $group }}">
+              @php
+                $infoSources = $old('internship_info_sources', $reg?->internship_info_sources ?? '');
+                $infoSourcesArr = is_array($infoSources)
+                    ? $infoSources
+                    : array_map('trim', explode(',', (string) $infoSources));
+              @endphp
               @foreach([
                 'Instagram'           => 'Instagram',
                 'TikTok'              => 'TikTok',
@@ -312,7 +318,7 @@
               ] as $val => $lbl)
               <label class="{{ $item }}">
                 <input type="checkbox" name="internship_info_sources[]" value="{{ $val }}" class="{{ $check }}"
-                  @checked(in_array($val, explode(', ', $old('internship_info_sources', $reg?->internship_info_sources ?? ''))))>
+                  @checked(in_array($val, $infoSourcesArr))>
                 <span class="text-sm text-gray-700">{{ $lbl }}</span>
               </label>
               @endforeach
@@ -341,10 +347,10 @@
             <i class="fas fa-paper-plane text-xs"></i>
             Kirim Pendaftaran
           </button>
-          <button type="button" id="btn-draft"
+          <button type="button" id="btn-save-local"
             class="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
             <i class="fas fa-save text-xs"></i>
-            Simpan sebagai Draft
+            Simpan Sementara
           </button>
         @else
           {{-- Sudah submit → hanya bisa update data --}}
@@ -367,11 +373,205 @@
 
 @push('scripts')
 <script>
-  // Tombol "Simpan sebagai Draft" — ubah action form ke route draft
-  document.getElementById('btn-draft').addEventListener('click', function () {
+  // ===== Validasi real-time field numerik =====
+  function setupNumericValidation(selector, message) {
+    document.querySelectorAll(selector).forEach(function(input) {
+      // Buat elemen pesan error
+      const msg = document.createElement('p');
+      msg.className = 'text-xs text-red-500 mt-1 hidden';
+      msg.textContent = message;
+      input.parentNode.appendChild(msg);
+
+      input.addEventListener('input', function() {
+        const val = this.value.replace(/\s/g, '');
+        const hasLetter = /[a-zA-Z]/.test(val);
+
+        if (hasLetter) {
+          this.classList.add('border-red-400', 'ring-red-400');
+          this.classList.remove('border-gray-200');
+          msg.classList.remove('hidden');
+        } else {
+          this.classList.remove('border-red-400', 'ring-red-400');
+          this.classList.add('border-gray-200');
+          msg.classList.add('hidden');
+        }
+      });
+
+      // Blokir huruf saat paste
+      input.addEventListener('paste', function(e) {
+        const pasted = (e.clipboardData || window.clipboardData).getData('text');
+        if (/[a-zA-Z]/.test(pasted)) {
+          e.preventDefault();
+          input.dispatchEvent(new Event('input'));
+        }
+      });
+    });
+  }
+
+  // ===== Validasi visual saat submit — highlight field kosong =====
+  function setupRequiredHighlight() {
     const form = document.getElementById('form-daftar');
-    form.action = "{{ route('pemagang.registration.draft') }}";
-    form.submit();
+    if (!form) return;
+
+    form.addEventListener('submit', function(e) {
+      let hasError = false;
+
+      // Cek semua input/select/textarea yang required
+      form.querySelectorAll('[required]').forEach(function(field) {
+        const wrapper = field.closest('div');
+        let errMsg = wrapper?.querySelector('.field-error-msg');
+
+        if (!field.value.trim()) {
+          hasError = true;
+          field.classList.add('border-red-400', 'ring-1', 'ring-red-400');
+          field.classList.remove('border-gray-200');
+
+          if (!errMsg) {
+            errMsg = document.createElement('p');
+            errMsg.className = 'field-error-msg text-xs text-red-500 mt-1';
+            errMsg.textContent = '⚠ Field ini wajib diisi';
+            field.parentNode.appendChild(errMsg);
+          }
+          errMsg.classList.remove('hidden');
+        } else {
+          field.classList.remove('border-red-400', 'ring-1', 'ring-red-400');
+          field.classList.add('border-gray-200');
+          if (errMsg) errMsg.classList.add('hidden');
+        }
+      });
+
+      // Cek radio groups yang required
+      const radioGroups = {};
+      form.querySelectorAll('input[type="radio"][required]').forEach(function(r) {
+        radioGroups[r.name] = radioGroups[r.name] || [];
+        radioGroups[r.name].push(r);
+      });
+
+      Object.entries(radioGroups).forEach(function([name, radios]) {
+        const checked = radios.some(r => r.checked);
+        const container = radios[0].closest('div.border') || radios[0].closest('div');
+        let errMsg = container?.parentNode?.querySelector('.radio-error-' + name);
+
+        if (!checked) {
+          hasError = true;
+          if (!errMsg) {
+            errMsg = document.createElement('p');
+            errMsg.className = 'radio-error-' + name + ' text-xs text-red-500 mt-1';
+            errMsg.textContent = '⚠ Pilih salah satu opsi';
+            container?.parentNode?.appendChild(errMsg);
+          }
+        } else if (errMsg) {
+          errMsg.remove();
+        }
+      });
+
+      if (hasError) {
+        e.preventDefault();
+        // Scroll ke field error pertama
+        const firstError = form.querySelector('.border-red-400');
+        if (firstError) {
+          firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          firstError.focus();
+        }
+
+        // Tampilkan toast error di atas
+        showFormError('Ada beberapa field yang belum diisi. Silakan periksa kembali.');
+      }
+    });
+
+    // Clear error saat field diisi
+    form.querySelectorAll('[required]').forEach(function(field) {
+      field.addEventListener('input', function() {
+        if (this.value.trim()) {
+          this.classList.remove('border-red-400', 'ring-1', 'ring-red-400');
+          this.classList.add('border-gray-200');
+          const errMsg = this.parentNode.querySelector('.field-error-msg');
+          if (errMsg) errMsg.classList.add('hidden');
+        }
+      });
+      field.addEventListener('change', function() {
+        field.dispatchEvent(new Event('input'));
+      });
+    });
+  }
+
+  function showFormError(message) {
+    let toast = document.getElementById('form-error-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'form-error-toast';
+      toast.className = 'fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-red-50 border border-red-300 text-red-700 text-sm font-medium px-5 py-3 rounded-xl shadow-lg';
+      document.body.appendChild(toast);
+    }
+    toast.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}
+      <button onclick="this.parentNode.remove()" class="ml-3 text-red-400 hover:text-red-600">✕</button>`;
+    toast.style.display = 'flex';
+    setTimeout(() => toast?.remove(), 5000);
+  }
+
+  // ===== localStorage: simpan & restore form =====
+  const FORM_KEY = 'pemagang_form_{{ auth()->id() }}';
+
+  function saveFormLocal() {
+    const form = document.getElementById('form-daftar');
+    if (!form) return;
+    const data = {};
+    new FormData(form).forEach(function(val, key) {
+      if (key === '_token') return;
+      data[key] = data[key] ? [].concat(data[key], val) : val;
+    });
+    localStorage.setItem(FORM_KEY, JSON.stringify(data));
+    const btn = document.getElementById('btn-save-local');
+    if (btn) {
+      const orig = btn.innerHTML;
+      btn.innerHTML = '<i class="fas fa-check text-xs"></i> Tersimpan!';
+      btn.style.color = '#16a34a';
+      setTimeout(function() { btn.innerHTML = orig; btn.style.color = ''; }, 2000);
+    }
+  }
+
+  function restoreFormLocal() {
+    const saved = localStorage.getItem(FORM_KEY);
+    if (!saved) return;
+    try {
+      const data = JSON.parse(saved);
+      const form = document.getElementById('form-daftar');
+      if (!form) return;
+      Object.entries(data).forEach(function([key, val]) {
+        const name = key.replace('[]', '');
+        form.querySelectorAll('[name="' + name + '"], [name="' + name + '[]"]').forEach(function(el) {
+          if (el.type === 'radio') {
+            if (el.value === val) el.checked = true;
+          } else if (el.type === 'checkbox') {
+            if ([].concat(val).includes(el.value)) el.checked = true;
+          } else if (el.type !== 'file' && !el.value) {
+            el.value = val;
+          }
+        });
+      });
+    } catch(e) {}
+  }
+
+  document.getElementById('btn-save-local')?.addEventListener('click', saveFormLocal);
+  document.getElementById('form-daftar')?.addEventListener('submit', function() {
+    localStorage.removeItem(FORM_KEY);
+  });
+
+  document.addEventListener('DOMContentLoaded', function() {
+    setupRequiredHighlight();
+
+    // Restore dari localStorage kalau fullname masih kosong (form baru)
+    const firstInput = document.querySelector('#form-daftar input[name="fullname"]');
+    if (firstInput && !firstInput.value) restoreFormLocal();
+
+    setupNumericValidation(
+      'input[name="phone_number"]',
+      '⚠ No. HP hanya boleh berisi angka (contoh: 08123456789)'
+    );
+    setupNumericValidation(
+      'input[name="parent_wa_contact"]',
+      '⚠ No. HP hanya boleh berisi angka'
+    );
   });
 </script>
 @endpush

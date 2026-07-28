@@ -101,7 +101,7 @@
 
     // Map status ke step number
     $progressStep = match($registration?->internship_status) {
-      'waiting', 'pending'                    => 2,
+      'waiting', 'pending', 'new'             => 2,
       'accepted', 'rejected', 'active',
       'completed', 'exited'                   => 3,
       default                                 => 1,
