@@ -7,8 +7,17 @@
 
     <div class="mb-6">
         <p class="mb-1 text-[11px] font-bold uppercase tracking-[0.08em] text-[#2D8659]">Dokumen & Sertifikat</p>
-        <h1 class="text-2xl font-extrabold tracking-tight text-[#1B3A34] sm:text-[28px]">Riwayat Unduhan LOA</h1>
-        <p class="mt-1 text-sm text-[#4B5F5A]">Daftar pengguna yang telah mengunduh Letter of Acceptance (LOA).</p>
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-extrabold tracking-tight text-[#1B3A34] sm:text-[28px]">Riwayat Unduhan LOA</h1>
+                <p class="mt-1 text-sm text-[#4B5F5A]">Daftar pengguna yang telah mengunduh Letter of Acceptance (LOA).</p>
+            </div>
+            <a href="{{ route('admin.loa.editor') }}"
+                class="flex shrink-0 items-center gap-2 rounded-[9px] border border-[#DCE7E1] bg-white px-4 py-2 text-sm font-semibold text-[#1B3A34] transition hover:border-[#2D8659] hover:text-[#1F5F3F]">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.12 2.12-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1 1.55V20.3h-3v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.88.34l-.06.06-2.12-2.12.06-.06A1.7 1.7 0 0 0 7.08 15a1.7 1.7 0 0 0-1.55-1H5.4v-3h.13A1.7 1.7 0 0 0 7.08 10a1.7 1.7 0 0 0-.34-1.88l-.06-.06L8.8 5.94l.06.06A1.7 1.7 0 0 0 10.74 6.34a1.7 1.7 0 0 0 1-1.55V4.7h3v.09a1.7 1.7 0 0 0 1 1.55A1.7 1.7 0 0 0 17.62 6l.06-.06 2.12 2.12-.06.06A1.7 1.7 0 0 0 19.4 10a1.7 1.7 0 0 0 1.55 1h.13v3h-.13A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+                Template LOA
+            </a>
+        </div>
     </div>
 
     @if(session('success'))
@@ -53,7 +62,20 @@
                             @endif
                         </td>
                         <td class="px-5 py-4">
-                            @if($loa->file_url)
+                            @if($loa->file_path)
+                            @php
+                                // Parse filename dari file_path: "documents/loa/LOA-xxx.pdf" → type=loa, filename=LOA-xxx.pdf
+                                $loaParts    = explode('/', $loa->file_path);
+                                $loaFilename = end($loaParts);
+                                $loaType     = count($loaParts) >= 2 ? $loaParts[count($loaParts)-2] : 'loa';
+                            @endphp
+                            <a href="{{ route('admin.documents.serve', ['type' => $loaType, 'filename' => $loaFilename]) }}"
+                               target="_blank"
+                                class="inline-flex items-center gap-1.5 rounded-[8px] border border-[#DCE7E1] px-3 py-1.5 text-[12.5px] font-semibold text-[#2D8659] transition hover:bg-[#F4F8F6]">
+                                <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/></svg>
+                                Lihat LOA
+                            </a>
+                            @elseif($loa->file_url)
                             <a href="{{ $loa->file_url }}" target="_blank"
                                 class="inline-flex items-center gap-1.5 rounded-[8px] border border-[#DCE7E1] px-3 py-1.5 text-[12.5px] font-semibold text-[#2D8659] transition hover:bg-[#F4F8F6]">
                                 <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/></svg>

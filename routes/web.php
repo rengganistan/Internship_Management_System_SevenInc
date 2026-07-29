@@ -119,6 +119,40 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     // Halaman daftar SKL dan LOA
     Route::get('/documents/loas', [DocumentController::class, 'listLoas'])->name('documents.loas');
     Route::get('/documents/skls', [DocumentController::class, 'listSkls'])->name('documents.skls');
+
+    // Serve file LOA/SKL dari storage (bypass symlink issue di XAMPP)
+    Route::get('/documents/serve/{type}/{filename}', function (string $type, string $filename) {
+        // Validasi type
+        if (!in_array($type, ['loa', 'skl', 'tmp'])) abort(404);
+
+        // Sanitize filename — hanya huruf, angka, dash, underscore, titik
+        if (!preg_match('/^[A-Za-z0-9_\-\.]+\.pdf$/', $filename)) abort(404);
+
+        // Cari file: coba di public disk dulu, lalu di tmp
+        $candidates = [
+            storage_path("app/public/documents/{$type}/{$filename}"),
+            storage_path("app/public/documents/skl/{$filename}"),
+            storage_path("app/public/documents/loa/{$filename}"),
+            storage_path("app/tmp/{$filename}"),
+        ];
+
+        $fullPath = null;
+        foreach ($candidates as $candidate) {
+            if (file_exists($candidate)) {
+                $fullPath = $candidate;
+                break;
+            }
+        }
+
+        if (!$fullPath) {
+            abort(404, 'File tidak ditemukan.');
+        }
+
+        return response()->file($fullPath, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+        ]);
+    })->name('documents.serve')->where('filename', '[A-Za-z0-9_\-\.]+');
 });
 
 

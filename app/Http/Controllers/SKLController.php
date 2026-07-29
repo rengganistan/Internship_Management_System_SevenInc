@@ -241,13 +241,15 @@ class SKLController extends Controller
             // Render HTML untuk halaman SKL
             $html = view('user.skl', $data)->render();
 
-            // Buat path sementara untuk menyimpan PDF
-            $safeName = preg_replace('/[^a-z0-9\-_]+/i','_',$participantName);
-            $fileName = "SKL_{$safeName}.pdf";
-            $tempPath = storage_path("app/tmp/{$fileName}");
+            // Buat path permanen di public disk (konsisten dengan LOA)
+            $safeName = preg_replace('/[^a-z0-9\-_]+/i', '_', $participantName);
+            $fileName = "SKL_{$safeName}_" . now()->format('Ymd_His') . ".pdf";
+            $relPath  = "documents/skl/{$fileName}";
+            $fullDir  = storage_path('app/public/documents/skl');
+            $fullPath = storage_path("app/public/{$relPath}");
 
-            if (!file_exists(storage_path('app/tmp'))) {
-                mkdir(storage_path('app/tmp'), 0777, true);
+            if (!is_dir($fullDir)) {
+                mkdir($fullDir, 0777, true);
             }
 
             // Menggunakan Browsershot untuk merender HTML ke PDF
@@ -259,31 +261,24 @@ class SKLController extends Controller
                 ->showBackground()
                 ->waitUntilNetworkIdle()
                 ->timeout(180)
-                ->savePdf($tempPath);
-            
-            
-            // Log Download Sukses
+                ->savePdf($fullPath);
+
+            // Log Download — simpan relative path agar route serve bisa temukan file
             DocumentDownload::create([
                 'user_id'                    => $targetUser->id,
                 'internship_registration_id' => $ir->id,
                 'doc_type'                   => DocumentDownload::TYPE_SKL,
-                'file_path'                  => $tempPath,
-                'file_url'                   => asset('storage/tmp/'.$fileName),
+                'file_path'                  => $relPath,
+                'file_url'                   => asset('storage/' . $relPath),
                 'downloaded_at'              => now(),
                 'ip_address'                 => $request->ip(),
                 'user_agent'                 => $request->userAgent(),
                 'status'                     => 'success',
             ]);
 
-            // Unduh file PDF dan hapus file setelah pengunduhan
-            // Kalau admin → tidak perlu download, cukup simpan dan kasih notifikasi
-            if (in_array($authUser->role, ['admin','staff','hrd']) && $resolvedUserId) {
-                return back()->with('success',
-                    "✅ SKL untuk <strong>{$targetUser->name}</strong> berhasil dibuat dan sudah tersedia di halaman Dokumen pemagang."
-                );
-            }
-
-            return response()->download($tempPath)->deleteFileAfterSend(true);
+            // Download langsung
+            return response()->download($fullPath, $fileName, ['Content-Type' => 'application/pdf'])
+                ->deleteFileAfterSend(false); // jangan hapus — biar bisa dilihat lagi dari riwayat
         }  catch (\Exception $e) {
             // Log error jika gagal
             DocumentDownload::create([
