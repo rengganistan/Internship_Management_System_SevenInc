@@ -38,13 +38,6 @@
             ],
         ],
         [
-            'label' => 'Template & Pengaturan',
-            'items' => [
-                ['label' => 'Template SKL', 'route' => 'admin.skl.editor', 'icon' => 'settings'],
-                ['label' => 'Template LOA', 'route' => 'admin.loa.editor', 'icon' => 'settings'],
-            ],
-        ],
-        [
             'label' => 'Feedback',
             'items' => [
                 ['label' => 'Feedback Pemagang', 'route' => 'admin.feedback.index', 'icon' => 'message'],

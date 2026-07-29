@@ -739,9 +739,14 @@ document.addEventListener('DOMContentLoaded', () => {
         skl: {
             title:    'Generate SKL',
             subtitle: 'Surat Keterangan Selesai Magang',
-            info:     'SKL hanya bisa di-generate untuk pemagang dengan status Selesai.',
-            url:      (id) => `{{ url('/admin/interns') }}/${id}/skl`,
-            method:   'GET',
+            info:     'SKL akan di-download langsung. Pastikan data template SKL sudah dikonfigurasi di halaman Data SKL.',
+            url:      (id) => {
+                const row = window.rowData.get(id);
+                const userId = row?.user_id;
+                if (!userId) return null;
+                return `{{ route('admin.skl.download.for_user', ['user' => '__UID__']) }}`.replace('__UID__', userId);
+            },
+            method:   'REDIRECT',
         },
         sertifikat: {
             title:    'Generate Sertifikat',
@@ -861,6 +866,8 @@ document.addEventListener('DOMContentLoaded', () => {
         _genInternId = null;
         _genJenis    = null;
     }
+    // Expose ke global scope agar bisa dipanggil dari onclick di HTML
+    window.closeGenerateModal = closeGenerateModal;
 
     document.getElementById('genModalBtn').addEventListener('click', async () => {
         if (!_genInternId || !_genJenis) return;
@@ -869,8 +876,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const name = data?.fullname || 'pemagang';
 
         if (cfg.method === 'REDIRECT') {
+            const url = cfg.url(_genInternId);
+            if (!url) {
+                pushToast('Tidak dapat menentukan URL — pastikan data pemagang terhubung ke akun user.', 'error');
+                return;
+            }
             closeGenerateModal();
-            window.location.href = cfg.url(_genInternId);
+            window.location.href = url;
             return;
         }
 
