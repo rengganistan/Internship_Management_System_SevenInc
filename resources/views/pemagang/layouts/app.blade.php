@@ -107,9 +107,33 @@
         {{-- User info --}}
         <div class="flex items-center gap-3">
           {{-- Notif bell (opsional) --}}
-          <button class="relative text-gray-400 hover:text-gray-600">
-            <i class="fas fa-bell text-base"></i>
-          </button>
+          <div class="relative" x-data="{ openNotif: false }">
+            <button @click="openNotif = !openNotif" class="relative text-gray-400 hover:text-gray-600">
+              <i class="fas fa-bell text-base"></i>
+              @if(!empty($notificationCount) && $notificationCount > 0)
+              <span class="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white"></span>
+              @endif
+            </button>
+            <div x-show="openNotif" @click.outside="openNotif = false"
+                 class="absolute right-0 mt-2 w-80 bg-white border border-gray-100 rounded-xl shadow-xl z-50 overflow-hidden"
+                 style="display: none;">
+              <div class="px-4 py-3 border-b border-gray-100">
+                <p class="text-sm font-semibold text-gray-800">Notifikasi</p>
+                <p class="text-xs text-gray-400">{{ $notificationCount ?? 0 }} baru</p>
+              </div>
+              <div class="max-h-72 overflow-y-auto">
+                @forelse($notifications as $note)
+                  <a href="{{ $note['url'] }}"
+                     class="block px-4 py-3 hover:bg-gray-50 transition">
+                    <p class="text-sm font-medium text-gray-800">{{ $note['title'] }}</p>
+                    <p class="text-xs text-gray-500 mt-0.5">{{ $note['message'] }}</p>
+                  </a>
+                @empty
+                  <div class="px-4 py-4 text-sm text-gray-500">Tidak ada notifikasi baru.</div>
+                @endforelse
+              </div>
+            </div>
+          </div>
 
           <div class="flex items-center gap-2">
             <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold overflow-hidden flex-shrink-0"
