@@ -163,9 +163,9 @@ class RegistrationController extends Controller
         }
 
         // Kalau data sudah ada sebelumnya (update) vs baru submit
-        $isUpdate = IR::where('user_id', $user->id)->exists();
+        $isNewSubmission = !$existing;
 
-        if ($isUpdate) {
+        if (!$isNewSubmission) {
             return back()->with('success', 'Data pendaftaran berhasil diperbarui.');
         }
 

@@ -202,10 +202,19 @@ class DocumentController extends Controller
             abort(403, 'Sertifikat hanya tersedia setelah magang selesai.');
         }
 
-        // Cari sertifikat berdasarkan nama pemagang
-        $certificate = \App\Models\Certificate::where('name', $registration->fullname)
+        // Cari sertifikat berdasarkan nama pemagang — case-insensitive & trim
+        $certificate = \App\Models\Certificate::whereRaw('LOWER(TRIM(name)) = ?', [
+                strtolower(trim($registration->fullname))
+            ])
             ->latest()
             ->first();
+
+        // Fallback: cari dengan LIKE kalau exact tidak ketemu
+        if (!$certificate) {
+            $certificate = \App\Models\Certificate::where('name', 'LIKE', '%' . trim($registration->fullname) . '%')
+                ->latest()
+                ->first();
+        }
 
         if (!$certificate) {
             return back()->with('error', 'Sertifikat belum tersedia. Hubungi admin.');
