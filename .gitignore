@@ -16,3 +16,6 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+.phpunit.result.cache
+KonteksProyek/Design_System_dan_Pembagian_Tugas_Listmagang.docx
+KonteksProyek/listmagang-redesign-mockup.html

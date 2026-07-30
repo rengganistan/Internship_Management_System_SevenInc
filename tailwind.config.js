@@ -29,8 +29,21 @@ module.exports = {
             850: '#054D39',
             900: '#064E3B',
             950: '#032F22'
-          }
-      },
+          },
+          admin: {
+            primary: '#2D8659',
+            'primary-dark': '#1F5F3F',
+            secondary: '#E8F5E9',
+            accent: '#FF6B35',
+            'text-dark': '#1B3A34',
+            'text-mid': '#4B5F5A',
+            success: '#388E3C',
+            warning: '#FBC02D',
+            error: '#D32F2F',
+            border: '#DCE7E1',
+            bg: '#F4F8F6',
+          },
+        },
       },
     },
     plugins: [

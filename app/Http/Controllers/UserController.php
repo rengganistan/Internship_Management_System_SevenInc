@@ -359,12 +359,6 @@ class UserController extends Controller
 
 
 
-    // Menampilkan form login pengguna biasa
-    public function showLoginForm()
-    {
-        return view('auth.user-login');
-    }
-
     // Menampilkan dashboard pengguna biasa
     public function index(Request $request)
     {
@@ -405,6 +399,6 @@ class UserController extends Controller
     // Menampilkan form pendaftaran magang
     public function showForm()
     {
-        return view('user.form'); // Mengarahkan ke halaman form pendaftaran magang
+        return view('user.form');
     }
 }

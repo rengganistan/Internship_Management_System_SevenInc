@@ -62,46 +62,27 @@ class MembercardController extends Controller
     public function edit($code)
     {
         $download = Download::where('code', $code)->firstOrFail();
-
-        $glbFiles = collect(Storage::disk('public')->files('models'))
-            ->filter(fn($file) => str_ends_with($file, '.glb'))
-            ->map(fn($file) => basename($file));
-
-        return view('admin.membercards.edit', compact('download', 'glbFiles'));
+        return view('admin.membercards.edit', compact('download'));
     }
 
     public function update(Request $request, $code)
     {
         $download = Download::where('code', $code)->firstOrFail();
 
-        // Validasi input utama
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name'     => 'required|string|max:255',
             'angkatan' => 'nullable|string|max:10',
             'instansi' => 'nullable|string|max:255',
-            'brand' => 'nullable|string|max:100',
-            'model_url' => 'nullable|string|max:255',
+            'brand'    => 'nullable|string|max:100',
         ]);
 
-        // ✅ Validasi dan proses upload .glb jika ada file diupload
-        if ($request->hasFile('model_upload')) {
-            $request->validate([
-                'model_upload' => 'file|mimetypes:model/gltf-binary,application/octet-stream',
-            ]);
-
-            $file = $request->file('model_upload');
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $file->storeAs('models', $filename, 'public');
-
-            // Ganti model_url dengan path baru
-            $validated['model_url'] = 'storage/models/' . $filename;
-        }
-
-        // ✅ Update code jika brand berubah
+        // Update code jika brand berubah
         if (!empty($validated['brand']) && $validated['brand'] !== $download->brand) {
-            $prefix = (new \App\Models\User)->getBrandPrefix($validated['brand']);
-            $angkaBelakang = substr($download->code, 2);
-            $validated['code'] = $prefix . $angkaBelakang;
+            $prefix    = (new \App\Models\User)->getBrandPrefix($validated['brand']);
+            $oldPrefix = (new \App\Models\User)->getBrandPrefix($download->brand ?? '');
+            // Ambil bagian numerik setelah prefix lama (misal: MJ26003 → prefix MJ → numerik 26003)
+            $numericPart = substr($download->code, strlen($oldPrefix));
+            $validated['code'] = $prefix . $numericPart;
         } else {
             $validated['code'] = $download->code;
         }

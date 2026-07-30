@@ -1,91 +1,175 @@
 @extends('layouts.dashboard')
 
 @section('content')
-<div class="container mx-auto p-6">
-  <h1 class="text-3xl font-semibold mb-6 text-primary-700 dark:text-primary-400">📋 Daftar Feedback</h1>
 
-  @if(session('success'))
-    <div class="mb-4 flex items-center p-4 text-primary-700 border border-primary-200 rounded-lg bg-primary-50 dark:bg-gray-800 dark:text-primary-400" role="alert">
-      <svg class="flex-shrink-0 w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-        <path fill-rule="evenodd" d="M18 10A8 8 0 11 2 10a8 8 0 0116 0zM9 13a1 1 0 102 0V9a1 1 0 00-2 0v4zm0 2a1 1 0 100-2h2a1 1 0 100 2H9z" clip-rule="evenodd"></path>
-      </svg>
-      <span class="font-medium">Berhasil!</span>&nbsp;{{ session('success') }}
-    </div>
-  @endif
-
-  <div class="relative overflow-x-auto shadow-md sm:rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-    <table class="w-full text-sm text-left text-gray-700 dark:text-gray-300">
-      <thead class="text-xs uppercase bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-        <tr>
-          <th class="px-6 py-3 text-center">No</th>
-          <th class="px-6 py-3">Nama Pengguna</th>
-          <th class="px-6 py-3">Feedback</th>
-          <th class="px-6 py-3">Tanggal</th>
-          <th class="px-6 py-3 text-center">Aksi</th>
-        </tr>
-      </thead>
-      <tbody>
-        @foreach($feedbacks as $index => $feedback)
-          <tr class="bg-white border-b hover:bg-gray-50 dark:bg-gray-900 dark:border-gray-700 dark:hover:bg-gray-800 transition duration-150 ease-in-out">
-            <td class="px-6 py-4 text-center font-medium text-primary-700 dark:text-primary-400">{{ $index + 1 }}</td>
-            <td class="px-6 py-4">{{ $feedback->name }}</td>
-            <td class="px-6 py-4">{{ \Illuminate\Support\Str::limit($feedback->feedback, 50) }}</td>
-            <td class="px-6 py-4 text-gray-500 dark:text-gray-400">{{ $feedback->created_at }}</td>
-            <td class="px-6 py-4 text-center space-x-3">
-              <button class="text-blue-600 hover:text-blue-800 font-semibold"
-                      data-modal-target="feedbackModal{{ $feedback->id }}"
-                      data-modal-toggle="feedbackModal{{ $feedback->id }}">Lihat</button>
-              <span class="text-gray-400">|</span>
-              <a href="{{ route('admin.feedback.edit', $feedback->id) }}"
-                 class="text-yellow-500 hover:text-yellow-600 font-semibold">Edit</a>
-              <span class="text-gray-400">|</span>
-              <form action="{{ route('admin.feedback.destroy', $feedback->id) }}" method="POST" class="inline">
-                @csrf
-                @method('DELETE')
-                <button type="submit"
-                        class="text-red-600 hover:text-red-800 font-semibold transition duration-100"
-                        onclick="return confirm('Yakin ingin menghapus feedback ini?')">Hapus</button>
-              </form>
-            </td>
-          </tr>
-
-          <!-- Modal Feedback -->
-          <div id="feedbackModal{{ $feedback->id }}" tabindex="-1" aria-hidden="true"
-               class="hidden fixed inset-0 z-50 flex items-center justify-center w-full h-full p-4 overflow-y-auto bg-black/40 backdrop-blur-sm">
-            <div class="relative w-full max-w-lg">
-              <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
-                <div class="flex items-center justify-between p-4 border-b dark:border-gray-600">
-                  <h3 class="text-lg font-semibold text-primary-700 dark:text-primary-400">Isi Feedback</h3>
-                  <button type="button"
-                          class="text-gray-400 hover:text-gray-700 bg-transparent rounded-lg p-1.5 dark:hover:text-gray-300"
-                          data-modal-toggle="feedbackModal{{ $feedback->id }}">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fill-rule="evenodd"
-                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                            clip-rule="evenodd"></path>
-                    </svg>
-                  </button>
-                </div>
-                <div class="p-6 space-y-4">
-                  <p><strong class="text-primary-700 dark:text-primary-400">Nama Pengguna:</strong> {{ $feedback->name }}</p>
-                  <p><strong class="text-primary-700 dark:text-primary-400">Feedback:</strong></p>
-                  <p class="text-gray-700 dark:text-gray-300 leading-relaxed">{{ $feedback->feedback }}</p>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    <strong>Tanggal:</strong> {{ $feedback->created_at }}
-                  </p>
-                </div>
-                <div class="flex justify-end p-4 border-t dark:border-gray-600">
-                  <button data-modal-toggle="feedbackModal{{ $feedback->id }}"
-                          class="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800 transition">
-                    Tutup
-                  </button>
-                </div>
-              </div>
+{{-- Modal: Lihat Detail Feedback --}}
+<div id="feedbackDetailModal" class="fixed inset-0 z-[100] hidden">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onclick="closeFeedbackModal()"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+        <div class="w-full max-w-lg rounded-[16px] bg-white shadow-xl overflow-hidden">
+            <div class="flex items-center justify-between border-b border-[#DCE7E1] px-5 py-4">
+                <h3 class="text-[15px] font-bold text-[#1B3A34]">Detail Feedback</h3>
+                <button onclick="closeFeedbackModal()"
+                    class="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F4F8F6] text-[#4B5F5A] hover:bg-[#DCE7E1]">
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
             </div>
-          </div>
-        @endforeach
-      </tbody>
-    </table>
-  </div>
+            <div class="p-5 space-y-4">
+                <div class="flex items-center gap-3 rounded-[10px] bg-[#F4F8F6] px-4 py-3">
+                    <div id="fbDetailAvatar" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#E8F5E9] text-sm font-bold text-[#1F5F3F]">—</div>
+                    <div>
+                        <p id="fbDetailName" class="font-semibold text-[#1B3A34]">—</p>
+                        <p id="fbDetailDate" class="text-[11.5px] text-[#4B5F5A]">—</p>
+                    </div>
+                </div>
+                <div>
+                    <p class="mb-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[#4B5F5A]">Isi Feedback</p>
+                    <p id="fbDetailText" class="rounded-[8px] bg-[#F4F8F6] px-4 py-3 text-[13px] leading-relaxed text-[#1B3A34]">—</p>
+                </div>
+            </div>
+            <div class="flex justify-end border-t border-[#DCE7E1] px-5 py-4">
+                <button onclick="closeFeedbackModal()"
+                    class="rounded-[9px] bg-[#2D8659] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1F5F3F]">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
+
+{{-- Modal: Konfirmasi Hapus --}}
+<div id="deleteModal" class="fixed inset-0 z-[110] hidden">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-[2px]"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+        <div class="w-full max-w-md rounded-[16px] bg-white shadow-xl overflow-hidden">
+            <div class="p-6 text-center">
+                <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-50">
+                    <svg class="h-7 w-7 text-[#D32F2F]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                </div>
+                <h3 class="mb-2 text-[15px] font-bold text-[#1B3A34]">Hapus feedback ini?</h3>
+                <p class="text-[12.5px] text-[#4B5F5A]">Tindakan ini tidak dapat dibatalkan.</p>
+            </div>
+            <div class="flex justify-center gap-3 border-t border-[#DCE7E1] px-5 py-4">
+                <button onclick="closeDeleteModal()"
+                    class="rounded-[9px] border border-[#DCE7E1] bg-white px-4 py-2 text-sm font-semibold text-[#1B3A34] hover:bg-[#F4F8F6]">
+                    Batal
+                </button>
+                <form id="deleteForm" method="POST">
+                    @csrf @method('DELETE')
+                    <button type="submit"
+                        class="rounded-[9px] bg-[#D32F2F] px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">
+                        Ya, Hapus
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="min-h-screen bg-[#F4F8F6] p-4 sm:p-6 lg:p-7">
+
+    {{-- Header --}}
+    <div class="mb-6">
+        <p class="mb-1 text-[11px] font-bold uppercase tracking-[0.08em] text-[#2D8659]">Feedback</p>
+        <h1 class="text-2xl font-extrabold tracking-tight text-[#1B3A34] sm:text-[28px]">Feedback Pemagang</h1>
+        <p class="mt-1 text-sm text-[#4B5F5A]">Masukan dan komentar dari pemagang selama program berlangsung.</p>
+    </div>
+
+    @if(session('success'))
+    <div class="mb-4 flex items-center gap-3 rounded-[10px] border border-[#A5D6A7] bg-[#E8F5E9] px-4 py-3 text-sm font-semibold text-[#1F5F3F]">
+        <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        {{ session('success') }}
+    </div>
+    @endif
+
+    <div class="overflow-hidden rounded-[12px] border border-[#DCE7E1] bg-white shadow-sm">
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[700px] text-left text-sm">
+                <thead>
+                    <tr>
+                        <th class="bg-[#1B3A34] px-5 py-3 text-[11px] font-bold uppercase tracking-[0.06em] text-white w-12">No</th>
+                        <th class="bg-[#1B3A34] px-5 py-3 text-[11px] font-bold uppercase tracking-[0.06em] text-white">Nama Pengguna</th>
+                        <th class="bg-[#1B3A34] px-5 py-3 text-[11px] font-bold uppercase tracking-[0.06em] text-white">Feedback</th>
+                        <th class="bg-[#1B3A34] px-5 py-3 text-[11px] font-bold uppercase tracking-[0.06em] text-white">Tanggal</th>
+                        <th class="bg-[#1B3A34] px-5 py-3 text-[11px] font-bold uppercase tracking-[0.06em] text-white text-right">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-[#DCE7E1]">
+                    @forelse($feedbacks as $index => $feedback)
+                    @php
+                        $initials = collect(explode(' ', $feedback->name ?? '-'))->take(2)->map(fn($w)=>strtoupper($w[0]??''))->implode('');
+                    @endphp
+                    <tr class="transition hover:bg-[#F4F8F6]">
+                        <td class="px-5 py-4 text-[13px] text-[#4B5F5A]">{{ $index + 1 }}</td>
+                        <td class="px-5 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#E8F5E9] text-[12px] font-bold text-[#1F5F3F]">
+                                    {{ $initials }}
+                                </div>
+                                <p class="font-semibold text-[#1B3A34]">{{ $feedback->name }}</p>
+                            </div>
+                        </td>
+                        <td class="px-5 py-4 text-[13px] text-[#4B5F5A]">
+                            {{ \Illuminate\Support\Str::limit($feedback->feedback, 80) }}
+                        </td>
+                        <td class="whitespace-nowrap px-5 py-4 text-[13px] text-[#4B5F5A]">
+                            {{ $feedback->created_at?->format('d M Y, H:i') ?? '-' }}
+                        </td>
+                        <td class="px-5 py-4">
+                            <div class="flex items-center justify-end gap-1.5">
+                                {{-- Lihat detail --}}
+                                <button type="button" title="Lihat Detail"
+                                    onclick="openFeedbackModal('{{ addslashes($feedback->name) }}', '{{ addslashes($feedback->feedback) }}', '{{ $feedback->created_at?->format('d M Y, H:i') }}')"
+                                    class="flex h-8 w-8 items-center justify-center rounded-[8px] border border-[#DCE7E1] bg-white text-[#4B5F5A] transition hover:border-[#2D8659] hover:text-[#1F5F3F]">
+                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                                {{-- Hapus --}}
+                                <button type="button" title="Hapus"
+                                    onclick="openDeleteModal('{{ route('admin.feedback.destroy', $feedback->id) }}')"
+                                    class="flex h-8 w-8 items-center justify-center rounded-[8px] border border-red-200 bg-red-50 text-[#D32F2F] transition hover:bg-red-100">
+                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="5" class="px-5 py-12 text-center text-sm text-[#4B5F5A]">
+                            Belum ada feedback dari pemagang.
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+// Modal detail
+function openFeedbackModal(name, text, date) {
+    const ini = name.split(' ').slice(0,2).map(w=>w[0]?.toUpperCase()||'').join('') || '?';
+    document.getElementById('fbDetailAvatar').textContent = ini;
+    document.getElementById('fbDetailName').textContent   = name;
+    document.getElementById('fbDetailDate').textContent   = date;
+    document.getElementById('fbDetailText').textContent   = text;
+    document.getElementById('feedbackDetailModal').classList.remove('hidden');
+}
+function closeFeedbackModal() {
+    document.getElementById('feedbackDetailModal').classList.add('hidden');
+}
+
+// Modal hapus
+function openDeleteModal(action) {
+    document.getElementById('deleteForm').action = action;
+    document.getElementById('deleteModal').classList.remove('hidden');
+}
+function closeDeleteModal() {
+    document.getElementById('deleteModal').classList.add('hidden');
+}
+</script>
+
 @endsection

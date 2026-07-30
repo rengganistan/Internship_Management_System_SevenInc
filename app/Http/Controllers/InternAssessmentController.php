@@ -23,6 +23,16 @@ class InternAssessmentController extends Controller
         return url(Storage::url($path));
     }
 
+    private function imageDataUri(string $path): ?string
+    {
+        if (!file_exists($path)) {
+            return null;
+        }
+
+        $mime = mime_content_type($path) ?: 'application/octet-stream';
+        return 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($path));
+    }
+
     // ===========================
     // PREVIEW (HTML biasa, siap dicetak)
     // ===========================
@@ -58,17 +68,22 @@ class InternAssessmentController extends Controller
 
         // Set the logo path
         $logoFile = public_path('storage/' . ($assessment->company_logo_path ?? 'images/logos/logo_seveninc.png'));
-
-        // Fallback to default logo if not found
-        $logoSrc = file_exists($logoFile)
-            ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoFile))
-            : 'data:image/png;base64,' . base64_encode(file_get_contents(public_path('storage/images/logos/logo_seveninc.png')));
+        $fallbackLogo = public_path('storage/images/logos/logo_seveninc.png');
+        $logoSrc = $this->imageDataUri($logoFile) ?: $this->imageDataUri($fallbackLogo);
 
         // Set the signature path
         $sigFile = public_path('storage/' . ($assessment->signature_image_path ?? 'images/signature/ttd_rekariodanny.png'));
-        $sigSrc = file_exists($sigFile)
-            ? 'data:image/png;base64,' . base64_encode(file_get_contents($sigFile))
-            : 'data:image/png;base64,' . base64_encode(file_get_contents(public_path('storage/images/signature/ttd_rekariodanny.png')));
+        $fallbackSignature = public_path('storage/images/signature/ttd_rekariodanny.png');
+        $sigSrc = $this->imageDataUri($sigFile) ?: $this->imageDataUri($fallbackSignature);
+
+        if (!$logoSrc) {
+            // Use a generic empty transparent PNG if no logo file exists at all
+            $logoSrc = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8Xw8AAn0B9WYaBZMAAAAASUVORK5CYII=';
+        }
+
+        if (!$sigSrc) {
+            $sigSrc = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8Xw8AAn0B9WYaBZMAAAAASUVORK5CYII=';
+        }
 
         // Prepare the filename
         $brandText = 'intern-assessment';
@@ -122,14 +137,209 @@ class InternAssessmentController extends Controller
         return view('admin.interns.index_assessment', compact('data'));
     }
 
-    // ===========================
-    // CREATE
-    // ===========================
+    private function getDivisionOptions(): array
+    {
+        return [
+            'Project Manager',
+            'Administration',
+            'Human Resources (HR)',
+            'UI/UX',
+            'Programmer (Front End / Backend)',
+            'Photographer',
+            'Videographer',
+            'Graphic Designer',
+            'Social Media Specialist',
+            'Content Writer',
+            'Content Planner',
+            'Sales & Marketing',
+            'Public Relations (Marcomm)',
+            'Digital Marketing',
+            'TikTok Creator',
+            'Welding',
+            'Customer Service',
+            'Lainnya',
+        ];
+    }
+
+    private function getDefaultAspects(): array
+    {
+        return [
+            'Content Writer' => [
+                ['aspek' => 'Copywriting', 'nilai' => 95],
+                ['aspek' => 'Branding', 'nilai' => 95],
+                ['aspek' => 'Riset Konten', 'nilai' => 95],
+                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
+                ['aspek' => 'Kreativitas', 'nilai' => 95],
+                ['aspek' => 'Kerjasama', 'nilai' => 95],
+                ['aspek' => 'Kehadiran', 'nilai' => 95],
+            ],
+            'Programmer' => [
+                ['aspek' => 'Coding Front/Backend', 'nilai' => 95],
+                ['aspek' => 'Database', 'nilai' => 95],
+                ['aspek' => 'Debugging', 'nilai' => 95],
+                ['aspek' => 'Problem Solving', 'nilai' => 95],
+                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
+                ['aspek' => 'Kerjasama', 'nilai' => 95],
+                ['aspek' => 'Kehadiran', 'nilai' => 95],
+            ],
+            'UI/UX Designer' => [
+                ['aspek' => 'User Research', 'nilai' => 95],
+                ['aspek' => 'Wireframing & Prototyping', 'nilai' => 95],
+                ['aspek' => 'Visual Design', 'nilai' => 95],
+                ['aspek' => 'Layout & Typography', 'nilai' => 95],
+                ['aspek' => 'Color Theory', 'nilai' => 95],
+                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
+                ['aspek' => 'Kerjasama', 'nilai' => 95],
+                ['aspek' => 'Kehadiran', 'nilai' => 95],
+            ],
+            'UI/UX' => [
+                ['aspek' => 'User Research', 'nilai' => 95],
+                ['aspek' => 'Wireframing & Prototyping', 'nilai' => 95],
+                ['aspek' => 'Visual Design', 'nilai' => 95],
+                ['aspek' => 'Layout & Typography', 'nilai' => 95],
+                ['aspek' => 'Color Theory', 'nilai' => 95],
+                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
+                ['aspek' => 'Kerjasama', 'nilai' => 95],
+                ['aspek' => 'Kehadiran', 'nilai' => 95],
+            ],
+            'Programmer (Front End / Backend)' => [
+                ['aspek' => 'Coding Front/Backend', 'nilai' => 95],
+                ['aspek' => 'Database', 'nilai' => 95],
+                ['aspek' => 'Debugging', 'nilai' => 95],
+                ['aspek' => 'Problem Solving', 'nilai' => 95],
+                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
+                ['aspek' => 'Kerjasama', 'nilai' => 95],
+                ['aspek' => 'Kehadiran', 'nilai' => 95],
+            ],
+            'Graphic Designer' => [
+                ['aspek' => 'Desain Visual', 'nilai' => 95],
+                ['aspek' => 'Kreativitas & Inovasi', 'nilai' => 95],
+                ['aspek' => 'Typography & Warna', 'nilai' => 95],
+                ['aspek' => 'Infografis & Branding', 'nilai' => 95],
+                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
+                ['aspek' => 'Kerjasama', 'nilai' => 95],
+                ['aspek' => 'Kehadiran', 'nilai' => 95],
+            ],
+            'Digital Marketing' => [
+                ['aspek' => 'Strategi Konten', 'nilai' => 95],
+                ['aspek' => 'Analisis Data & Keyword', 'nilai' => 95],
+                ['aspek' => 'Social Media Marketing', 'nilai' => 95],
+                ['aspek' => 'Copywriting & Engagement', 'nilai' => 95],
+                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
+                ['aspek' => 'Kreativitas', 'nilai' => 95],
+                ['aspek' => 'Kerjasama', 'nilai' => 95],
+                ['aspek' => 'Kehadiran', 'nilai' => 95],
+            ],
+            'Project Manager' => [
+                ['aspek' => 'Perencanaan Proyek', 'nilai' => 95],
+                ['aspek' => 'Koordinasi Tim', 'nilai' => 95],
+                ['aspek' => 'Manajemen Waktu', 'nilai' => 95],
+                ['aspek' => 'Komunikasi', 'nilai' => 95],
+                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
+                ['aspek' => 'Kerjasama', 'nilai' => 95],
+                ['aspek' => 'Kehadiran', 'nilai' => 95],
+            ],
+            'Administration' => [
+                ['aspek' => 'Administrasi', 'nilai' => 95],
+                ['aspek' => 'Pengarsipan', 'nilai' => 95],
+                ['aspek' => 'Komunikasi', 'nilai' => 95],
+                ['aspek' => 'Koordinasi', 'nilai' => 95],
+                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
+                ['aspek' => 'Kerjasama', 'nilai' => 95],
+                ['aspek' => 'Kehadiran', 'nilai' => 95],
+            ],
+            'Human Resources (HR)' => [
+                ['aspek' => 'Rekrutmen', 'nilai' => 95],
+                ['aspek' => 'Pelatihan', 'nilai' => 95],
+                ['aspek' => 'Komunikasi', 'nilai' => 95],
+                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
+                ['aspek' => 'Kerjasama', 'nilai' => 95],
+                ['aspek' => 'Kehadiran', 'nilai' => 95],
+            ],
+            'Photographer' => [
+                ['aspek' => 'Pemotretan', 'nilai' => 95],
+                ['aspek' => 'Komposisi Visual', 'nilai' => 95],
+                ['aspek' => 'Editing Foto', 'nilai' => 95],
+                ['aspek' => 'Kreativitas', 'nilai' => 95],
+                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
+                ['aspek' => 'Kehadiran', 'nilai' => 95],
+            ],
+            'Videographer' => [
+                ['aspek' => 'Pengambilan Video', 'nilai' => 95],
+                ['aspek' => 'Editing Video', 'nilai' => 95],
+                ['aspek' => 'Storytelling', 'nilai' => 95],
+                ['aspek' => 'Kreativitas', 'nilai' => 95],
+                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
+                ['aspek' => 'Kehadiran', 'nilai' => 95],
+            ],
+            'Social Media Specialist' => [
+                ['aspek' => 'Strategi Media Sosial', 'nilai' => 95],
+                ['aspek' => 'Content Engagement', 'nilai' => 95],
+                ['aspek' => 'Analisis Data', 'nilai' => 95],
+                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
+                ['aspek' => 'Kerjasama', 'nilai' => 95],
+                ['aspek' => 'Kehadiran', 'nilai' => 95],
+            ],
+            'Content Planner' => [
+                ['aspek' => 'Perencanaan Konten', 'nilai' => 95],
+                ['aspek' => 'Riset Audience', 'nilai' => 95],
+                ['aspek' => 'Kalender Konten', 'nilai' => 95],
+                ['aspek' => 'Kolaborasi', 'nilai' => 95],
+                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
+                ['aspek' => 'Kehadiran', 'nilai' => 95],
+            ],
+            'Sales & Marketing' => [
+                ['aspek' => 'Strategi Penjualan', 'nilai' => 95],
+                ['aspek' => 'Negosiasi', 'nilai' => 95],
+                ['aspek' => 'Analisis Pasar', 'nilai' => 95],
+                ['aspek' => 'Komunikasi', 'nilai' => 95],
+                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
+                ['aspek' => 'Kehadiran', 'nilai' => 95],
+            ],
+            'Public Relations (Marcomm)' => [
+                ['aspek' => 'Hubungan Media', 'nilai' => 95],
+                ['aspek' => 'Komunikasi Publik', 'nilai' => 95],
+                ['aspek' => 'Event Support', 'nilai' => 95],
+                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
+                ['aspek' => 'Kerjasama', 'nilai' => 95],
+                ['aspek' => 'Kehadiran', 'nilai' => 95],
+            ],
+            'TikTok Creator' => [
+                ['aspek' => 'Pembuatan Video Pendek', 'nilai' => 95],
+                ['aspek' => 'Kreativitas', 'nilai' => 95],
+                ['aspek' => 'Editing Singkat', 'nilai' => 95],
+                ['aspek' => 'Engagement', 'nilai' => 95],
+                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
+                ['aspek' => 'Kehadiran', 'nilai' => 95],
+            ],
+            'Welding' => [
+                ['aspek' => 'Keterampilan Las', 'nilai' => 95],
+                ['aspek' => 'Keamanan Kerja', 'nilai' => 95],
+                ['aspek' => 'Kualitas Jahitan', 'nilai' => 95],
+                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
+                ['aspek' => 'Kerjasama', 'nilai' => 95],
+                ['aspek' => 'Kehadiran', 'nilai' => 95],
+            ],
+            'Customer Service' => [
+                ['aspek' => 'Pelayanan Pelanggan', 'nilai' => 95],
+                ['aspek' => 'Komunikasi', 'nilai' => 95],
+                ['aspek' => 'Penyelesaian Masalah', 'nilai' => 95],
+                ['aspek' => 'Empati', 'nilai' => 95],
+                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
+                ['aspek' => 'Kehadiran', 'nilai' => 95],
+            ],
+            'Lainnya' => [
+                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
+                ['aspek' => 'Kerjasama', 'nilai' => 95],
+                ['aspek' => 'Kehadiran', 'nilai' => 95],
+            ],
+        ];
+    }
     public function create(Request $request)
     {
         // ===== Divisi & daftar pilihan =====
         $division  = $request->get('div', 'Content Writer');
-        $divisions = ['Content Writer', 'Programmer', 'UI/UX Designer', 'Graphic Designer', 'Digital Marketing', 'Lainnya'];
+        $divisions = $this->getDivisionOptions();
 
         // Normalisasi divisi: jika tidak ada di daftar, fallback ke Content Writer
         if (!in_array($division, $divisions, true)) {
@@ -137,61 +347,7 @@ class InternAssessmentController extends Controller
         }
 
         // ===== Default aspek per divisi =====
-        $defaultAspects = [
-            'Content Writer' => [
-                ['aspek' => 'Copywriting',        'nilai' => 95],
-                ['aspek' => 'Branding',           'nilai' => 95],
-                ['aspek' => 'Riset Konten',       'nilai' => 95],
-                ['aspek' => 'Kedisiplinan',       'nilai' => 95],
-                ['aspek' => 'Kreativitas',        'nilai' => 95],
-                ['aspek' => 'Kerjasama',          'nilai' => 95],
-                ['aspek' => 'Kehadiran',          'nilai' => 95],
-            ],
-            'Programmer' => [
-                ['aspek' => 'Coding Front/Backend','nilai' => 95],
-                ['aspek' => 'Database',            'nilai' => 95],
-                ['aspek' => 'Debugging',           'nilai' => 95],
-                ['aspek' => 'Problem Solving',     'nilai' => 95],
-                ['aspek' => 'Kedisiplinan',        'nilai' => 95],
-                ['aspek' => 'Kerjasama',           'nilai' => 95],
-                ['aspek' => 'Kehadiran',           'nilai' => 95],
-            ],
-            'UI/UX Designer' => [
-                ['aspek' => 'User Research',              'nilai' => 95],
-                ['aspek' => 'Wireframing & Prototyping',  'nilai' => 95],
-                ['aspek' => 'Visual Design',              'nilai' => 95],
-                ['aspek' => 'Layout & Typography',        'nilai' => 95],
-                ['aspek' => 'Color Theory',               'nilai' => 95],
-                ['aspek' => 'Kedisiplinan',               'nilai' => 95],
-                ['aspek' => 'Kerjasama',                  'nilai' => 95],
-                ['aspek' => 'Kehadiran',                  'nilai' => 95],
-            ],
-            'Graphic Designer' => [
-                ['aspek' => 'Desain Visual',       'nilai' => 95],
-                ['aspek' => 'Kreativitas & Inovasi','nilai' => 95],
-                ['aspek' => 'Typography & Warna',  'nilai' => 95],
-                ['aspek' => 'Infografis & Branding','nilai' => 95],
-                ['aspek' => 'Kedisiplinan',        'nilai' => 95],
-                ['aspek' => 'Kerjasama',           'nilai' => 95],
-                ['aspek' => 'Kehadiran',           'nilai' => 95],
-            ],
-            'Digital Marketing' => [
-                ['aspek' => 'Strategi Konten',         'nilai' => 95],
-                ['aspek' => 'Analisis Data & Keyword', 'nilai' => 95],
-                ['aspek' => 'Social Media Marketing',  'nilai' => 95],
-                ['aspek' => 'Copywriting & Engagement','nilai' => 95],
-                ['aspek' => 'Kedisiplinan',            'nilai' => 95],
-                ['aspek' => 'Kreativitas',             'nilai' => 95],
-                ['aspek' => 'Kerjasama',               'nilai' => 95],
-                ['aspek' => 'Kehadiran',               'nilai' => 95],
-            ],
-            // Fallback untuk "Lainnya" atau divisi tanpa template khusus
-            'Lainnya' => [
-                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
-                ['aspek' => 'Kerjasama',    'nilai' => 95],
-                ['aspek' => 'Kehadiran',    'nilai' => 95],
-            ],
-        ];
+        $defaultAspects = $this->getDefaultAspects();
 
         // Pastikan selalu array (hindari error foreach)
         $aspects = $defaultAspects[$division] ?? $defaultAspects['Content Writer'];
@@ -233,6 +389,7 @@ class InternAssessmentController extends Controller
     {
         // Validasi input
         $validated = $request->validate([
+            'intern_id'  => 'nullable|integer|exists:internship_registrations,id',
             'fullname' => 'required|string|max:255',
             'nim_or_nis' => 'nullable|string|max:50',
             'study_program' => 'nullable|string|max:255',
@@ -296,7 +453,7 @@ class InternAssessmentController extends Controller
         // =======================
         // Menyimpan Data Penilaian ke Database
         // =======================
-        InternAssessment::create([
+        $assessment = InternAssessment::create([
             'fullname' => $validated['fullname'],
             'nim_or_nis' => $validated['nim_or_nis'] ?? null,
             'study_program' => $validated['study_program'] ?? null,
@@ -307,139 +464,54 @@ class InternAssessmentController extends Controller
             'signature_position' => $validated['signature_position'] ?? null,
             'company_logo_path' => $companyLogoPath,
             'signature_image_path' => $signatureImagePath,
-            'aspek_penilaian' => json_encode($data),  // Simpan dalam format JSON
-            'rata_rata' => $rataRata,  // Simpan rata-rata
+            'aspek_penilaian' => json_encode($data),
+            'rata_rata' => $rataRata,
+            'intern_id' => $request->input('intern_id'),
         ]);
 
-        // Redirect ke halaman penilaian dengan pesan sukses
-        return redirect()->route('interns.assessment.index')->with('success', 'Penilaian berhasil disimpan.');
-    }
+        // Simpan ke document_downloads supaya masuk ke halaman Dokumen pemagang
+        if ($assessment->intern_id) {
+            $intern = \App\Models\InternshipRegistration::find($assessment->intern_id);
+            if ($intern?->user_id) {
+                \App\Models\DocumentDownload::create([
+                    'user_id'                    => $intern->user_id,
+                    'internship_registration_id' => $intern->id,
+                    'doc_type'                   => \App\Models\DocumentDownload::TYPE_PENILAIAN,
+                    'file_path'                  => null,
+                    'file_url'                   => route('interns.assessment.pdf', $assessment->id),
+                    'downloaded_at'              => now(),
+                    'status'                     => 'success',
+                ]);
+            }
+        }
 
+        return redirect()->route('interns.assessment.index')->with('success',
+            '✅ Penilaian berhasil disimpan.' .
+            ($assessment->intern_id ? ' Surat penilaian sudah tersedia di halaman Dokumen pemagang.' : '')
+        );
+    }
 
     public function getAspekByDivision(Request $request)
     {
-        // Ambil divisi yang diminta dari request, default ke 'Content Writer'
         $division = $request->get('division', 'Content Writer');
+        $defaultAspects = $this->getDefaultAspects();
 
-        // Daftar aspek default berdasarkan divisi
-        $defaultAspects = [
-            'Content Writer' => [
-                ['aspek' => 'Copywriting', 'nilai' => 95],
-                ['aspek' => 'Branding', 'nilai' => 95],
-                ['aspek' => 'Riset Konten', 'nilai' => 95],
-                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
-                ['aspek' => 'Kreativitas', 'nilai' => 95],
-                ['aspek' => 'Kerjasama', 'nilai' => 95],
-                ['aspek' => 'Kehadiran', 'nilai' => 95],
-            ],
-            'Programmer' => [
-                ['aspek' => 'Coding Front/Backend', 'nilai' => 95],
-                ['aspek' => 'Database', 'nilai' => 95],
-                ['aspek' => 'Debugging', 'nilai' => 95],
-                ['aspek' => 'Problem Solving', 'nilai' => 95],
-                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
-                ['aspek' => 'Kerjasama', 'nilai' => 95],
-                ['aspek' => 'Kehadiran', 'nilai' => 95],
-            ],
-            'UI/UX Designer' => [
-                ['aspek' => 'User Research', 'nilai' => 95],
-                ['aspek' => 'Wireframing & Prototyping', 'nilai' => 95],
-                ['aspek' => 'Visual Design', 'nilai' => 95],
-                ['aspek' => 'Layout & Typography', 'nilai' => 95],
-                ['aspek' => 'Color Theory', 'nilai' => 95],
-                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
-                ['aspek' => 'Kerjasama', 'nilai' => 95],
-                ['aspek' => 'Kehadiran', 'nilai' => 95],
-            ],
-            'Graphic Designer' => [
-                ['aspek' => 'Desain Visual', 'nilai' => 95],
-                ['aspek' => 'Kreativitas & Inovasi', 'nilai' => 95],
-                ['aspek' => 'Typography & Warna', 'nilai' => 95],
-                ['aspek' => 'Infografis & Branding', 'nilai' => 95],
-                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
-                ['aspek' => 'Kerjasama', 'nilai' => 95],
-                ['aspek' => 'Kehadiran', 'nilai' => 95],
-            ],
-            'Digital Marketing' => [
-                ['aspek' => 'Strategi Konten', 'nilai' => 95],
-                ['aspek' => 'Analisis Data & Keyword', 'nilai' => 95],
-                ['aspek' => 'Social Media Marketing', 'nilai' => 95],
-                ['aspek' => 'Copywriting & Engagement', 'nilai' => 95],
-                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
-                ['aspek' => 'Kreativitas', 'nilai' => 95],
-                ['aspek' => 'Kerjasama', 'nilai' => 95],
-                ['aspek' => 'Kehadiran', 'nilai' => 95],
-            ],
-        ];
-
-        // Memeriksa apakah divisi yang diminta ada di dalam defaultAspects
-        // Jika tidak ada, fallback ke divisi 'Content Writer' atau divisi yang relevan
         if (!array_key_exists($division, $defaultAspects)) {
-            $division = 'Content Writer'; // Atau bisa set divisi lain sesuai keinginan
+            $division = 'Lainnya';
         }
 
-        // Mengembalikan aspek berdasarkan divisi yang diminta
         return response()->json(['aspek' => $defaultAspects[$division]]);
     }
-
 
     public function edit($id)
     {
         $assessment = InternAssessment::findOrFail($id);
 
         // Divisi yang tersedia
-        $divisions = ['Content Writer', 'Programmer', 'UI/UX Designer', 'Graphic Designer', 'Digital Marketing', 'Lainnya'];
+        $divisions = $this->getDivisionOptions();
 
         // Default aspek penilaian untuk setiap divisi
-        $defaultAspects = [
-            'Content Writer' => [
-                ['aspek' => 'Copywriting', 'nilai' => 95],
-                ['aspek' => 'Branding', 'nilai' => 95],
-                ['aspek' => 'Riset Konten', 'nilai' => 95],
-                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
-                ['aspek' => 'Kreativitas', 'nilai' => 95],
-                ['aspek' => 'Kerjasama', 'nilai' => 95],
-                ['aspek' => 'Kehadiran', 'nilai' => 95],
-            ],
-            'Programmer' => [
-                ['aspek' => 'Coding Front/Backend', 'nilai' => 95],
-                ['aspek' => 'Database', 'nilai' => 95],
-                ['aspek' => 'Debugging', 'nilai' => 95],
-                ['aspek' => 'Problem Solving', 'nilai' => 95],
-                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
-                ['aspek' => 'Kerjasama', 'nilai' => 95],
-                ['aspek' => 'Kehadiran', 'nilai' => 95],
-            ],
-            'UI/UX Designer' => [
-                ['aspek' => 'User Research', 'nilai' => 95],
-                ['aspek' => 'Wireframing & Prototyping', 'nilai' => 95],
-                ['aspek' => 'Visual Design', 'nilai' => 95],
-                ['aspek' => 'Layout & Typography', 'nilai' => 95],
-                ['aspek' => 'Color Theory', 'nilai' => 95],
-                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
-                ['aspek' => 'Kerjasama', 'nilai' => 95],
-                ['aspek' => 'Kehadiran', 'nilai' => 95],
-            ],
-            'Graphic Designer' => [
-                ['aspek' => 'Desain Visual', 'nilai' => 95],
-                ['aspek' => 'Kreativitas & Inovasi', 'nilai' => 95],
-                ['aspek' => 'Typography & Warna', 'nilai' => 95],
-                ['aspek' => 'Infografis & Branding', 'nilai' => 95],
-                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
-                ['aspek' => 'Kerjasama', 'nilai' => 95],
-                ['aspek' => 'Kehadiran', 'nilai' => 95],
-            ],
-            'Digital Marketing' => [
-                ['aspek' => 'Strategi Konten', 'nilai' => 95],
-                ['aspek' => 'Analisis Data & Keyword', 'nilai' => 95],
-                ['aspek' => 'Social Media Marketing', 'nilai' => 95],
-                ['aspek' => 'Copywriting & Engagement', 'nilai' => 95],
-                ['aspek' => 'Kedisiplinan', 'nilai' => 95],
-                ['aspek' => 'Kreativitas', 'nilai' => 95],
-                ['aspek' => 'Kerjasama', 'nilai' => 95],
-                ['aspek' => 'Kehadiran', 'nilai' => 95],
-            ],
-        ];
+        $defaultAspects = $this->getDefaultAspects();
 
         // Mengambil aspek penilaian dari database dan meng-decode JSON menjadi array
         $aspekPenilaian = json_decode($assessment->aspek_penilaian, true);
@@ -450,14 +522,20 @@ class InternAssessmentController extends Controller
             $aspekPenilaian = $defaultAspects[$assessment->div] ?? $defaultAspects['Content Writer'];
         }
 
+        // Gunakan template default divisi untuk menyusun nilai asli
+        $templateAspects = $defaultAspects[$assessment->div] ?? $defaultAspects['Content Writer'];
+
         // Loop melalui aspek penilaian yang ada dan sesuaikan nilai berdasarkan data di database
         foreach ($aspekPenilaian as $item) {
-            foreach ($defaultAspects[$assessment->div] as $index => $aspect) {
+            foreach ($templateAspects as $index => $aspect) {
                 if ($aspect['aspek'] === $item['aspek']) {
-                    $defaultAspects[$assessment->div][$index]['nilai'] = $item['nilai'];
+                    $templateAspects[$index]['nilai'] = $item['nilai'];
                 }
             }
         }
+
+        // Jika ingin menampilkan template yang sudah disesuaikan dengan nilai, gunakan templateAspects
+        $aspekPenilaian = $templateAspects;
 
         // Mengambil logo perusahaan dari storage
         $logos = collect(Storage::disk('public')->files('images/logos'))

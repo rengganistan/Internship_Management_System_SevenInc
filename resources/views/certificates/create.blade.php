@@ -1,594 +1,390 @@
 @extends('layouts.dashboard')
 
 @section('content')
+<div class="min-h-screen bg-[#F4F8F6] p-4 sm:p-6 lg:p-7">
 
-<div class="px-4 pt-6 lg:px-8">
-  <div class="w-full mx-auto px-6 lg:px-10">
-    <header class="mb-6">
-      <h1 class="text-2xl font-semibold text-gray-900 dark:text-white flex items-center gap-3">
-        <i class="fa-solid fa-award text-blue-600"></i>
-        Generator Sertifikat
-      </h1>
-      <p class="text-gray-600 dark:text-gray-300 mt-1">
-        Lengkapi data di bawah untuk membuat sertifikat.
-      </p>
-    </header>
+    {{-- Header --}}
+    <div class="mb-6 flex items-center gap-3">
+        <a href="{{ route('admin.certificate.index') }}"
+            class="flex h-9 w-9 items-center justify-center rounded-[9px] border border-[#DCE7E1] bg-white text-[#4B5F5A] transition hover:border-[#2D8659] hover:text-[#1F5F3F]">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m15 18-6-6 6-6"/></svg>
+        </a>
+        <div>
+            <p class="text-[11px] font-bold uppercase tracking-[0.08em] text-[#2D8659]">Sertifikat</p>
+            <h1 class="text-xl font-extrabold tracking-tight text-[#1B3A34]">Buat Sertifikat Magang</h1>
+        </div>
+    </div>
 
-    @if ($errors->any())
-      <div class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300">
-        <ul class="list-disc list-inside space-y-1">
-          @foreach ($errors->all() as $error)
-            <li>{{ $error }}</li>
-          @endforeach
+    @if($errors->any())
+    <div class="mb-5 rounded-[10px] border border-red-200 bg-red-50 px-4 py-3">
+        <ul class="space-y-1 text-[13px] text-[#D32F2F]">
+            @foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach
         </ul>
-      </div>
+    </div>
     @endif
 
-    <div class="rounded-2xl bg-white p-6 shadow ring-1 ring-gray-200/60 dark:bg-gray-800 dark:ring-gray-700 sm:p-8">
-      <form method="POST" action="{{ route('admin.certificate.store') }}" enctype="multipart/form-data" id="certificateForm">
-        @csrf
+    <form method="POST" action="{{ route('admin.certificate.store') }}" id="certForm">
+    @csrf
+    <div class="space-y-5">
 
-        {{-- =============================== --}}
-        {{-- Search Intern (Typeahead)      --}}
-        {{-- =============================== --}}
-        <div class="mb-6">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
-            <i class="fa-solid fa-user-graduate text-blue-600"></i>
-            Ambil dari Intern (Auto-Fill + Search)
-          </h2>
-
-          <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <div class="relative">
-              <label for="intern_search" class="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                Cari Intern (nama/email/institusi/NIM/telepon)
-              </label>
-              <input type="text" id="intern_search" autocomplete="off"
-                     placeholder="Ketik minimal 2 huruf..."
-                     class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"/>
-              <input type="hidden" id="intern_id" value="">
-
-              <!-- Dropdown hasil -->
-              <div id="intern_results"
-                   class="absolute z-20 mt-1 max-h-72 w-full overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900 hidden">
-                <!-- item hasil akan di-render via JS -->
-              </div>
-
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Pilih salah satu hasil untuk mengisi otomatis Nama, Divisi (dari interest), Tanggal, dan Kota.
-              </p>
-            </div>
-
-            <div>
-              <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-                <div class="text-sm text-gray-600 dark:text-gray-300 space-y-1">
-                  <div><span class="font-medium">Institusi:</span> <span id="preview_institution">—</span></div>
-                  <div><span class="font-medium">Interest:</span> <span id="preview_interest">—</span></div>
-                  <div><span class="font-medium">Periode:</span> <span id="preview_period">—</span></div>
+        {{-- ===== SEKSI 1: Cari Intern ===== --}}
+        <div class="rounded-[12px] border border-[#DCE7E1] bg-white p-5 shadow-sm">
+            <p class="mb-4 text-[11px] font-bold uppercase tracking-[0.08em] text-[#2D8659]">Auto-Fill dari Data Pemagang</p>
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div class="relative">
+                    <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">
+                        Cari Pemagang
+                    </label>
+                    <div class="flex items-center gap-2 rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2">
+                        <svg class="h-4 w-4 shrink-0 text-[#4B5F5A]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="intern_search" autocomplete="off"
+                            placeholder="Ketik minimal 2 huruf..."
+                            class="w-full border-0 bg-transparent text-[13px] text-[#1B3A34] outline-none placeholder:text-[#4B5F5A]">
+                    </div>
+                    <input type="hidden" id="intern_id">
+                    <div id="intern_results"
+                        class="absolute z-20 mt-1 max-h-72 w-full overflow-auto rounded-[10px] border border-[#DCE7E1] bg-white shadow-lg hidden">
+                    </div>
+                    <p class="mt-1 text-[11px] text-[#4B5F5A]">Pilih hasil untuk mengisi otomatis Nama, Divisi, Tanggal, dan Kota.</p>
                 </div>
-              </div>
+                <div class="rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] p-3 text-[13px] space-y-1.5">
+                    <div class="flex gap-2">
+                        <span class="font-semibold text-[#4B5F5A] w-20 shrink-0">Institusi</span>
+                        <span id="preview_institution" class="text-[#1B3A34]">—</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <span class="font-semibold text-[#4B5F5A] w-20 shrink-0">Minat</span>
+                        <span id="preview_interest" class="text-[#1B3A34]">—</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <span class="font-semibold text-[#4B5F5A] w-20 shrink-0">Periode</span>
+                        <span id="preview_period" class="text-[#1B3A34]">—</span>
+                    </div>
+                </div>
             </div>
-          </div>
         </div>
 
-        {{-- =============================== --}}
-        {{-- Data Pribadi                    --}}
-        {{-- =============================== --}}
-        <div class="mb-6">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
-            <i class="fa-solid fa-user text-blue-600"></i>
-            Data Pribadi
-          </h2>
-          <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <div>
-              <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Nama</label>
-              <input type="text" id="name" name="name" value="{{ old('name') }}" required
-                     class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"/>
-              @error('name') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-            </div>
+        {{-- ===== SEKSI 2: Data Sertifikat ===== --}}
+        <div class="rounded-[12px] border border-[#DCE7E1] bg-white p-5 shadow-sm">
+            <p class="mb-4 text-[11px] font-bold uppercase tracking-[0.08em] text-[#2D8659]">Data Sertifikat</p>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 
-            <div>
-              <label for="division" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Divisi</label>
-              <select id="division" name="division" required
-                      class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
-                <option value="">Pilih Divisi</option>
-                @foreach ($divisions as $key => $division)
-                  <option value="{{ $key }}" {{ old('division') == $key ? 'selected' : '' }}>{{ $division }}</option>
-                @endforeach
-              </select>
-              @error('division') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-            </div>
+                <div>
+                    <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Nama <span class="text-[#D32F2F]">*</span></label>
+                    <input type="text" id="name" name="name" value="{{ old('name') }}" required
+                        class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
+                </div>
 
-            <div>
-              <label for="company" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Perusahaan</label>
-              <input type="text" id="company" name="company" value="{{ old('company') }}" required
-                     class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"/>
-              @error('company') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-            </div>
+                <div>
+                    <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Divisi <span class="text-[#D32F2F]">*</span></label>
+                    <select id="division" name="division" required
+                        class="w-full rounded-[8px] border border-[#DCE7E1] bg-white px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
+                        <option value="">Pilih Divisi</option>
+                        @foreach($divisions as $code => $label)
+                        <option value="{{ $code }}" {{ old('division') === $code ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
 
-            <div>
-              <label for="background_image" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Pilih Background</label>
-              <select name="background_image" id="background_image" required
-                      class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
-                <option value="">Pilih Background</option>
-                @foreach ($backgroundFiles as $file)
-                  @if (Str::startsWith($file, 'bg_'))
-                    <option value="{{ $file }}">{{ $file }}</option>
-                  @endif
-                @endforeach
-              </select>
-              @error('background_image') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-            </div>
+                <div>
+                    <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Perusahaan <span class="text-[#D32F2F]">*</span></label>
+                    <input type="text" id="company" name="company" value="{{ old('company') }}" required
+                        class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
+                </div>
 
-            <div class="mb-6">
-              <label for="start_date" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Tanggal Mulai</label>
-              <input type="date" id="start_date" name="start_date" value="{{ old('start_date') }}" required
-                     class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 pr-10 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"/>
-              @error('start_date') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-            </div>
+                <div>
+                    <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Kota <span class="text-[#D32F2F]">*</span></label>
+                    <input type="text" id="city" name="city" value="{{ old('city') }}" required
+                        class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
+                </div>
 
-            <div class="mb-6">
-              <label for="end_date" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Tanggal Selesai</label>
-              <input type="date" id="end_date" name="end_date" value="{{ old('end_date') }}" required
-                     class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 pr-10 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"/>
-              @error('end_date') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-            </div>
+                <div>
+                    <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Brand <span class="text-[#D32F2F]">*</span></label>
+                    <select id="brand" name="brand" required
+                        class="w-full rounded-[8px] border border-[#DCE7E1] bg-white px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
+                        <option value="">Pilih Brand</option>
+                        @foreach($brands as $code => $label)
+                        <option value="{{ $code }}" {{ old('brand') === $code ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
 
-            <div>
-              <label for="city" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Kota</label>
-              <input type="text" id="city" name="city" value="{{ old('city') }}" required
-                     class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"/>
-              @error('city') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-            </div>
+                <div>
+                    <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Nomor Serial</label>
+                    <input type="text" id="serial_number" name="serial_number" value="{{ old('serial_number') }}" readonly
+                        class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2.5 text-[13px] text-[#4B5F5A] outline-none cursor-default">
+                    <p class="mt-1 text-[11px] text-[#4B5F5A]">Dihasilkan otomatis. Angka 000 adalah pratinjau.</p>
+                </div>
 
-            <div>
-              <label for="brand" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Brand <span class="text-xs text-gray-500">(mis. MJ)</span></label>
-              <select id="brand" name="brand" required
-                      class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
-                <option value="">Pilih Brand</option>
-                @foreach ($brands as $key => $brand)
-                  <option value="{{ $key }}" {{ old('brand') == $key ? 'selected' : '' }}>{{ $brand }}</option>
-                @endforeach
-              </select>
-              @error('brand') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-            </div>
+                <div>
+                    <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Tanggal Mulai <span class="text-[#D32F2F]">*</span></label>
+                    <input type="date" id="start_date" name="start_date" value="{{ old('start_date') }}" required
+                        class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
+                </div>
 
-            <div class="md:col-span-2">
-              <label for="serial_number" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Nomor Seri Sertifikat</label>
-              <input type="text" id="serial_number" name="serial_number" value="{{ old('serial_number') }}" readonly
-                     class="mt-1 block w-full rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"/>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Otomatis mengikuti format: NNN/SERT/DIV/COMPANY.BRAND/ROMAWI/TAHUN. Angka NNN hanya pratinjau (<code>000</code>).
-              </p>
-              @error('serial_number') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                <div>
+                    <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Tanggal Selesai <span class="text-[#D32F2F]">*</span></label>
+                    <input type="date" id="end_date" name="end_date" value="{{ old('end_date') }}" required
+                        class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
+                </div>
             </div>
-          </div>
         </div>
 
-        {{-- =============================== --}}
-        {{-- Logo                            --}}
-        {{-- =============================== --}}
-        <div class="mb-6">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
-            <i class="fa-regular fa-images text-blue-600"></i>
-            Logo
-          </h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label for="logo1" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Pilih Logo 1</label>
-              <select name="logo1" id="logo1" required
-                      class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
-                <option value="">Pilih Logo 1</option>
-                @foreach ($logoFiles as $file)
-                  @if (Str::startsWith($file, 'logo_'))
-                    <option value="{{ $file }}">{{ $file }}</option>
-                  @endif
-                @endforeach
-              </select>
-              @error('logo1') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-            </div>
+        {{-- ===== SEKSI 3: Aset Visual ===== --}}
+        <div class="rounded-[12px] border border-[#DCE7E1] bg-white p-5 shadow-sm">
+            <p class="mb-4 text-[11px] font-bold uppercase tracking-[0.08em] text-[#2D8659]">Aset Visual</p>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 
-            <div>
-              <label for="logo2" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Pilih Logo 2</label>
-              <select name="logo2" id="logo2"
-                      class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
-                <option value="">Pilih Logo 2</option>
-                @foreach ($logoFiles as $file)
-                  @if (Str::startsWith($file, 'logo_'))
-                    <option value="{{ $file }}">{{ $file }}</option>
-                  @endif
-                @endforeach
-              </select>
-              @error('logo2') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                <div>
+                    <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Background <span class="text-[#D32F2F]">*</span></label>
+                    <select name="background_image" required
+                        class="w-full rounded-[8px] border border-[#DCE7E1] bg-white px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
+                        <option value="">Pilih file background</option>
+                        @foreach($backgroundFiles as $f)
+                        <option value="{{ $f }}" {{ old('background_image') === $f ? 'selected' : '' }}>{{ $f }}</option>
+                        @endforeach
+                    </select>
+                    <p class="mt-1 text-[11px] text-[#4B5F5A]">Diawali bg_</p>
+                </div>
+
+                <div>
+                    <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Logo 1 <span class="text-[#D32F2F]">*</span></label>
+                    <select name="logo1" required
+                        class="w-full rounded-[8px] border border-[#DCE7E1] bg-white px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
+                        <option value="">Pilih file logo</option>
+                        @foreach($logoFiles as $f)
+                        <option value="{{ $f }}" {{ old('logo1') === $f ? 'selected' : '' }}>{{ $f }}</option>
+                        @endforeach
+                    </select>
+                    <p class="mt-1 text-[11px] text-[#4B5F5A]">Diawali logo_</p>
+                </div>
+
+                <div>
+                    <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Logo 2 <span class="text-[11px] font-normal text-[#4B5F5A]">(opsional)</span></label>
+                    <select name="logo2"
+                        class="w-full rounded-[8px] border border-[#DCE7E1] bg-white px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
+                        <option value="">- Tanpa logo 2 -</option>
+                        @foreach($logoFiles as $f)
+                        <option value="{{ $f }}" {{ old('logo2') === $f ? 'selected' : '' }}>{{ $f }}</option>
+                        @endforeach
+                    </select>
+                </div>
             </div>
-          </div>
         </div>
 
-        {{-- =============================== --}}
-        {{-- Penandatangan                   --}}
-        {{-- =============================== --}}
-        <div class="mb-6">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
-            <i class="fa-solid fa-pen-fancy text-blue-600"></i>
-            Penandatangan
-          </h2>
-          <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <div>
-              <label for="name_signatory1" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Nama Penandatangan 1</label>
-              <input type="text" id="name_signatory1" name="name_signatory1" value="{{ old('name_signatory1') }}"
-                     class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"/>
-              @error('name_signatory1') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-            </div>
-            <div>
-              <label for="name_signatory2" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Nama Penandatangan 2</label>
-              <input type="text" id="name_signatory2" name="name_signatory2" value="{{ old('name_signatory2') }}"
-                     class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"/>
-              @error('name_signatory2') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-            </div>
-            <div>
-              <label for="role1" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Jabatan Penandatangan 1</label>
-              <input type="text" id="role1" name="role1" value="{{ old('role1') }}" required
-                     class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"/>
-              @error('role1') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-            </div>
-            <div>
-              <label for="role2" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Jabatan Penandatangan 2</label>
-              <input type="text" id="role2" name="role2" value="{{ old('role2') }}"
-                     class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"/>
-              @error('role2') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-            </div>
+        {{-- ===== SEKSI 4: Penandatangan ===== --}}
+        <div class="rounded-[12px] border border-[#DCE7E1] bg-white p-5 shadow-sm">
+            <p class="mb-4 text-[11px] font-bold uppercase tracking-[0.08em] text-[#2D8659]">Penandatangan</p>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 
-            <div>
-              <label for="signature_image1" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Pilih Tanda Tangan 1</label>
-              <select name="signature_image1" id="signature_image1" required
-                      class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
-                <option value="">Pilih Tanda Tangan 1</option>
-                @foreach ($signatureFiles as $file)
-                  @if (Str::startsWith($file, 'ttd_'))
-                    <option value="{{ $file }}">{{ $file }}</option>
-                  @endif
-                @endforeach
-              </select>
-              @error('signature_image1') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-            </div>
+                <div>
+                    <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Nama Penandatangan 1 <span class="text-[#D32F2F]">*</span></label>
+                    <input type="text" name="name_signatory1" value="{{ old('name_signatory1') }}" required
+                        class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
+                </div>
 
-            <div>
-              <label for="signature_image2" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Pilih Tanda Tangan 2</label>
-              <select name="signature_image2" id="signature_image2"
-                      class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
-                <option value="">Pilih Tanda Tangan 2</option>
-                @foreach ($signatureFiles as $file)
-                  @if (Str::startsWith($file, 'ttd_'))
-                    <option value="{{ $file }}">{{ $file }}</option>
-                  @endif
-                @endforeach
-              </select>
-              @error('signature_image2') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                <div>
+                    <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Nama Penandatangan 2 <span class="text-[11px] font-normal text-[#4B5F5A]">(opsional)</span></label>
+                    <input type="text" name="name_signatory2" value="{{ old('name_signatory2') }}"
+                        class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
+                </div>
+
+                <div>
+                    <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Jabatan 1 <span class="text-[#D32F2F]">*</span></label>
+                    <input type="text" name="role1" value="{{ old('role1') }}" required
+                        class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
+                </div>
+
+                <div>
+                    <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Jabatan 2 <span class="text-[11px] font-normal text-[#4B5F5A]">(opsional)</span></label>
+                    <input type="text" name="role2" value="{{ old('role2') }}"
+                        class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
+                </div>
+
+                <div>
+                    <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Tanda Tangan 1 <span class="text-[#D32F2F]">*</span></label>
+                    <select name="signature_image1" required
+                        class="w-full rounded-[8px] border border-[#DCE7E1] bg-white px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
+                        <option value="">Pilih file tanda tangan</option>
+                        @foreach($signatureFiles as $f)
+                        <option value="{{ $f }}" {{ old('signature_image1') === $f ? 'selected' : '' }}>{{ $f }}</option>
+                        @endforeach
+                    </select>
+                    <p class="mt-1 text-[11px] text-[#4B5F5A]">Diawali ttd_</p>
+                </div>
+
+                <div>
+                    <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Tanda Tangan 2 <span class="text-[11px] font-normal text-[#4B5F5A]">(opsional)</span></label>
+                    <select name="signature_image2"
+                        class="w-full rounded-[8px] border border-[#DCE7E1] bg-white px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
+                        <option value="">- Tanpa tanda tangan 2 -</option>
+                        @foreach($signatureFiles as $f)
+                        <option value="{{ $f }}" {{ old('signature_image2') === $f ? 'selected' : '' }}>{{ $f }}</option>
+                        @endforeach
+                    </select>
+                </div>
             </div>
-          </div>
         </div>
 
-        <div class="mt-8 flex items-center justify-end gap-3">
-          <a href="{{ route('admin.certificate.index') }}"
-             class="inline-flex items-center rounded-lg bg-gray-200 px-5 py-2.5 text-sm font-semibold text-gray-800 shadow hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
-            <i class="fa-solid fa-arrow-left mr-2"></i>
-            Kembali ke Daftar Sertifikat
-          </a>
-
-          <button type="submit" class="inline-flex items-center rounded-lg bg-gradient-to-r from-indigo-600 to-sky-500 px-5 py-2.5 text-sm font-semibold text-white shadow hover:from-indigo-700 hover:to-sky-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
-            Submit
-          </button>
+        {{-- Actions --}}
+        <div class="flex items-center justify-end gap-3">
+            <a href="{{ route('admin.certificate.index') }}"
+                class="rounded-[9px] border border-[#DCE7E1] bg-white px-5 py-2.5 text-sm font-semibold text-[#4B5F5A] transition hover:bg-[#F4F8F6]">
+                Batal
+            </a>
+            <button type="submit"
+                class="flex items-center gap-2 rounded-[9px] bg-[#2D8659] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1F5F3F]">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+                Buat Sertifikat
+            </button>
         </div>
-      </form>
+
     </div>
-  </div>
+    </form>
 </div>
-
-@endsection
 
 @push('scripts')
 <script>
-  document.addEventListener('DOMContentLoaded', function () {
-    // ====== Elemen Form ======
-    const startDateInput = document.getElementById('start_date');
-    const endDateInput   = document.getElementById('end_date');
-    const elDivision     = document.getElementById('division');
-    const elCompany      = document.getElementById('company');
-    const elBrand        = document.getElementById('brand');
-    const elEndDate      = document.getElementById('end_date');
-    const elSerial       = document.getElementById('serial_number');
+document.addEventListener('DOMContentLoaded', () => {
+    const SEARCH_URL = "{{ route('admin.interns.search') }}";
+    const API_URL    = "{{ route('admin.interns.api') }}";
 
-    // Search UI
-    const SEARCH_URL   = "{{ route('admin.interns.search') }}";
-    const DETAIL_URL   = "{{ route('admin.interns.api') }}"; // optional (dipakai jika ada detail by ?id=)
-    const elSearch     = document.getElementById('intern_search');
-    const elInternId   = document.getElementById('intern_id');
-    const elResults    = document.getElementById('intern_results');
-
-    // Preview box
+    const elSearch   = document.getElementById('intern_search');
+    const elResults  = document.getElementById('intern_results');
+    const elDivision = document.getElementById('division');
+    const elCompany  = document.getElementById('company');
+    const elBrand    = document.getElementById('brand');
+    const elEndDate  = document.getElementById('end_date');
+    const elStartDate= document.getElementById('start_date');
+    const elSerial   = document.getElementById('serial_number');
+    const elName     = document.getElementById('name');
+    const elCity     = document.getElementById('city');
     const prevInst   = document.getElementById('preview_institution');
     const prevInt    = document.getElementById('preview_interest');
     const prevPeriod = document.getElementById('preview_period');
 
-    // ====== Helpers ======
-    const roman = ['', 'I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'];
+    const roman = ['','I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'];
+    const interestMap = {
+        'administration':'ADM','administrasi':'ADM','uiux':'UIUX','ui-ux':'UIUX',
+        'programmer':'PROG','hr':'HR','social-media-specialist':'SMM','photographer':'PV',
+        'videographer':'VID','content-writer':'CW','marketing-and-sales':'MS',
+        'graphic-designer':'CD','digital-marketing':'DM','public-relation':'PR',
+        'tiktok-creator':'TC','content-planner':'CP','project-manager':'PM',
+        'welding':'LAS','animation':'ANIM',
+    };
 
     function companyCode(raw) {
-      if (!raw) return '';
-      let t = (raw || '').toUpperCase();
-      t = t.replace(/\b(PT|CV|CO\.?|LTD\.?|INC\.?|TBK|PERSERO)\b\.?/gi, ' ').trim();
-      const first = (t.split(/\s+/)[0] || '').replace(/[^A-Z0-9]/g, '');
-      return first || 'COMP';
+        return ((raw||'').toUpperCase().replace(/\b(PT|CV|CO\.?|LTD\.?|INC\.?|TBK|PERSERO)\b\.?/gi,' ').trim().split(/\s+/)[0]||'').replace(/[^A-Z0-9]/g,'') || 'COMP';
     }
 
-    function monthToRoman(dateStr){
-      if (!dateStr) return '';
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return '';
-      const m = d.getMonth() + 1;
-      return roman[m] || '';
+    function buildSerial() {
+        const div  = (elDivision?.value||'').toUpperCase().trim() || 'DIV';
+        const comp = companyCode(elCompany?.value||'');
+        const brand= (elBrand?.value||'').toUpperCase().trim();
+        const d    = new Date(elEndDate?.value||'');
+        const m    = isNaN(d) ? 'I' : roman[d.getMonth()+1];
+        const y    = isNaN(d) ? new Date().getFullYear() : d.getFullYear();
+        elSerial.value = `000/SERT/${div}/${comp}${brand?'.'+brand:''}/${m}/${y}`;
     }
 
-    function yearFrom(dateStr){
-      if (!dateStr) return '';
-      const d = new Date(dateStr);
-      return isNaN(d.getTime()) ? '' : d.getFullYear();
-    }
+    ['change','input'].forEach(ev => {
+        elDivision?.addEventListener(ev, buildSerial);
+        elCompany?.addEventListener(ev, buildSerial);
+        elBrand?.addEventListener(ev, buildSerial);
+        elEndDate?.addEventListener(ev, buildSerial);
+    });
+    buildSerial();
 
-    function buildSerialPreview(){
-      const divCode = (elDivision?.value || '').toUpperCase().trim();
-      const comp    = companyCode(elCompany?.value || '');
-      const brand   = (elBrand?.value || '').toUpperCase().trim();
-      const romawi  = monthToRoman(elEndDate?.value || '');
-      const tahun   = yearFrom(elEndDate?.value || '');
-      const runDemo = '000';
-      elSerial.value = [runDemo, 'SERT', (divCode || 'DIV'), (comp || 'COMP') + (brand ? '.'+brand : ''), (romawi || 'I'), (tahun || new Date().getFullYear())].join('/');
-    }
-
-    function interestToDivision(interestRaw){
-      if(!interestRaw) return null;
-      const key = String(interestRaw).toLowerCase().replace(/\//g,'-').trim();
-      const map = {
-        'administration':'ADM','administrasi':'ADM',
-        'uiux':'UIUX','ui-ux':'UIUX','ui/ux':'UIUX',
-        'programmer':'PROG','programmer (front end / backend)':'PROG',
-        'hr':'HR','human resources (hr)':'HR',
-        'social-media-specialist':'SMM','spesialis media sosial':'SMM',
-        'photographer':'PV','videographer':'VID','fotografer':'PV','videografer':'VID',
-        'content-writer':'CW','penulis konten':'CW',
-        'marketing-and-sales':'MS','penjualan & pemasaran':'MS','penjualan dan pemasaran':'MS',
-        'graphic-designer':'CD','desainer grafis':'CD',
-        'digital-marketing':'DM','pemasaran digital':'DM',
-        'public-relation':'PR','public relations (marcomm)':'PR','hubungan masyarakat (marcomm)':'PR',
-        'tiktok-creator':'TC','kreator tiktok':'TC',
-        'content-planner':'CP','perencana konten':'CP',
-        'project-manager':'PM','manajer proyek':'PM',
-        'welding':'LAS','pengelasan':'LAS',
-        'animation':'ANIM','animasi':'ANIM',
-      };
-      return map[key] ?? null;
-    }
-
-    // ====== Typeahead (AJAX) ======
-    let debounceTimer = null;
-    let activeIndex = -1;
-    let currentItems = [];
-
-    function hideResults() {
-      elResults.classList.add('hidden');
-      elResults.innerHTML = '';
-      activeIndex = -1;
-      currentItems = [];
-    }
-
-    function renderResults(items) {
-      currentItems = items;
-      activeIndex = -1;
-      if (!items.length) {
-        elResults.innerHTML = `<div class="px-3 py-2 text-sm text-gray-500 dark:text-gray-300">Tidak ada hasil</div>`;
-        elResults.classList.remove('hidden');
-        return;
-      }
-      elResults.innerHTML = items.map((it, idx) => {
-        // it.text sudah berisi "Nama (DIV)" dari controller
-        return `
-          <button type="button"
-            data-index="${idx}"
-            class="intern-item w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 focus:bg-gray-100 dark:focus:bg-gray-800">
-            <div class="text-sm font-medium text-gray-800 dark:text-gray-100">${it.text}</div>
-          </button>
-        `;
-      }).join('');
-      elResults.classList.remove('hidden');
-    }
-
-    async function fetchDetailsAndFill(id, fallback) {
-      try {
-        const url = `${DETAIL_URL}?id=${encodeURIComponent(id)}`;
-        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-        const json = await res.json();
-
-        // Terima beberapa kemungkinan bentuk payload:
-        // 1) { data: { ...fields } }
-        // 2) { data: [ { ...fields } ] }
-        // 3) { result: { ...fields } }  (fallback)
-        const cand =
-          (json && json.data && !Array.isArray(json.data) && json.data) ||
-          (json && Array.isArray(json.data) && json.data[0]) ||
-          (json && json.result) ||
-          null;
-
-        if (!cand) {
-          // fallback minimal
-          if (fallback) fallback();
-          return;
+    elStartDate?.addEventListener('change', () => {
+        if (elEndDate.value && new Date(elEndDate.value) < new Date(elStartDate.value)) {
+            elEndDate.value = elStartDate.value;
         }
-
-        // Ambil field aman
-        const name = cand.fullname || cand.name || '';
-        const start = cand.start_date || '';
-        const end   = cand.end_date || '';
-        const city  = cand.current_city || cand.city || '';
-        const inst  = cand.institution_name || cand.institution || '';
-        const interest = cand.internship_interest || cand.interest || '';
-
-        // Fill preview
-        prevInst.textContent   = inst || '—';
-        prevInt.textContent    = interest || '—';
-        prevPeriod.textContent = (start && end) ? `${start} s/d ${end}` : '—';
-
-        // Fill form field
-        const elName = document.getElementById('name');
-        const elCity = document.getElementById('city');
-        if (elName && name) elName.value = name;
-        if (startDateInput && start) {
-          startDateInput.value = start;
-          endDateInput.min = start;
-        }
-        if (endDateInput && end) endDateInput.value = end;
-        if (elCity && city) elCity.value = city;
-
-        // Division dari interest (kalau division dari search tidak ada)
-        if (!elDivision.value) {
-          const code = interestToDivision(interest);
-          if (code) {
-            elDivision.value = code;
-            elDivision.dispatchEvent(new Event('change', {bubbles:true}));
-          }
-        }
-
-        buildSerialPreview();
-      } catch (e) {
-        console.error(e);
-        if (fallback) fallback();
-      }
-    }
-
-    function pickItem(item) {
-      elInternId.value = item.id;
-
-      // text contoh: "Budi Santoso (PROG)" → ambil nama tanpa "(..)"
-      const nameOnly = String(item.text || '').replace(/\s*\([^)]+\)\s*$/, '').trim();
-      const division = item.division || (item.text.match(/\(([^)]+)\)/)?.[1] || '').trim();
-
-      // Set minimal (tanpa detail)
-      const elName = document.getElementById('name');
-      if (elName && nameOnly) elName.value = nameOnly;
-      if (division) {
-        elDivision.value = division;
-        elDivision.dispatchEvent(new Event('change', {bubbles:true}));
-      }
-
-      // Reset preview sementara
-      prevInst.textContent   = '—';
-      prevInt.textContent    = division || '—';
-      prevPeriod.textContent = '—';
-
-      // Coba ambil detail; kalau gagal, pakai fallback: update serial saja
-      fetchDetailsAndFill(item.id, () => { buildSerialPreview(); });
-
-      elSearch.value = nameOnly;
-      hideResults();
-    }
-
-    elSearch.addEventListener('input', function () {
-      const term = this.value.trim();
-      if (term.length < 2) {
-        hideResults();
-        return;
-      }
-
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(async () => {
-        try {
-          // default: hanya completed=true (sesuai controller-mu)
-          const url = `${SEARCH_URL}?q=${encodeURIComponent(term)}&completed=1`;
-          const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-          const json = await res.json();
-          const items = (json && Array.isArray(json.results)) ? json.results : [];
-          renderResults(items);
-        } catch (e) {
-          console.error(e);
-          hideResults();
-        }
-      }, 250);
+        elEndDate.min = elStartDate.value;
+        buildSerial();
     });
 
-    elResults.addEventListener('click', function (e) {
-      const btn = e.target.closest('.intern-item');
-      if (!btn) return;
-      const idx = Number(btn.getAttribute('data-index'));
-      const item = currentItems[idx];
-      if (item) pickItem(item);
-    });
+    // Typeahead
+    let timer, items = [], active = -1;
 
-    // Navigasi keyboard (↑ ↓ Enter Esc)
-    elSearch.addEventListener('keydown', function (e) {
-      if (elResults.classList.contains('hidden')) return;
+    function hide() { elResults.classList.add('hidden'); elResults.innerHTML = ''; items = []; active = -1; }
 
-      const max = currentItems.length - 1;
-
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        activeIndex = Math.min(max, activeIndex + 1);
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        activeIndex = Math.max(0, activeIndex - 1);
-      } else if (e.key === 'Enter') {
-        if (activeIndex >= 0 && currentItems[activeIndex]) {
-          e.preventDefault();
-          pickItem(currentItems[activeIndex]);
-        }
-      } else if (e.key === 'Escape') {
-        hideResults();
-        return;
-      } else {
-        return;
-      }
-
-      const nodes = elResults.querySelectorAll('.intern-item');
-      nodes.forEach((n, i) => {
-        if (i === activeIndex) {
-          n.classList.add('bg-gray-100', 'dark:bg-gray-800');
-          n.scrollIntoView({ block: 'nearest' });
+    function render(list) {
+        items = list; active = -1;
+        if (!list.length) {
+            elResults.innerHTML = `<div class="px-3 py-2 text-[13px] text-[#4B5F5A]">Tidak ada hasil</div>`;
         } else {
-          n.classList.remove('bg-gray-100', 'dark:bg-gray-800');
+            elResults.innerHTML = list.map((it, i) =>
+                `<button type="button" data-i="${i}"
+                    class="intern-item w-full text-left px-3 py-2.5 text-[13px] hover:bg-[#F4F8F6] border-b border-[#DCE7E1] last:border-0">
+                    <span class="font-semibold text-[#1B3A34]">${it.text}</span>
+                </button>`
+            ).join('');
         }
-      });
-    });
-
-    document.addEventListener('click', function (e) {
-      if (!elResults.contains(e.target) && e.target !== elSearch) {
-        hideResults();
-      }
-    });
-
-    // ====== Serial Preview & Date Min ======
-    ['change','input'].forEach(evt => {
-      elDivision?.addEventListener(evt, buildSerialPreview);
-      elCompany?.addEventListener(evt, buildSerialPreview);
-      elBrand?.addEventListener(evt, buildSerialPreview);
-      elEndDate?.addEventListener(evt, buildSerialPreview);
-    });
-
-    buildSerialPreview();
-
-    startDateInput.addEventListener('change', function () {
-      const startDate = new Date(startDateInput.value);
-      if(!isNaN(startDate.getTime())){
-        endDateInput.min = startDate.toISOString().split('T')[0];
-        if (endDateInput.value && new Date(endDateInput.value) < startDate) {
-          endDateInput.value = endDateInput.min;
-        }
-      }
-      buildSerialPreview();
-    });
-
-    if (startDateInput.value) {
-      const startDate = new Date(startDateInput.value);
-      if(!isNaN(startDate.getTime())){
-        endDateInput.min = startDate.toISOString().split('T')[0];
-      }
+        elResults.classList.remove('hidden');
     }
-  });
+
+    async function fetchDetail(id) {
+        try {
+            const res = await fetch(`${API_URL}?scope=all&search=`, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
+        } catch(e) {}
+    }
+
+    function pick(it) {
+        const nameOnly = String(it.text||'').replace(/\s*\([^)]+\)\s*$/,'').trim();
+        if (elName && nameOnly) elName.value = nameOnly;
+        if (it.division && elDivision) { elDivision.value = it.division; elDivision.dispatchEvent(new Event('change')); }
+        prevInt.textContent = it.division || '—';
+        prevInst.textContent = '—'; prevPeriod.textContent = '—';
+        elSearch.value = nameOnly;
+        hide();
+        // fetch detail
+        fetch(`${API_URL}?scope=all&per_page=1000&search=${encodeURIComponent(nameOnly)}`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin'
+        }).then(r=>r.json()).then(json => {
+            const row = (json.data||[]).find(r => r.id == it.id);
+            if (!row) return;
+            prevInst.textContent   = row.institution_name || '—';
+            prevInt.textContent    = row.internship_interest || it.division || '—';
+            prevPeriod.textContent = (row.start_date && row.end_date) ? `${row.start_date} s/d ${row.end_date}` : '—';
+            if (row.start_date && elStartDate) { elStartDate.value = row.start_date; elEndDate.min = row.start_date; }
+            if (row.end_date && elEndDate) { elEndDate.value = row.end_date; buildSerial(); }
+            if (row.current_city && elCity) elCity.value = row.current_city;
+        }).catch(()=>{});
+    }
+
+    elSearch.addEventListener('input', () => {
+        const q = elSearch.value.trim();
+        if (q.length < 2) { hide(); return; }
+        clearTimeout(timer);
+        timer = setTimeout(async () => {
+            try {
+                const res = await fetch(`${SEARCH_URL}?q=${encodeURIComponent(q)}&completed=0`, { headers: { 'Accept': 'application/json' } });
+                const json = await res.json();
+                render(Array.isArray(json.results) ? json.results : []);
+            } catch(e) { hide(); }
+        }, 250);
+    });
+
+    elResults.addEventListener('click', e => {
+        const btn = e.target.closest('.intern-item');
+        if (btn) pick(items[+btn.dataset.i]);
+    });
+
+    elSearch.addEventListener('keydown', e => {
+        if (elResults.classList.contains('hidden')) return;
+        if (e.key === 'ArrowDown') { e.preventDefault(); active = Math.min(items.length-1, active+1); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); active = Math.max(0, active-1); }
+        else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); pick(items[active]); return; }
+        else if (e.key === 'Escape') { hide(); return; }
+        else return;
+        elResults.querySelectorAll('.intern-item').forEach((n,i) => {
+            n.classList.toggle('bg-[#F4F8F6]', i === active);
+        });
+    });
+
+    document.addEventListener('click', e => { if (!e.target.closest('#intern_search') && !e.target.closest('#intern_results')) hide(); });
+});
 </script>
 @endpush
+
+@endsection

@@ -39,6 +39,8 @@ class InternshipRegistration extends Model
         'current_activities', 'boarding_info', 'family_status',
         'parent_wa_contact', 'social_media_instagram',
         'internship_status',
+        'is_draft',
+        'draft_saved_at',
     ];
 
     /**
@@ -48,8 +50,9 @@ class InternshipRegistration extends Model
      * - Simpan created_at/updated_at saja sebagai datetime.
      */
     protected $casts = [
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
+        'created_at'     => 'datetime',
+        'updated_at'     => 'datetime',
+        'draft_saved_at' => 'datetime',
     ];
 
     /* ============================================================

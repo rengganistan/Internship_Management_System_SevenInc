@@ -84,36 +84,43 @@ class LoaController extends Controller
         // Get the LOA settings (e.g., logo, signature)
         $loaSettings = LoaSettings::first();
 
-        // Prepare rows with intern data
-        $rows = $this->buildRows([$intern]);
-
-        // Check if user submitted the table or not
+        // Kalau admin tidak isi kolom manual, langsung pakai data dari registrasi
         $loaNamaSiswa = $request->input('loa_nama_siswa', []);
-        $loaNimNis = $request->input('loa_nim_nis', []);
-        $loaJurusan = $request->input('loa_jurusan', []);
-        $loaInstansi = $request->input('loa_instansi', []);
-        $loaPeriode = $request->input('loa_periode', []);
-        $loaKontak = $request->input('loa_kontak', []);
 
-        // Auto-fill the fields if they are empty, using internship_registration data
-        $loaNamaSiswa = $this->autoFillData($loaNamaSiswa, $intern->fullname);
-        $loaNimNis = $this->autoFillData($loaNimNis, $intern->student_id);
-        $loaJurusan = $this->autoFillData($loaJurusan, $intern->study_program);
-        $loaInstansi = $this->autoFillData($loaInstansi, $intern->institution_name);
-        $loaPeriode = $this->autoFillData($loaPeriode, Carbon::parse($intern->start_date)->format('d F Y') . ' - ' . Carbon::parse($intern->end_date)->format('d F Y'));
-        $loaKontak = $this->autoFillData($loaKontak, $intern->phone_number);
+        if (empty($loaNamaSiswa)) {
+            // Tidak ada input manual → pakai buildRows() langsung
+            $rows = $this->buildRows([$intern]);
+        } else {
+            // Ada input manual dari form → merge dengan data registrasi
+            $loaNimNis    = $request->input('loa_nim_nis', []);
+            $loaJurusan   = $request->input('loa_jurusan', []);
+            $loaInstansi  = $request->input('loa_instansi', []);
+            $loaPeriode   = $request->input('loa_periode', []);
+            $loaKontak    = $request->input('loa_kontak', []);
 
-        // Prepare rows with the updated values
-        $rows = array_map(function ($index) use ($loaNamaSiswa, $loaNimNis, $loaJurusan, $loaInstansi, $loaPeriode, $loaKontak) {
-            return [
-                'nama_siswa' => $loaNamaSiswa[$index] ?? '',
-                'nim_nis' => $loaNimNis[$index] ?? '',
-                'jurusan' => $loaJurusan[$index] ?? '',
-                'instansi' => $loaInstansi[$index] ?? '',
-                'periode' => $loaPeriode[$index] ?? '',
-                'kontak' => $loaKontak[$index] ?? '',
-            ];
-        }, array_keys($loaNamaSiswa));
+            $loaNamaSiswa = $this->autoFillData($loaNamaSiswa, $intern->fullname);
+            $loaNimNis    = $this->autoFillData($loaNimNis,    $intern->student_id);
+            $loaJurusan   = $this->autoFillData($loaJurusan,   $intern->study_program);
+            $loaInstansi  = $this->autoFillData($loaInstansi,  $intern->institution_name);
+            $loaPeriode   = $this->autoFillData($loaPeriode,
+                Carbon::parse($intern->start_date)->format('d F Y') . ' - ' .
+                Carbon::parse($intern->end_date)->format('d F Y')
+            );
+            $loaKontak = $this->autoFillData($loaKontak, $intern->phone_number);
+
+            $rows = array_map(function ($index) use (
+                $loaNamaSiswa, $loaNimNis, $loaJurusan, $loaInstansi, $loaPeriode, $loaKontak
+            ) {
+                return [
+                    'nama_siswa' => $loaNamaSiswa[$index] ?? '',
+                    'nim_nis'    => $loaNimNis[$index]    ?? '',
+                    'jurusan'    => $loaJurusan[$index]   ?? '',
+                    'instansi'   => $loaInstansi[$index]  ?? '',
+                    'periode'    => $loaPeriode[$index]   ?? '',
+                    'kontak'     => $loaKontak[$index]    ?? '',
+                ];
+            }, array_keys($loaNamaSiswa));
+        }
 
         try {
             // Read the image files and encode them to base64
@@ -164,18 +171,31 @@ class LoaController extends Controller
             $publicUrl = asset('storage/' . $path);
 
             // Log the document download
+            // Kalau admin yang generate → simpan dengan user_id PEMAGANG supaya masuk ke dokumen pemagang
+            $targetUserId = ($user->role === 'admin' && $intern->user_id)
+                ? $intern->user_id
+                : $user->id;
+
             DocumentDownload::create([
-                'user_id' => $user->id,
-                'doc_type' => DocumentDownload::TYPE_LOA,
-                'file_path' => $path,
-                'file_url' => $publicUrl,
-                'downloaded_at' => now(),
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'status' => 'success',
+                'user_id'                    => $targetUserId,
+                'internship_registration_id' => $intern->id,
+                'doc_type'                   => DocumentDownload::TYPE_LOA,
+                'file_path'                  => $path,
+                'file_url'                   => $publicUrl,
+                'downloaded_at'              => now(),
+                'ip_address'                 => $request->ip(),
+                'user_agent'                 => $request->userAgent(),
+                'status'                     => 'success',
             ]);
 
             // Return the PDF for download
+            // Kalau admin → tidak perlu download, cukup simpan dan kasih notifikasi
+            if ($user->role === 'admin') {
+                return back()->with('success',
+                    "✅ LOA untuk <strong>{$intern->fullname}</strong> berhasil dibuat dan sudah tersedia di halaman Dokumen pemagang."
+                );
+            }
+
             return response()->download(storage_path("app/public/{$path}"));
         } catch (\Throwable $e) {
             // Handle error and log the exception
@@ -261,16 +281,32 @@ class LoaController extends Controller
             Storage::disk('public')->put($path, $pdf->output());
             $publicUrl = asset('storage/' . $path);
 
-            DocumentDownload::create([
-                'user_id' => $user->id,
-                'doc_type' => DocumentDownload::TYPE_LOA,
-                'file_path' => $path,
-                'file_url' => $publicUrl,
-                'downloaded_at' => now(),
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'status' => 'success',
-            ]);
+            // Simpan record ke document_downloads untuk setiap intern secara individual
+            foreach ($interns as $intern) {
+                $targetUserId = ($user->role === 'admin' && $intern->user_id)
+                    ? $intern->user_id
+                    : $user->id;
+
+                DocumentDownload::create([
+                    'user_id'                    => $targetUserId,
+                    'internship_registration_id' => $intern->id,
+                    'doc_type'                   => DocumentDownload::TYPE_LOA,
+                    'file_path'                  => $path,
+                    'file_url'                   => $publicUrl,
+                    'downloaded_at'              => now(),
+                    'ip_address'                 => $request->ip(),
+                    'user_agent'                 => $request->userAgent(),
+                    'status'                     => 'success',
+                ]);
+            }
+
+            // Admin → simpan saja, jangan download
+            if ($user->role === 'admin') {
+                $names = $interns->pluck('fullname')->implode(', ');
+                return back()->with('success',
+                    "✅ LOA untuk <strong>{$interns->count()} pemagang</strong> ({$names}) berhasil dibuat dan sudah tersedia di halaman Dokumen masing-masing pemagang."
+                );
+            }
 
             return response()->download(storage_path("app/public/{$path}"));
         } catch (\Throwable $e) {
@@ -327,8 +363,16 @@ class LoaController extends Controller
     protected function ensureCanAccessCompletedDocs($user, $intern): void
     {
         $status = strtolower((string)($intern->internship_status ?? ''));
-        if (!($user->role === 'pemagang' && $intern->user_id === $user->id && $status === 'completed')) {
+
+        // Pastikan data milik user yang login
+        if ($intern->user_id !== $user->id) {
             abort(403, 'Anda tidak berhak membuat/akses LOA untuk data ini.');
+        }
+
+        // LOA tersedia untuk pemagang yang sudah accepted, active, atau completed
+        $allowed = ['accepted', 'active', 'completed'];
+        if (!($user->role === 'pemagang' && in_array($status, $allowed))) {
+            abort(403, 'LOA hanya tersedia setelah pendaftaran diterima.');
         }
     }
 

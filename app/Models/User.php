@@ -54,8 +54,12 @@ class User extends Authenticatable
 
     public function internshipRegistration(): HasOne
     {
-        // sesuaikan namespace modelmu
         return $this->hasOne(\App\Models\InternshipRegistration::class, 'user_id');
+    }
+
+    public function downloads(): HasMany
+    {
+        return $this->hasMany(\App\Models\Download::class, 'user_id');
     }
 
     public function dailyReports(): HasMany
@@ -76,14 +80,9 @@ class User extends Authenticatable
     // Event to listen to when a user's status changes
     protected static function booted()
     {
-        static::updated(function ($user) {
-            // internship_status bukan kolom di tabel users,
-            // status magang ada di InternshipRegistration.
-            // Cukup cek role saja; member card dibuat dari InternController saat status berubah.
-            if ($user->role === 'pemagang') {
-                $user->createMemberCard();
-            }
-        });
+        // createMemberCard() sekarang dipanggil secara eksplisit dari InternController
+        // saat status berubah ke active atau completed — bukan otomatis di sini.
+        // Ini mencegah kartu dibuat saat status masih 'accepted'.
     }
 
     public function createMemberCard()
@@ -93,26 +92,54 @@ class User extends Authenticatable
         if (!$intern || !$intern->start_date) return;
 
         $angkatanYear = \Carbon\Carbon::parse($intern->start_date)->format('Y');
-        $angkatan = substr($angkatanYear, -2);
-        $idPadded = str_pad($this->id, 3, '0', STR_PAD_LEFT);
-        $brand = $intern->brand ?? 'magangjogja.com';
-        $prefix = $this->getBrandPrefix($brand);
-        $code = "{$prefix}{$angkatan}{$idPadded}";
+        $angkatan     = substr($angkatanYear, -2);
+        $idPadded     = str_pad($this->id, 3, '0', STR_PAD_LEFT);
+        $brand        = $intern->brand ?? 'magangjogja.com';
+        $prefix       = $this->getBrandPrefix($brand);
+        $code         = "{$prefix}{$angkatan}{$idPadded}";
 
-        // Cari download yg belum ada kode tapi namanya cocok
-        $download = \App\Models\Download::whereNull('code')
+        // Cari berdasarkan code dulu (idempoten: jangan duplikat)
+        $existing = \App\Models\Download::where('code', $code)->first();
+
+        if ($existing) {
+            // Sudah ada, update data terbaru saja
+            $existing->update([
+                'name'     => $this->name,
+                'angkatan' => $angkatanYear,
+                'instansi' => $intern->institution_name,
+                'brand'    => $brand,
+                'user_id'  => $this->id,
+            ]);
+            return;
+        }
+
+        // Cari record lama tanpa code tapi nama cocok
+        $orphan = \App\Models\Download::whereNull('code')
             ->where('name', $this->name)
             ->first();
 
-        if ($download) {
-            // Update saja jika sudah ada
-            $download->update([
-                'code' => $code,
+        if ($orphan) {
+            $orphan->update([
+                'code'     => $code,
                 'angkatan' => $angkatanYear,
                 'instansi' => $intern->institution_name,
-                'brand' => $brand,
+                'brand'    => $brand,
+                'user_id'  => $this->id,
             ]);
+            return;
         }
+
+        // Tidak ada record sama sekali → buat baru otomatis
+        \App\Models\Download::create([
+            'code'           => $code,
+            'name'           => $this->name,
+            'user_id'        => $this->id,
+            'angkatan'       => $angkatanYear,
+            'instansi'       => $intern->institution_name,
+            'brand'          => $brand,
+            'model_url'      => null, // admin bisa isi nanti lewat halaman edit membercard
+            'has_downloaded' => false,
+        ]);
     }
 
 

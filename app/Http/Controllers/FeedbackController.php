@@ -10,9 +10,18 @@ class FeedbackController extends Controller
 {
     public function index()
     {
-        $feedbacks = DB::table('feedback')->join('users', 'feedback.user_id', '=', 'users.id')
+        $feedbacks = DB::table('feedback')
+            ->join('users', 'feedback.user_id', '=', 'users.id')
             ->select('feedback.id', 'feedback.feedback', 'users.name', 'feedback.created_at')
-            ->get();
+            ->orderByDesc('feedback.created_at')
+            ->get()
+            ->map(function ($row) {
+                $row->created_at = $row->created_at
+                    ? \Carbon\Carbon::parse($row->created_at)
+                    : null;
+                return $row;
+            });
+
         return view('admin.feedback.index', compact('feedbacks'));
     }
 
@@ -33,13 +42,13 @@ class FeedbackController extends Controller
             'updated_at' => now(),
         ]);
 
-        return redirect()->route('feedback.index')->with('success', 'Feedback berhasil diperbarui!');
+        return redirect()->route('admin.feedback.index')->with('success', 'Feedback berhasil diperbarui!');
     }
 
     public function destroy($id)
     {
         DB::table('feedback')->where('id', $id)->delete();
-        return redirect()->route('feedback.index')->with('success', 'Feedback berhasil dihapus!');
+        return redirect()->route('admin.feedback.index')->with('success', 'Feedback berhasil dihapus!');
     }
 
 
@@ -52,11 +61,12 @@ class FeedbackController extends Controller
 
         $user = Auth::user();
 
-        // Simpan ke tabel feedback (buat tabelnya dulu jika belum ada)
+        // Simpan ke tabel feedback
         DB::table('feedback')->insert([
-            'user_id'   => $user->id,
-            'feedback'  => $request->feedback,
-            'created_at'=> now(),
+            'user_id'    => $user->id,
+            'feedback'   => $request->feedback,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         return back()->with('success', 'Terima kasih atas umpan balik Anda!');

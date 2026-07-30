@@ -391,22 +391,27 @@ class InternController extends Controller
         $user = $intern->user;
         if (!$user) return;
 
-        // syarat role "pemagang": user sudah submit (punya record IR) & status "accepted"
-        if ($intern->internship_status === IR::STATUS_ACCEPTED) {
-            // beri role pemagang (jaga idempotensi)
+        // Status yang memberikan role "pemagang": accepted, active, completed
+        $activePemagangStatuses = [
+            IR::STATUS_ACCEPTED,
+            IR::STATUS_ACTIVE,
+            IR::STATUS_COMPLETED,
+        ];
+
+        if (in_array($intern->internship_status, $activePemagangStatuses)) {
+            // Beri role pemagang (jaga idempotensi)
             if (mb_strtolower($user->role ?? '') !== 'pemagang') {
                 $user->role = 'pemagang';
                 $user->save();
             }
-        } else {
-            // kebijakan saat status berubah dari accepted ke selainnya:
-            // Kalau mau cabut role, tentukan fallback (mis: 'user').
-            // Kalau TIDAK mau dicabut (tetap pemagang), hapus blok ini.
+        } elseif (in_array($intern->internship_status, [IR::STATUS_EXITED, IR::STATUS_REJECTED])) {
+            // Hanya cabut role bila status keluar atau ditolak
             if (mb_strtolower($user->role ?? '') === 'pemagang') {
-                $user->role = 'user'; // sesuaikan fallback default project kamu
+                $user->role = 'user';
                 $user->save();
             }
         }
+        // Status waiting/pending: jangan ubah role
     }
 
     public function updateStatus(Request $request, $id)
@@ -425,16 +430,33 @@ class InternController extends Controller
         // Mengupdate status internship
         $intern->internship_status = $newStatus;
 
-        // Pastikan tidak ada batasan untuk admin mengubah status
         // Admin bebas mengubah status apapun tanpa perlu pengecekan status sebelumnya
 
         // Simpan perubahan status
         $intern->save();
-        if (in_array($intern->internship_status, ['active', 'completed', 'accepted'])) {
+
+        // Sinkronkan role user sesuai status baru
+        $this->syncPemagangRole($intern);
+
+        // Buat membercard hanya saat status active atau completed
+        if (in_array($intern->internship_status, [IR::STATUS_ACTIVE, IR::STATUS_COMPLETED])) {
             $intern->user?->createMemberCard();
         }
 
-        // Redirect dengan pesan sukses
+        // Kirim email notifikasi jika berubah ke accepted
+        if ($oldStatus !== IR::STATUS_ACCEPTED && $intern->internship_status === IR::STATUS_ACCEPTED) {
+            $this->sendAcceptedEmail($intern);
+        }
+
+        // Return JSON untuk AJAX (fetch), redirect untuk request biasa
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'ok'     => true,
+                'status' => $intern->internship_status,
+                'name'   => $intern->fullname,
+            ]);
+        }
+
         return redirect()->route('admin.interns.index')->with('success', 'Status berhasil diperbarui!');
     }
 
@@ -465,7 +487,9 @@ class InternController extends Controller
                 $old = $intern->internship_status;
                 $intern->internship_status = $validated['internship_status'];
                 $intern->save();
-                if (in_array($intern->internship_status, ['active', 'completed', 'accepted'])) {
+
+                // Buat membercard hanya saat status active atau completed
+                if (in_array($intern->internship_status, [IR::STATUS_ACTIVE, IR::STATUS_COMPLETED])) {
                     $intern->user?->createMemberCard();
                 }
                 $this->syncPemagangRole($intern);

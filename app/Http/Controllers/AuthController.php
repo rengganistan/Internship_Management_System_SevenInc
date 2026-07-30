@@ -13,7 +13,11 @@ class AuthController extends Controller
     public function showRegisterForm()
     {
         if (auth()->check()) {
-            return redirect()->route('user.dashboard'); // Redirect ke dashboard jika sudah login
+            $role = auth()->user()->role;
+            if ($role === 'admin') {
+                return redirect()->route('admin.dashboard.index');
+            }
+            return redirect()->route('pemagang.dashboard');
         }
         return view('auth.admin-register');
     }
@@ -44,7 +48,11 @@ class AuthController extends Controller
     public function showLoginForm()
     {
         if (auth()->check()) {
-            return redirect()->route('user.dashboard'); // Redirect ke dashboard jika sudah login
+            $role = auth()->user()->role;
+            if ($role === 'admin') {
+                return redirect()->route('admin.dashboard.index');
+            }
+            return redirect()->route('pemagang.dashboard');
         }
         return view('auth.admin-login');
     }
@@ -66,29 +74,15 @@ class AuthController extends Controller
             // Regenerasi session untuk keamanan
             $request->session()->regenerate();
 
-            // Cek apakah pengguna adalah admin
-            if (auth()->user()->role === 'admin') {
-                // Jika admin, arahkan ke admin dashboard
+            $user = auth()->user();
+
+            // Admin → admin dashboard
+            if ($user->role === 'admin') {
                 return redirect()->route('admin.dashboard.index');
             }
 
-            // Cek status pendaftaran magang
-            $userId = auth()->id();
-            $registration = \App\Models\InternshipRegistration::where('user_id', $userId)
-                ->latest('id')
-                ->first();
-
-            if ($registration) {
-                // Cek status magang
-                if (auth()->user()->role === 'pemagang' && $registration->internship_status === 'active') {
-                    return redirect()->route('user.dashboard-active');
-                } elseif (auth()->user()->role === 'pemagang' && $registration->internship_status === 'completed') {
-                    return redirect()->route('user.dashboard.completed');
-                }
-            }
-
-            // Jika belum mengisi form pendaftaran magang
-            return redirect()->route('user.dashboard');
+            // Semua role selain admin (user, pemagang) → pemagang dashboard baru
+            return redirect()->route('pemagang.dashboard');
         }
 
         // Jika login gagal
