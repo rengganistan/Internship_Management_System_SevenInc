@@ -277,8 +277,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin', 'preve
     Route::post('/certificate/external/bulk-download', [CertificateController::class, 'externalBulkDownloadFromForm'])
         ->name('certificate.external.bulkDownload');
 
-    // Resource Certificate -> admin.certificate.*
-    Route::resource('certificate', CertificateController::class);
+    // Resource Certificate → sudah dideklarasikan di atas (baris awal admin group)
+    // Route::resource('certificate', CertificateController::class); // dihapus duplikasi
 
     // Upload assets (bg/logo/ttd) -> admin.uploads.*
     Route::post('/uploads/backgrounds', [CertificateController::class, 'uploadBackground'])->name('uploads.backgrounds.store');
