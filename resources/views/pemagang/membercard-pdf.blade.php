@@ -3,12 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <style>
+    @page {
+      size: 85.6mm 53.98mm;
+      margin: 0;
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
+    html, body {
       width: 85.6mm;
       height: 53.98mm;
-      font-family: 'Arial', sans-serif;
       overflow: hidden;
+      background: transparent;
+      font-family: 'Arial', sans-serif;
     }
 
     .card {

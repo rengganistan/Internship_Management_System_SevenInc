@@ -148,15 +148,33 @@ class DocumentController extends Controller
         $data = [
             'name'     => $membercard->name,
             'code'     => $membercard->code,
-            'divisi'   => $reg?->internship_interest ?? 'Magang',
+            'divisi'   => $reg?->internship_interest ?? 'Pemagang',
             'angkatan' => $membercard->angkatan,
             'instansi' => $membercard->instansi,
-            'brand'    => $membercard->brand ?? 'Seveninc',
+            'brand'    => $membercard->brand ?? 'magangjogja.com',
         ];
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pemagang.membercard-pdf', $data)
-            ->setPaper([0, 0, 242.64, 153.07]) // 85.6mm x 53.98mm dalam points
-            ->setOptions(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true]);
+        // Pakai Browsershot karena DomPDF tidak support CSS gradient
+        $html = view('pemagang.membercard-pdf', $data)->render();
+
+        $safeName = \Illuminate\Support\Str::slug($membercard->name);
+        $filename = "Membercard-{$safeName}-{$membercard->code}.pdf";
+        $tmpPath  = storage_path("app/tmp/{$filename}");
+
+        if (!is_dir(dirname($tmpPath))) {
+            mkdir(dirname($tmpPath), 0775, true);
+        }
+
+        \Spatie\Browsershot\Browsershot::html($html)
+            ->emulateMedia('screen')
+            ->showBackground()
+            ->margins(0, 0, 0, 0)
+            ->windowSize(856, 540)   // 85.6mm x 54mm @ 96dpi * 2.54 = ~323x204 → scale up for quality
+            ->deviceScaleFactor(2)
+            ->setOption('preferCSSPageSize', true)
+            ->setOption('printBackground', true)
+            ->timeout(60)
+            ->savePdf($tmpPath);
 
         // Update status has_downloaded
         if (!$membercard->has_downloaded) {
@@ -166,8 +184,9 @@ class DocumentController extends Controller
             ]);
         }
 
-        $filename = 'Membercard-' . \Illuminate\Support\Str::slug($membercard->name) . '-' . $membercard->code . '.pdf';
-        return $pdf->download($filename);
+        return response()->download($tmpPath, $filename, [
+            'Content-Type' => 'application/pdf',
+        ])->deleteFileAfterSend(true);
     }
 
     /**
