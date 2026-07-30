@@ -389,6 +389,7 @@ class InternAssessmentController extends Controller
     {
         // Validasi input
         $validated = $request->validate([
+            'intern_id'  => 'nullable|integer|exists:internship_registrations,id',
             'fullname' => 'required|string|max:255',
             'nim_or_nis' => 'nullable|string|max:50',
             'study_program' => 'nullable|string|max:255',
