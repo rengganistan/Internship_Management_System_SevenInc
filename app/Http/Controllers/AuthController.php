@@ -31,15 +31,20 @@ class AuthController extends Controller
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
-        User::create([
+        $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'role' => 'user',
         ]);
 
-        return redirect()->route('user.login')
-            ->with('success', 'Registrasi berhasil! Silakan login untuk melanjutkan.');
+        // Auto-login setelah register
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        // Langsung ke form magang
+        return redirect()->route('pemagang.registration.form')
+            ->with('success', '✅ Akun berhasil dibuat! Silakan isi form pendaftaran magang di bawah ini.');
     }
 
     /**

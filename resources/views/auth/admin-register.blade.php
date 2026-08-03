@@ -105,7 +105,7 @@
 
       <!-- Button to Cancel Registration and go back to Login -->
       <div class="mt-4 text-center">
-        <a href="{{ route('login') }}" class="text-sm text-primary-600 dark:text-primary-400 hover:underline">Tidak jadi daftar? Kembali ke login</a>
+        <a href="{{ route('home') }}" class="text-sm text-primary-600 dark:text-primary-400 hover:underline">Tidak jadi daftar? Kembali ke beranda</a>
       </div>
     </div>
   </div>

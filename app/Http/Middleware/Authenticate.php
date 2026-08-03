@@ -11,11 +11,13 @@ use Closure;
 class Authenticate extends Middleware
 {
     /**
-     * Get the path the user should be redirected to when they are not authenticated.
-     * @param \Illuminate\Http\Request  $request
-     * @param \Closure $next
-     * @return mixed
+     * Redirect ke landing page / login saat belum authenticated.
      */
-    
-
+    protected function redirectTo(Request $request): ?string
+    {
+        if (!$request->expectsJson()) {
+            return route('user.login');
+        }
+        return null;
+    }
 }

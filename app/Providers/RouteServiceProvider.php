@@ -17,7 +17,7 @@ class RouteServiceProvider extends ServiceProvider
      *
      * @var string
      */
-    public const HOME = '/login';
+    public const HOME = '/pemagang/dashboard';
 
     /**
      * Define your route model bindings, pattern filters, and other route configuration.
