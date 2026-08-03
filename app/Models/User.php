@@ -29,6 +29,9 @@ class User extends Authenticatable
         'password',
         'role',
         'is_online',
+        'is_banned',
+        'banned_at',
+        'ban_reason',
         'phone_number',
         'profile_picture',
     ];
@@ -50,6 +53,9 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'banned_at'         => 'datetime',
+        'is_banned'         => 'boolean',
+        'is_online'         => 'boolean',
     ];
 
     public function internshipRegistration(): HasOne

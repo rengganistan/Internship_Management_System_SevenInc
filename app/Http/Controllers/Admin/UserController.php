@@ -27,6 +27,15 @@ class UserController extends Controller
             $query->where('role', $role);
         }
 
+        // Filter berdasarkan status ban
+        if ($status = $request->get('status')) {
+            if ($status === 'banned') {
+                $query->where('is_banned', true);
+            } elseif ($status === 'active') {
+                $query->where('is_banned', false);
+            }
+        }
+
         // sorting
         switch ($request->get('sort')) {
             case 'name_asc':   $query->orderBy('name', 'asc'); break;
@@ -93,12 +102,65 @@ class UserController extends Controller
     // Menghapus data pengguna
     public function destroy($id)
     {
-        $user = User::find($id); // Cari pengguna berdasarkan ID
+        $user = User::find($id);
         if ($user) {
-            $user->delete(); // Hapus pengguna
+            $user->delete();
             return redirect()->route('admin.users.index')->with('success', 'User deleted successfully.');
         }
         return redirect()->route('admin.users.index')->with('error', 'User not found.');
+    }
+
+    // Ban / nonaktifkan akun
+    public function ban(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        // Admin tidak bisa ban sesama admin
+        if ($user->role === 'admin') {
+            return redirect()->route('admin.users.index')
+                ->with('error', 'Tidak dapat menonaktifkan akun admin.');
+        }
+
+        $validated = $request->validate([
+            'ban_reason' => 'nullable|string|max:255',
+        ]);
+
+        $user->update([
+            'is_banned'  => true,
+            'banned_at'  => now(),
+            'ban_reason' => $validated['ban_reason'] ?? 'Dinonaktifkan oleh admin.',
+        ]);
+
+        // Force logout jika sedang online
+        if ($user->is_online) {
+            $user->update(['is_online' => false]);
+        }
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json(['ok' => true, 'message' => "Akun {$user->name} berhasil dinonaktifkan."]);
+        }
+
+        return redirect()->route('admin.users.index')
+            ->with('success', "Akun {$user->name} berhasil dinonaktifkan.");
+    }
+
+    // Unban / aktifkan kembali akun
+    public function unban($id)
+    {
+        $user = User::findOrFail($id);
+
+        $user->update([
+            'is_banned'  => false,
+            'banned_at'  => null,
+            'ban_reason' => null,
+        ]);
+
+        if (request()->wantsJson() || request()->ajax()) {
+            return response()->json(['ok' => true, 'message' => "Akun {$user->name} berhasil diaktifkan kembali."]);
+        }
+
+        return redirect()->route('admin.users.index')
+            ->with('success', "Akun {$user->name} berhasil diaktifkan kembali.");
     }
 
 }
