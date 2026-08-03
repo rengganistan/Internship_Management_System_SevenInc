@@ -72,6 +72,106 @@
 
 </div>
 
+{{-- ===== EKSKLUSIF (Surat Rekomendasi, Grup Alumni, Info Kerja) ===== --}}
+@php $isCompleted = $registration?->internship_status === 'completed'; @endphp
+
+<div class="mt-8">
+  <h3 class="text-sm font-semibold text-gray-700 mb-1">Akses Eksklusif</h3>
+  <p class="text-xs text-gray-400 mb-4">
+    Tersedia setelah magang selesai · Hanya diberikan kepada pemagang tertentu oleh admin
+  </p>
+
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+    {{-- Surat Rekomendasi --}}
+    <div class="bg-white rounded-xl border border-gray-100 p-5 flex flex-col">
+      <div class="w-11 h-11 rounded-xl flex items-center justify-center mb-4
+        {{ $isCompleted && $extras?->rekomendasi_path ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-400' }}">
+        <i class="fas fa-medal text-lg"></i>
+      </div>
+      <p class="text-sm font-semibold text-gray-800 mb-1">Surat Rekomendasi</p>
+      <p class="text-xs text-gray-400 flex-1 mb-4">
+        Surat rekomendasi dari Seveninc untuk keperluan karir Anda.
+      </p>
+      @if(!$isCompleted)
+        <span class="flex items-center justify-center w-full py-2 text-xs text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+          <i class="fas fa-lock mr-1"></i> Belum tersedia
+        </span>
+      @elseif($extras?->rekomendasi_path)
+        <a href="{{ asset('storage/' . $extras->rekomendasi_path) }}" target="_blank"
+           class="flex items-center justify-center gap-2 w-full py-2 text-sm font-medium text-white rounded-lg"
+           style="background-color:#1a5c38;">
+          <i class="fas fa-download text-xs"></i> Unduh PDF
+        </a>
+      @else
+        <span class="flex items-center justify-center w-full py-2 text-xs text-amber-600 bg-amber-50 rounded-lg border border-dashed border-amber-200">
+          <i class="fas fa-clock mr-1"></i> Belum diberikan admin
+        </span>
+      @endif
+    </div>
+
+    {{-- Link Grup Alumni --}}
+    <div class="bg-white rounded-xl border border-gray-100 p-5 flex flex-col">
+      <div class="w-11 h-11 rounded-xl flex items-center justify-center mb-4
+        {{ $isCompleted && $extras?->alumni_group_url ? 'bg-purple-50 text-purple-700' : 'bg-gray-100 text-gray-400' }}">
+        <i class="fas fa-users text-lg"></i>
+      </div>
+      <p class="text-sm font-semibold text-gray-800 mb-1">Grup Alumni</p>
+      <p class="text-xs text-gray-400 flex-1 mb-4">
+        Bergabung ke komunitas alumni magang Seveninc.
+      </p>
+      @if(!$isCompleted)
+        <span class="flex items-center justify-center w-full py-2 text-xs text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+          <i class="fas fa-lock mr-1"></i> Belum tersedia
+        </span>
+      @elseif($extras?->alumni_group_url)
+        <a href="{{ $extras->alumni_group_url }}" target="_blank"
+           class="flex items-center justify-center gap-2 w-full py-2 text-sm font-medium text-white rounded-lg bg-purple-600 hover:bg-purple-700 transition">
+          <i class="fas fa-external-link-alt text-xs"></i>
+          {{ $extras->alumni_group_label ?? 'Buka Link' }}
+        </a>
+      @else
+        <span class="flex items-center justify-center w-full py-2 text-xs text-amber-600 bg-amber-50 rounded-lg border border-dashed border-amber-200">
+          <i class="fas fa-clock mr-1"></i> Belum diberikan admin
+        </span>
+      @endif
+    </div>
+
+    {{-- Info Kerja --}}
+    <div class="bg-white rounded-xl border border-gray-100 p-5 flex flex-col">
+      <div class="w-11 h-11 rounded-xl flex items-center justify-center mb-4
+        {{ $isCompleted && $extras?->job_info_url ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-400' }}">
+        <i class="fas fa-briefcase text-lg"></i>
+      </div>
+      <p class="text-sm font-semibold text-gray-800 mb-1">Info Kerja</p>
+      <p class="text-xs text-gray-400 flex-1 mb-4">
+        Informasi lowongan pekerjaan dari jaringan Seveninc.
+      </p>
+      @if(!$isCompleted)
+        <span class="flex items-center justify-center w-full py-2 text-xs text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+          <i class="fas fa-lock mr-1"></i> Belum tersedia
+        </span>
+      @elseif($extras?->job_info_url)
+        <div>
+          @if($extras->job_info_description)
+            <p class="text-xs text-gray-600 mb-2">{{ $extras->job_info_description }}</p>
+          @endif
+          <a href="{{ $extras->job_info_url }}" target="_blank"
+             class="flex items-center justify-center gap-2 w-full py-2 text-sm font-medium text-white rounded-lg"
+             style="background-color:#1a5c38;">
+            <i class="fas fa-external-link-alt text-xs"></i> Lihat Info Kerja
+          </a>
+        </div>
+      @else
+        <span class="flex items-center justify-center w-full py-2 text-xs text-amber-600 bg-amber-50 rounded-lg border border-dashed border-amber-200">
+          <i class="fas fa-clock mr-1"></i> Belum diberikan admin
+        </span>
+      @endif
+    </div>
+
+  </div>
+</div>
+
 {{-- ===== RIWAYAT DOWNLOAD ===== --}}
 @if($downloadHistory->isNotEmpty())
 <div class="bg-white rounded-xl border border-gray-100 p-5">

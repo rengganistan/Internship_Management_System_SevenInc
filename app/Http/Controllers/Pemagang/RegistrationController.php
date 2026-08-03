@@ -7,6 +7,7 @@ use App\Models\InternshipRegistration as IR;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
 class RegistrationController extends Controller
@@ -169,8 +170,14 @@ class RegistrationController extends Controller
             return back()->with('success', 'Data pendaftaran berhasil diperbarui.');
         }
 
-        return redirect()->route('pemagang.dashboard')
-            ->with('success', 'Pendaftaran berhasil dikirim! Kami akan segera memproses data Anda.');
+        // Logout setelah submit perdana — user harus login ulang untuk cek status
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('home')
+            ->with('registration_success', true)
+            ->with('success', '🎉 Pendaftaran berhasil dikirim! Silakan login untuk memantau status magangmu.');
     }
 
     private function draftRules(): array

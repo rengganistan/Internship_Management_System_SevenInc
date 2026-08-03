@@ -49,23 +49,44 @@
 
       {{-- Navigation --}}
       <nav class="flex-1 px-3 py-4 space-y-1">
+        @php
+          $reg = auth()->user()->internshipRegistration;
+          $hasSubmitted = $reg && !$reg->is_draft;
+        @endphp
+
+        {{-- Dashboard — hanya setelah submit form --}}
+        @if($hasSubmitted)
         <a href="{{ route('pemagang.dashboard') }}"
            class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/90 text-sm transition {{ request()->routeIs('pemagang.dashboard') ? 'active' : '' }}">
           <i class="fas fa-home w-4 text-center text-white/70"></i>
           Dashboard
         </a>
+        @endif
 
+        {{-- Daftar Magang — selalu tampil --}}
         <a href="{{ route('pemagang.registration.form') }}"
            class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/90 text-sm transition {{ request()->routeIs('pemagang.registration.*') ? 'active' : '' }}">
           <i class="fas fa-file-alt w-4 text-center text-white/70"></i>
           Daftar Magang
+          @if(!$hasSubmitted)
+            <span style="font-size:10px;background:#f59e0b;color:#fff;padding:1px 6px;border-radius:100px;margin-left:auto;">Wajib</span>
+          @endif
         </a>
 
+        {{-- Menu lain — hanya setelah submit form --}}
+        @if($hasSubmitted)
         <a href="{{ route('pemagang.documents') }}"
            class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/90 text-sm transition {{ request()->routeIs('pemagang.documents') ? 'active' : '' }}">
           <i class="fas fa-folder-open w-4 text-center text-white/70"></i>
           Dokumen Saya
         </a>
+        @else
+        <div class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/30 text-sm cursor-not-allowed select-none">
+          <i class="fas fa-folder-open w-4 text-center text-white/20"></i>
+          Dokumen Saya
+          <i class="fas fa-lock w-3 text-center text-white/20 ml-auto" style="font-size:10px;"></i>
+        </div>
+        @endif
 
         <a href="{{ route('pemagang.settings') }}"
            class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/90 text-sm transition {{ request()->routeIs('pemagang.settings') ? 'active' : '' }}">

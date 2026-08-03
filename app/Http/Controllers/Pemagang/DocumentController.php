@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\InternshipRegistration as IR;
 use App\Models\DocumentDownload;
 use App\Models\InternAssessment;
+use App\Models\InternExtra;
 use Illuminate\Http\Request;
 
 class DocumentController extends Controller
@@ -94,11 +95,17 @@ class DocumentController extends Controller
             ->take(10)
             ->get();
 
+        // Extras — surat rekomendasi, alumni group, job info
+        $extras = $registration
+            ? InternExtra::where('internship_registration_id', $registration->id)->first()
+            : null;
+
         return view('pemagang.documents.index', compact(
             'user',
             'registration',
             'docs',
-            'downloadHistory'
+            'downloadHistory',
+            'extras'
         ));
     }
 
