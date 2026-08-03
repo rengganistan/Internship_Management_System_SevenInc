@@ -46,22 +46,35 @@ use App\Http\Controllers\Pemagang\SettingsController as PemagangSettings;
 // Demo bermacam macam tampilan
 Route::view('/zombie-survival', 'cobacoba')->name('zombie.survival');
 
-/* =================== ROOT -> LOGIN VIEW =================== */
-Route::get('/', [AuthController::class, 'showLoginForm'])
-    ->name('login')
-    ->middleware('guest');
+/* =================== ROOT -> LANDING PAGE =================== */
+Route::get('/', function () {
+    if (auth()->check()) {
+        if (auth()->user()->role === 'admin') {
+            return redirect()->route('admin.dashboard.index');
+        }
+        return redirect()->route('pemagang.dashboard');
+    }
+    return view('landing');
+})->name('home');
 
 /* =================== AUTH (GUEST) =================== */
-Route::get('/login', [AuthController::class, 'showLoginForm'])
-    ->name('user.login')
-    ->middleware('guest');
+// GET /login → redirect ke landing page section #login
+Route::get('/login', function() {
+    if (auth()->check()) {
+        return auth()->user()->role === 'admin'
+            ? redirect()->route('admin.dashboard.index')
+            : redirect()->route('pemagang.dashboard');
+    }
+    return redirect()->to('/#login');
+})->name('user.login')->middleware('guest');
 
 Route::post('/login', [AuthController::class, 'login'])
     ->name('user.login.submit');
 
-Route::get('/register', [AuthController::class, 'showRegisterForm'])
-    ->name('user.register')
-    ->middleware('guest');
+// GET /register → redirect ke landing page section #daftar
+Route::get('/register', function() {
+    return redirect()->to('/#daftar');
+})->name('user.register')->middleware('guest');
 
 Route::post('/register', [AuthController::class, 'register'])
     ->name('user.register.submit');
@@ -290,7 +303,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin', 'preve
     Route::get('/user/{user}/pending-tasks', [DashboardController::class, 'showTasks'])->name('user.pendingTasks');
 
     Route::get('/skl/editor', [SKLController::class, 'edit'])->name('skl.editor');
-    Route::post('/skl/editor', [SKLController::class, 'update'])->name('skl.update');
+
+    // Akses Eksklusif (Rekomendasi, Alumni, Info Kerja)
+    Route::get('/intern-extras', [\App\Http\Controllers\Admin\InternExtraController::class, 'index'])->name('intern_extras.index');
+    Route::get('/intern-extras/{intern}/edit', [\App\Http\Controllers\Admin\InternExtraController::class, 'edit'])->name('intern_extras.edit');
+    Route::put('/intern-extras/{intern}', [\App\Http\Controllers\Admin\InternExtraController::class, 'update'])->name('intern_extras.update');
+    Route::delete('/intern-extras/{intern}/rekomendasi', [\App\Http\Controllers\Admin\InternExtraController::class, 'destroyRekomendasi'])->name('intern_extras.rekomendasi.destroy');    Route::post('/skl/editor', [SKLController::class, 'update'])->name('skl.update');
     // Preview untuk panel editor (dipanggil dari iframe)
     Route::get('/skl/preview', [SKLController::class, 'preview'])->name('skl.preview');
 
