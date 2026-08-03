@@ -61,7 +61,17 @@ class FeedbackController extends Controller
 
         $user = Auth::user();
 
-        // Simpan ke tabel feedback
+        // Cek status magang — hanya bisa submit setelah completed
+        $reg = \App\Models\InternshipRegistration::where('user_id', $user->id)->latest()->first();
+        if (!$reg || $reg->internship_status !== 'completed') {
+            return back()->with('error', 'Feedback hanya bisa dikirim setelah masa magang selesai.');
+        }
+
+        // Cek apakah sudah pernah submit — 1 akun 1 kali
+        if (DB::table('feedback')->where('user_id', $user->id)->exists()) {
+            return back()->with('error', 'Kamu sudah pernah mengirim feedback. Setiap akun hanya bisa mengirim 1 kali.');
+        }
+
         DB::table('feedback')->insert([
             'user_id'    => $user->id,
             'feedback'   => $request->feedback,
@@ -69,6 +79,6 @@ class FeedbackController extends Controller
             'updated_at' => now(),
         ]);
 
-        return back()->with('success', 'Terima kasih atas umpan balik Anda!');
+        return back()->with('success', 'Terima kasih atas umpan balik Anda! Feedback telah berhasil dikirim.');
     }
 }
