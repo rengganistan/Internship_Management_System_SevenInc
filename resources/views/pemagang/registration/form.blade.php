@@ -129,14 +129,7 @@
         <label class="{{ $label }}">Divisi Diminati <span class="text-red-500">*</span></label>
         <select name="internship_interest" required class="{{ $input }}">
           <option value="">-- Pilih Divisi --</option>
-          @foreach([
-            'Project Manager','Administration','Human Resources (HR)',
-            'UI/UX','Programmer (Front End / Backend)','Photographer',
-            'Videographer','Graphic Designer','Social Media Specialist',
-            'Content Writer','Content Planner','Sales & Marketing',
-            'Public Relations (Marcomm)','Digital Marketing',
-            'TikTok Creator','Welding','Customer Service',
-          ] as $div)
+          @foreach($divisions ?? [] as $div)
             <option value="{{ $div }}" @selected($old('internship_interest') === $div)>
               {{ $div }}
             </option>

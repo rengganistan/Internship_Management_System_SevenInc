@@ -26,9 +26,10 @@ class RegistrationController extends Controller
         $user         = auth()->user();
         $registration = IR::where('user_id', $user->id)->latest('id')->first();
 
-        // Kalau belum punya data registrasi → form kosong
-        // Kalau sudah ada (apapun statusnya) → isi form dengan data yang ada, bisa diedit
-        return view('pemagang.registration.form', compact('registration'));
+        // Ambil divisi aktif dari database
+        $divisions = \App\Models\Division::active()->pluck('name');
+
+        return view('pemagang.registration.form', compact('registration', 'divisions'));
     }
 
     /**
