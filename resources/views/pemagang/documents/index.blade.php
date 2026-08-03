@@ -98,7 +98,7 @@
           <i class="fas fa-lock mr-1"></i> Belum tersedia
         </span>
       @elseif($extras?->rekomendasi_path)
-        <a href="{{ asset('storage/' . $extras->rekomendasi_path) }}" target="_blank"
+        <a href="{{ route('pemagang.documents.rekomendasi') }}"
            class="flex items-center justify-center gap-2 w-full py-2 text-sm font-medium text-white rounded-lg"
            style="background-color:#1a5c38;">
           <i class="fas fa-download text-xs"></i> Unduh PDF

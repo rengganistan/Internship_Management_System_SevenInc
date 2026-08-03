@@ -136,7 +136,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     // Serve file LOA/SKL dari storage (bypass symlink issue di XAMPP)
     Route::get('/documents/serve/{type}/{filename}', function (string $type, string $filename) {
         // Validasi type
-        if (!in_array($type, ['loa', 'skl', 'tmp'])) abort(404);
+        if (!in_array($type, ['loa', 'skl', 'tmp', 'rekomendasi'])) abort(404);
 
         // Sanitize filename — hanya huruf, angka, dash, underscore, titik
         if (!preg_match('/^[A-Za-z0-9_\-\.]+\.pdf$/', $filename)) abort(404);
@@ -146,6 +146,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
             storage_path("app/public/documents/{$type}/{$filename}"),
             storage_path("app/public/documents/skl/{$filename}"),
             storage_path("app/public/documents/loa/{$filename}"),
+            storage_path("app/public/documents/rekomendasi/{$filename}"),
             storage_path("app/tmp/{$filename}"),
         ];
 
@@ -207,8 +208,21 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin', 'preve
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
     Route::get('/', fn () => redirect()->route('admin.dashboard.index'))->name('home');
 
+    // Pengaturan Form — Divisi
+    Route::prefix('form-settings')->name('form-settings.')->group(function () {
+        Route::get('/divisions',                              [\App\Http\Controllers\Admin\DivisionController::class, 'index'])->name('divisions');
+        Route::post('/divisions',                             [\App\Http\Controllers\Admin\DivisionController::class, 'store'])->name('divisions.store');
+        Route::put('/divisions/{division}',                   [\App\Http\Controllers\Admin\DivisionController::class, 'update'])->name('divisions.update');
+        Route::post('/divisions/{division}/toggle',           [\App\Http\Controllers\Admin\DivisionController::class, 'toggle'])->name('divisions.toggle');
+        Route::post('/divisions/reorder',                     [\App\Http\Controllers\Admin\DivisionController::class, 'reorder'])->name('divisions.reorder');
+        Route::delete('/divisions/{division}',                [\App\Http\Controllers\Admin\DivisionController::class, 'destroy'])->name('divisions.destroy');
+    });
+
     // Users CRUD -> admin.users.*
     Route::resource('users', AdminUserController::class);
+    // Ban / Unban user
+    Route::post('users/{user}/ban',   [AdminUserController::class, 'ban'])->name('users.ban');
+    Route::post('users/{user}/unban', [AdminUserController::class, 'unban'])->name('users.unban');
     Route::resource('certificate', CertificateController::class);
 
     Route::get('/certificate/index', [CertificateController::class, 'index'])->name('certificate'); // Add route for viewing certificates list
@@ -430,6 +444,9 @@ Route::middleware(['auth'])->prefix('pemagang')->name('pemagang.')->group(functi
 
     // Download Sertifikat
     Route::get('/dokumen/sertifikat', [PemagangDocument::class, 'downloadSertifikat'])->name('documents.sertifikat');
+
+    // Download Surat Rekomendasi (hanya jika admin sudah memberikan)
+    Route::get('/dokumen/rekomendasi', [PemagangDocument::class, 'downloadRekomendasi'])->name('documents.rekomendasi');
 
     // Lihat Membercard
     Route::get('/membercard', [PemagangDocument::class, 'viewMembercard'])->name('membercard');

@@ -233,6 +233,35 @@ class DocumentController extends Controller
     }
 
     /**
+     * Download Surat Rekomendasi milik pemagang yang login.
+     * Hanya tersedia jika admin sudah memberikan (rekomendasi_path diisi).
+     */
+    public function downloadRekomendasi()
+    {
+        $user         = auth()->user();
+        $registration = IR::where('user_id', $user->id)->latest('id')->first();
+
+        if (!$registration || $registration->internship_status !== IR::STATUS_COMPLETED) {
+            abort(403, 'Surat rekomendasi hanya tersedia setelah magang selesai.');
+        }
+
+        $extra = \App\Models\InternExtra::where('internship_registration_id', $registration->id)->first();
+
+        if (!$extra || !$extra->rekomendasi_path) {
+            return back()->with('error', 'Surat rekomendasi belum tersedia. Hubungi admin.');
+        }
+
+        $fullPath = storage_path('app/public/' . $extra->rekomendasi_path);
+
+        if (!file_exists($fullPath)) {
+            return back()->with('error', 'File surat rekomendasi tidak ditemukan. Hubungi admin.');
+        }
+
+        $filename = 'Surat-Rekomendasi-' . \Illuminate\Support\Str::slug($registration->fullname) . '.pdf';
+        return response()->download($fullPath, $filename, ['Content-Type' => 'application/pdf']);
+    }
+
+    /**
      * Download Surat Penilaian milik pemagang yang login.
      * Cari assessment berdasarkan intern_id (FK ke internship_registrations).
      */
