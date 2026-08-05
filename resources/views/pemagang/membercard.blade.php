@@ -19,53 +19,40 @@
     </div>
   </div>
 
-  {{-- Preview Kartu --}}
+  {{-- Preview Kartu — sesuai template baru --}}
   <div class="mb-5 flex justify-center">
-    <div style="width:342px; height:216px; background:linear-gradient(135deg,#1a5c38 0%,#0d3d25 60%,#0a2e1c 100%);
-                border-radius:16px; padding:20px 24px; position:relative; overflow:hidden; color:white; box-shadow:0 8px 32px rgba(0,0,0,0.25);">
+    <div style="width:342px; height:216px; background:#1a3a2a; border-radius:12px; position:relative; overflow:hidden; box-shadow:0 8px 32px rgba(0,0,0,0.35); font-family:Georgia, serif;">
 
-      {{-- Decorative circles --}}
-      <div style="position:absolute;width:128px;height:128px;border-radius:50%;background:rgba(255,255,255,0.06);top:-40px;right:-32px;"></div>
-      <div style="position:absolute;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,0.04);bottom:-20px;left:120px;"></div>
-      <div style="position:absolute;width:48px;height:48px;border-radius:50%;border:2px solid rgba(255,255,255,0.12);top:32px;right:80px;"></div>
+      {{-- Brand kanan atas --}}
+      <div style="position:absolute;top:16px;right:18px;font-size:13px;font-style:italic;font-weight:bold;color:#c9a84c;letter-spacing:0.5px;text-align:right;">
+        {{ $membercard->brand ?? 'magangjogja.com' }}
+      </div>
 
-      {{-- Top row --}}
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
-        <div style="font-size:11px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.7);">
-          {{ $membercard->brand ?? 'Seveninc' }}
+      {{-- Nama di tengah --}}
+      <div style="position:absolute;top:50%;left:0;right:0;transform:translateY(-65%);text-align:center;padding:0 20px;">
+        <div style="font-size:28px;font-weight:normal;color:#c9a84c;letter-spacing:1px;margin-bottom:10px;">
+          {{ $membercard->name }}
         </div>
-        <div style="font-size:9px;color:rgba(255,255,255,0.5);text-align:right;text-transform:uppercase;letter-spacing:1px;line-height:1.4;">
-          Intern<br>Member Card
-        </div>
+        <div style="width:70%;height:1px;background:#c9a84c;margin:0 auto;"></div>
       </div>
 
-      {{-- Divider --}}
-      <div style="width:32px;height:1.5px;background:rgba(255,255,255,0.3);margin-bottom:8px;"></div>
-
-      {{-- Name --}}
-      <div style="font-size:18px;font-weight:bold;letter-spacing:0.5px;color:#fff;margin-bottom:4px;">
-        {{ $membercard->name }}
-      </div>
-      <div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:12px;">
-        {{ $reg?->internship_interest ?? 'Magang' }}
-      </div>
-
-      {{-- Bottom --}}
-      <div style="display:flex;justify-content:space-between;align-items:flex-end;position:absolute;bottom:20px;left:24px;right:24px;">
-        <div>
-          <div style="margin-bottom:8px;">
-            <div style="font-size:8px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Angkatan</div>
-            <div style="font-size:11px;font-weight:bold;color:rgba(255,255,255,0.9);">{{ $membercard->angkatan ?? '-' }}</div>
+      {{-- Pills bawah --}}
+      <div style="position:absolute;bottom:16px;left:18px;right:18px;display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <div style="background:#d4c06a;border-radius:8px;padding:3px 10px;display:inline-block;">
+            <span style="font-size:8px;font-weight:bold;color:#1a3a2a;text-transform:uppercase;letter-spacing:0.5px;display:block;line-height:1.3;">ID:</span>
+            <span style="font-size:10px;color:#1a3a2a;line-height:1.3;">{{ $membercard->code }}</span>
           </div>
-          <div>
-            <div style="font-size:8px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Instansi</div>
-            <div style="font-size:11px;font-weight:bold;color:rgba(255,255,255,0.9);">{{ $membercard->instansi ?? '-' }}</div>
+          <div style="background:#d4c06a;border-radius:8px;padding:3px 10px;display:inline-block;">
+            <span style="font-size:8px;font-weight:bold;color:#1a3a2a;text-transform:uppercase;letter-spacing:0.5px;display:block;line-height:1.3;">Angkatan:</span>
+            <span style="font-size:10px;color:#1a3a2a;line-height:1.3;">{{ $membercard->angkatan ?? '-' }}</span>
           </div>
         </div>
-
-        <div style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:6px 12px;text-align:center;">
-          <div style="font-size:8px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Kode Member</div>
-          <div style="font-size:14px;font-weight:bold;font-family:monospace;letter-spacing:2px;color:#a8e6c3;">{{ $membercard->code }}</div>
+        <div style="display:flex;gap:8px;">
+          <div style="background:#d4c06a;border-radius:8px;padding:3px 10px;display:inline-block;max-width:280px;">
+            <span style="font-size:8px;font-weight:bold;color:#1a3a2a;text-transform:uppercase;letter-spacing:0.5px;display:block;line-height:1.3;">Kampus/Sekolah:</span>
+            <span style="font-size:10px;color:#1a3a2a;line-height:1.3;">{{ $membercard->instansi ?? '-' }}</span>
+          </div>
         </div>
       </div>
 

@@ -155,10 +155,9 @@ class DocumentController extends Controller
         $data = [
             'name'     => $membercard->name,
             'code'     => $membercard->code,
-            'divisi'   => $reg?->internship_interest ?? 'Pemagang',
+            'brand'    => $membercard->brand ?? 'magangjogja.com',
             'angkatan' => $membercard->angkatan,
             'instansi' => $membercard->instansi,
-            'brand'    => $membercard->brand ?? 'magangjogja.com',
         ];
 
         // Pakai Browsershot karena DomPDF tidak support CSS gradient
