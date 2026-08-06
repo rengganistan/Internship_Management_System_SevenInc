@@ -521,13 +521,6 @@ class CertificateController extends Controller
 
     public function downloadPdf(Certificate $certificate)
     {
-        $filename = Str::slug($certificate->serial_number.'_'.$certificate->name, '_').'.pdf';
-
-        $tmpPath  = storage_path('app/tmp/'.$filename);
-        if (!is_dir(dirname($tmpPath))) {
-            mkdir(dirname($tmpPath), 0775, true);
-        }
-
         $brandMap = [
             'MJ'  => 'magangjogja',
             'AK'  => 'areakerja',
@@ -551,23 +544,31 @@ class CertificateController extends Controller
         $brandText = $brandMap[$certificate->brand] ?? $certificate->brand;
         $brandSlug = Str::slug($brandText, '-');
         $nameSlug  = Str::slug($certificate->name, '-');
-        $filename  = "{$brandSlug}-{$nameSlug}.pdf";
         $pdfTitle  = "{$brandText}-{$certificate->name}";
 
-        $html = View::make('certificates.pdf', [
+        // ── Pilih template berdasarkan jenis sertifikat ──
+        // Division 'WBN' = sertifikat webinar → pakai template khusus
+        $isWebinar = $certificate->division === 'WBN';
+        $viewName  = $isWebinar ? 'certificates.webinar-pdf' : 'certificates.pdf';
+        $prefix    = $isWebinar ? 'sertifikat-webinar' : $brandSlug;
+        $filename  = "{$prefix}-{$nameSlug}.pdf";
+
+        $html = View::make($viewName, [
             'certificate' => $certificate,
             'pdfTitle'    => $pdfTitle,
         ])->render();
 
-        $tmpPath = storage_path('app/tmp/'.$filename);
-        if (!is_dir(dirname($tmpPath))) mkdir(dirname($tmpPath), 0775, true);
+        $tmpPath = storage_path('app/tmp/' . $filename);
+        if (!is_dir(dirname($tmpPath))) {
+            mkdir(dirname($tmpPath), 0775, true);
+        }
 
         Browsershot::html($html)
             ->emulateMedia('print')
             ->format('A4')
             ->landscape()
             ->margins(0, 0, 0, 0)
-            ->timeout(180) // detik
+            ->timeout(180)
             ->setOption('args', [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
@@ -575,7 +576,7 @@ class CertificateController extends Controller
             ->savePdf($tmpPath);
 
         return response()->download($tmpPath, $filename, [
-        'Content-Type' => 'application/pdf',
+            'Content-Type' => 'application/pdf',
         ])->deleteFileAfterSend(true);
     }
 
