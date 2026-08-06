@@ -318,6 +318,22 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin', 'preve
 
     Route::get('/skl/editor', [SKLController::class, 'edit'])->name('skl.editor');
 
+    // ===== WEBINAR (menggantikan Sertifikat Non-Magang) =====
+    Route::prefix('webinars')->name('webinars.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\WebinarController::class, 'index'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\Admin\WebinarController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\Admin\WebinarController::class, 'store'])->name('store');
+        Route::get('/{webinar}/edit', [\App\Http\Controllers\Admin\WebinarController::class, 'edit'])->name('edit');
+        Route::put('/{webinar}', [\App\Http\Controllers\Admin\WebinarController::class, 'update'])->name('update');
+        Route::delete('/{webinar}', [\App\Http\Controllers\Admin\WebinarController::class, 'destroy'])->name('destroy');
+
+        // Review bukti kehadiran
+        Route::get('/{webinar}/attendances', [\App\Http\Controllers\Admin\WebinarController::class, 'attendances'])->name('attendances');
+        Route::post('/{webinar}/attendances/{attendance}/approve', [\App\Http\Controllers\Admin\WebinarController::class, 'approve'])->name('attendances.approve');
+        Route::post('/{webinar}/attendances/{attendance}/reject', [\App\Http\Controllers\Admin\WebinarController::class, 'reject'])->name('attendances.reject');
+        Route::post('/{webinar}/approve-all', [\App\Http\Controllers\Admin\WebinarController::class, 'approveAll'])->name('attendances.approve_all');
+    });
+
     // Akses Eksklusif (Rekomendasi, Alumni, Info Kerja)
     Route::get('/intern-extras', [\App\Http\Controllers\Admin\InternExtraController::class, 'index'])->name('intern_extras.index');
     Route::get('/intern-extras/{intern}/edit', [\App\Http\Controllers\Admin\InternExtraController::class, 'edit'])->name('intern_extras.edit');
@@ -456,6 +472,9 @@ Route::middleware(['auth'])->prefix('pemagang')->name('pemagang.')->group(functi
     // Download Surat Rekomendasi (hanya jika admin sudah memberikan)
     Route::get('/dokumen/rekomendasi', [PemagangDocument::class, 'downloadRekomendasi'])->name('documents.rekomendasi');
 
+    // Download Sertifikat Webinar (berdasarkan certificate_id dari attendance)
+    Route::get('/dokumen/sertifikat-webinar/{certificate}', [PemagangDocument::class, 'downloadSertifikatWebinar'])->name('documents.sertifikat_webinar');
+
     // Lihat Membercard
     Route::get('/membercard', [PemagangDocument::class, 'viewMembercard'])->name('membercard');
     Route::get('/membercard/download', [PemagangDocument::class, 'downloadMembercard'])->name('membercard.download');
@@ -463,4 +482,9 @@ Route::middleware(['auth'])->prefix('pemagang')->name('pemagang.')->group(functi
     // Pengaturan Akun
     Route::get('/pengaturan', [PemagangSettings::class, 'index'])->name('settings');
     Route::put('/pengaturan', [PemagangSettings::class, 'update'])->name('settings.update');
+
+    // Webinar
+    Route::get('/webinar', [\App\Http\Controllers\Pemagang\WebinarController::class, 'index'])->name('webinar.index');
+    Route::get('/webinar/{webinar}', [\App\Http\Controllers\Pemagang\WebinarController::class, 'show'])->name('webinar.show');
+    Route::post('/webinar/{webinar}/upload-proof', [\App\Http\Controllers\Pemagang\WebinarController::class, 'uploadProof'])->name('webinar.upload_proof');
 });

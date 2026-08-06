@@ -80,10 +80,28 @@
           <i class="fas fa-folder-open w-4 text-center text-white/70"></i>
           Dokumen Saya
         </a>
+
+        {{-- Webinar — hanya setelah submit form --}}
+        <a href="{{ route('pemagang.webinar.index') }}"
+           class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/90 text-sm transition {{ request()->routeIs('pemagang.webinar.*') ? 'active' : '' }}">
+          <i class="fas fa-video w-4 text-center text-white/70"></i>
+          Webinar
+          @php
+            $pendingWebinarCount = $notificationWebinarCount ?? 0;
+          @endphp
+          @if($pendingWebinarCount > 0)
+            <span style="font-size:10px;background:#ef4444;color:#fff;padding:1px 6px;border-radius:100px;margin-left:auto;">{{ $pendingWebinarCount }}</span>
+          @endif
+        </a>
         @else
         <div class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/30 text-sm cursor-not-allowed select-none">
           <i class="fas fa-folder-open w-4 text-center text-white/20"></i>
           Dokumen Saya
+          <i class="fas fa-lock w-3 text-center text-white/20 ml-auto" style="font-size:10px;"></i>
+        </div>
+        <div class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/30 text-sm cursor-not-allowed select-none">
+          <i class="fas fa-video w-4 text-center text-white/20"></i>
+          Webinar
           <i class="fas fa-lock w-3 text-center text-white/20 ml-auto" style="font-size:10px;"></i>
         </div>
         @endif

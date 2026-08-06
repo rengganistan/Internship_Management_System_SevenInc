@@ -7,6 +7,7 @@
         'check' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg>',
         'x' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6m0-6-6 6"/></svg>',
         'award' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="5"/><path d="m8.5 12.5-1 8 4.5-2.5 4.5 2.5-1-8"/></svg>',
+        'video' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>',
         'settings' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.12 2.12-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1 1.55V20.3h-3v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.88.34l-.06.06-2.12-2.12.06-.06A1.7 1.7 0 0 0 7.08 15a1.7 1.7 0 0 0-1.55-1H5.4v-3h.13A1.7 1.7 0 0 0 7.08 10a1.7 1.7 0 0 0-.34-1.88l-.06-.06L8.8 5.94l.06.06A1.7 1.7 0 0 0 10.74 6.34a1.7 1.7 0 0 0 1-1.55V4.7h3v.09a1.7 1.7 0 0 0 1 1.55A1.7 1.7 0 0 0 17.62 6l.06-.06 2.12 2.12-.06.06A1.7 1.7 0 0 0 19.4 10a1.7 1.7 0 0 0 1.55 1h.13v3h-.13A1.7 1.7 0 0 0 19.4 15Z"/></svg>',
         'message' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.6 9.6 0 0 1-4-.9L3 21l1.8-4.4A8.2 8.2 0 0 1 3 11.5 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5Z"/></svg>',
         'logout' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 17l5-5-5-5M15 12H3M21 19V5a2 2 0 0 0-2-2h-6"/></svg>',
@@ -36,8 +37,14 @@
                 ['label' => 'Surat Penilaian',      'route' => 'interns.assessment.index',    'icon' => 'file'],
                 ['label' => 'Data SKL',             'route' => 'admin.documents.skls',        'icon' => 'file'],
                 ['label' => 'Data LOA',             'route' => 'admin.documents.loas',        'icon' => 'file'],
-                ['label' => 'Informasi Alumni',     'route' => 'admin.intern_extras.index',        'icon' => 'users'],
-                ['label' => 'Template Rekomendasi', 'route' => 'admin.rekomendasi.editor',        'icon' => 'settings'],
+                ['label' => 'Informasi Alumni',     'route' => 'admin.intern_extras.index',   'icon' => 'users'],
+                ['label' => 'Template Rekomendasi', 'route' => 'admin.rekomendasi.editor',    'icon' => 'settings'],
+            ],
+        ],
+        [
+            'label' => 'Webinar',
+            'items' => [
+                ['label' => 'Kelola Webinar', 'route' => 'admin.webinars.index', 'icon' => 'video'],
             ],
         ],
         [
@@ -102,6 +109,7 @@
                             $isActive = match($item['route']) {
                                 'admin.interns.pendaftar' => request()->routeIs('admin.interns.pendaftar'),
                                 'admin.interns.pemagang'  => request()->routeIs('admin.interns.pemagang'),
+                                'admin.webinars.index'    => request()->routeIs('admin.webinars.*'),
                                 default => request()->routeIs($item['route']),
                             };
                         @endphp

@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
         InternshipRegistrationSeeder::class,
         AdminUserSeeder::class,
         BackfillPemagangRoleSeeder::class,
+        DivisionSeeder::class,
         ]);
 
     }

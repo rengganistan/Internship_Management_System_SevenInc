@@ -60,7 +60,8 @@ class User extends Authenticatable
 
     public function internshipRegistration(): HasOne
     {
-        return $this->hasOne(\App\Models\InternshipRegistration::class, 'user_id');
+        return $this->hasOne(\App\Models\InternshipRegistration::class, 'user_id')
+            ->latestOfMany('id');
     }
 
     public function downloads(): HasMany

@@ -2,22 +2,21 @@
 
 namespace Database\Seeders;
 
-use App\Models\Division;
 use Illuminate\Database\Seeder;
+use App\Models\Division;
 
 class DivisionSeeder extends Seeder
 {
     public function run(): void
     {
         $divisions = [
-            'Project Manager',
             'Administration',
             'Human Resources (HR)',
-            'UI/UX',
+            'UI/UX Designer',
             'Programmer (Front End / Backend)',
             'Photographer',
             'Videographer',
-            'Graphic Designer',
+            'Graphic Designer (Konten Kreatif)',
             'Social Media Specialist',
             'Content Writer',
             'Content Planner',
@@ -25,7 +24,9 @@ class DivisionSeeder extends Seeder
             'Public Relations (Marcomm)',
             'Digital Marketing',
             'TikTok Creator',
-            'Welding',
+            'Project Manager',
+            'Pengelasan',
+            'Animasi',
             'Customer Service',
         ];
 
