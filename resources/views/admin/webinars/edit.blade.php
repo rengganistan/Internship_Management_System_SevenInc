@@ -1,0 +1,33 @@
+@extends('layouts.dashboard')
+
+@section('content')
+<div class="min-h-screen bg-[#F4F8F6] p-4 sm:p-6 lg:p-7">
+
+  <div class="mb-6 flex items-center gap-3">
+    <a href="{{ route('admin.webinars.index') }}"
+       class="w-9 h-9 flex items-center justify-center rounded-lg border border-[#DCE7E1] bg-white text-[#4B5F5A] hover:border-[#2D8659] hover:text-[#2D8659] transition">
+      <i class="fas fa-arrow-left text-sm"></i>
+    </a>
+    <div>
+      <p class="text-xs font-bold uppercase tracking-widest text-[#2D8659] mb-0.5">Webinar</p>
+      <h1 class="text-xl font-extrabold text-[#1B3A34]">Edit: {{ $webinar->title }}</h1>
+    </div>
+  </div>
+
+  <form action="{{ route('admin.webinars.update', $webinar) }}" method="POST">
+    @csrf @method('PUT')
+    @include('admin.webinars._form', ['webinar' => $webinar])
+    <div class="mt-5 flex gap-3">
+      <button type="submit"
+              class="px-6 py-2.5 text-sm font-semibold text-white rounded-xl"
+              style="background-color:#2D8659;">
+        Simpan Perubahan
+      </button>
+      <a href="{{ route('admin.webinars.index') }}"
+         class="px-6 py-2.5 text-sm font-semibold text-[#4B5F5A] border border-[#DCE7E1] bg-white rounded-xl hover:bg-[#F4F8F6] transition">
+        Batal
+      </a>
+    </div>
+  </form>
+</div>
+@endsection
