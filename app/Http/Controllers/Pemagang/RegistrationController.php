@@ -26,8 +26,31 @@ class RegistrationController extends Controller
         $user         = auth()->user();
         $registration = IR::where('user_id', $user->id)->latest('id')->first();
 
-        // Ambil divisi aktif dari database
+        // Ambil divisi aktif dari DB; fallback ke list hardcode jika DB kosong
         $divisions = \App\Models\Division::active()->pluck('name');
+
+        if ($divisions->isEmpty()) {
+            $divisions = collect([
+                'Administration',
+                'Human Resources (HR)',
+                'UI/UX Designer',
+                'Programmer (Front End / Backend)',
+                'Photographer',
+                'Videographer',
+                'Graphic Designer (Konten Kreatif)',
+                'Social Media Specialist',
+                'Content Writer',
+                'Content Planner',
+                'Sales & Marketing',
+                'Public Relations (Marcomm)',
+                'Digital Marketing',
+                'TikTok Creator',
+                'Project Manager',
+                'Pengelasan',
+                'Animasi',
+                'Customer Service',
+            ]);
+        }
 
         return view('pemagang.registration.form', compact('registration', 'divisions'));
     }

@@ -7,6 +7,7 @@ use App\Models\InternshipRegistration as IR;
 use App\Models\DocumentDownload;
 use App\Models\InternAssessment;
 use App\Models\InternExtra;
+use App\Models\WebinarAttendance;
 use Illuminate\Http\Request;
 
 class DocumentController extends Controller
@@ -88,6 +89,15 @@ class DocumentController extends Controller
             ],
         ];
 
+        // Sertifikat Webinar — ambil langsung dari webinar_attendances yang approved
+        // setiap approved attendance = 1 sertifikat webinar
+        $webinarCerts = WebinarAttendance::with('webinar')
+            ->where('user_id', $user->id)
+            ->where('status', WebinarAttendance::STATUS_APPROVED)
+            ->whereNotNull('certificate_id')
+            ->latest('reviewed_at')
+            ->get();
+
         // Riwayat download — filter berdasarkan registrasi pemagang ini
         $downloadHistory = DocumentDownload::where('user_id', $user->id)
             ->when($registration, fn($q) => $q->orWhere('internship_registration_id', $registration->id))
@@ -105,7 +115,8 @@ class DocumentController extends Controller
             'registration',
             'docs',
             'downloadHistory',
-            'extras'
+            'extras',
+            'webinarCerts'
         ));
     }
 
@@ -224,6 +235,29 @@ class DocumentController extends Controller
 
         if (!$certificate) {
             return back()->with('error', 'Sertifikat belum tersedia. Hubungi admin.');
+        }
+
+        // Delegate ke CertificateController
+        return app(\App\Http\Controllers\CertificateController::class)
+            ->downloadPdf($certificate);
+    }
+
+    /**
+     * Download Sertifikat Webinar milik pemagang yang login.
+     * Validasi bahwa attendance ini benar-benar milik user yang sedang login.
+     */
+    public function downloadSertifikatWebinar(\App\Models\Certificate $certificate)
+    {
+        $user = auth()->user();
+
+        // Pastikan sertifikat ini memang milik user — cek via webinar_attendances
+        $ownership = WebinarAttendance::where('user_id', $user->id)
+            ->where('certificate_id', $certificate->id)
+            ->where('status', WebinarAttendance::STATUS_APPROVED)
+            ->exists();
+
+        if (!$ownership) {
+            abort(403, 'Anda tidak memiliki akses ke sertifikat ini.');
         }
 
         // Delegate ke CertificateController

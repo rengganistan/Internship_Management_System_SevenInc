@@ -72,6 +72,61 @@
 
 </div>
 
+{{-- ===== SERTIFIKAT WEBINAR ===== --}}
+@if(isset($webinarCerts) && $webinarCerts->isNotEmpty())
+<div class="mt-8">
+  <h3 class="text-sm font-semibold text-gray-700 mb-1">Sertifikat Webinar</h3>
+  <p class="text-xs text-gray-400 mb-4">Sertifikat kehadiran webinar yang sudah disetujui admin</p>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    @foreach($webinarCerts as $wc)
+    <div class="bg-white rounded-xl border border-gray-100 p-5 flex flex-col">
+      <div class="w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-blue-50 text-blue-700">
+        <i class="fas fa-video text-xl"></i>
+      </div>
+      <div class="flex-1">
+        <p class="text-sm font-semibold text-gray-800 mb-1">
+          {{ $wc->webinar?->title ?? 'Sertifikat Webinar' }}
+        </p>
+        <p class="text-xs text-gray-500 mb-1">
+          @if($wc->webinar?->event_date)
+            <i class="fas fa-calendar-alt mr-1 text-green-600"></i>
+            {{ $wc->webinar->event_date->format('d M Y') }}
+          @endif
+        </p>
+        <p class="text-xs text-gray-400">
+          Disetujui: {{ $wc->reviewed_at?->format('d M Y') ?? '—' }}
+        </p>
+      </div>
+      <div class="mt-4">
+        <a href="{{ route('pemagang.documents.sertifikat_webinar', $wc->certificate_id) }}"
+           class="flex items-center justify-center gap-2 w-full py-2 text-sm font-medium text-white rounded-lg"
+           style="background-color:#1a5c38;">
+          <i class="fas fa-download text-xs"></i> Unduh Sertifikat
+        </a>
+      </div>
+    </div>
+    @endforeach
+  </div>
+</div>
+@else
+<div class="mt-8">
+  <h3 class="text-sm font-semibold text-gray-700 mb-1">Sertifikat Webinar</h3>
+  <p class="text-xs text-gray-400 mb-4">Sertifikat kehadiran webinar yang sudah disetujui admin</p>
+  <div class="bg-white rounded-xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-400">
+    <i class="fas fa-video text-2xl mb-2 block text-gray-300"></i>
+    Belum ada sertifikat webinar. Ikuti webinar dan upload bukti kehadiran untuk mendapatkannya.
+    <div class="mt-3">
+      <a href="{{ route('pemagang.webinar.index') }}"
+         class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg text-white"
+         style="background-color:#1a5c38;">
+        <i class="fas fa-external-link-alt text-xs"></i> Lihat Webinar
+      </a>
+    </div>
+  </div>
+</div>
+@endif
+
 {{-- ===== EKSKLUSIF (Surat Rekomendasi, Grup Alumni, Info Kerja) ===== --}}
 @php $isCompleted = $registration?->internship_status === 'completed'; @endphp
 

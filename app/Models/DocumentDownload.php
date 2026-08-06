@@ -9,10 +9,11 @@ class DocumentDownload extends Model
 {
     use HasFactory;
 
-    public const TYPE_SKL      = 'SKL';
-    public const TYPE_LOA      = 'LOA';
-    public const TYPE_SERTIFIKAT = 'SERTIFIKAT';
-    public const TYPE_PENILAIAN  = 'PENILAIAN';
+    public const TYPE_SKL              = 'SKL';
+    public const TYPE_LOA              = 'LOA';
+    public const TYPE_SERTIFIKAT       = 'SERTIFIKAT';
+    public const TYPE_PENILAIAN        = 'PENILAIAN';
+    public const TYPE_SERTIFIKAT_WEBINAR = 'SERTIFIKAT_WEBINAR';
 
     protected $fillable = [
         'user_id',
