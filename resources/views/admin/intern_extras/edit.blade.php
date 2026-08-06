@@ -19,49 +19,65 @@
     <div class="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm font-medium">{!! session('success') !!}</div>
   @endif
 
+  @if($errors->any())
+    <div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+      <p class="font-semibold mb-2">Perbaiki field berikut:</p>
+      <ul class="list-disc list-inside space-y-1">
+        @foreach($errors->all() as $error)
+          <li>{{ $error }}</li>
+        @endforeach
+      </ul>
+    </div>
+  @endif
+
+  <form id="generateRekomendasiForm" method="POST" action="{{ route('admin.rekomendasi.generate', $intern->id) }}" class="hidden">
+    @csrf
+  </form>
+
+  <form id="deleteRekomendasiForm" method="POST" action="{{ route('admin.intern_extras.rekomendasi.destroy', $intern->id) }}" class="hidden">
+    @csrf
+    @method('DELETE')
+  </form>
+
   <form action="{{ route('admin.intern_extras.update', $intern->id) }}" method="POST" enctype="multipart/form-data">
     @csrf
     @method('PUT')
 
-    <div class="space-y-5">
-
-      {{-- Surat Rekomendasi --}}
-      <div class="bg-white rounded-xl border border-[#DCE7E1] p-6 shadow-sm">
-        <div class="flex items-center gap-3 mb-4">
-          <div class="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center text-green-700">
-            <i class="fas fa-medal"></i>
-          </div>
-          <h3 class="font-bold text-[#1B3A34]">Surat Rekomendasi</h3>
-        </div>
-
-        @if($extra->rekomendasi_path)
+    <div class="bg-white rounded-xl border border-[#DCE7E1] p-6 shadow-sm">
+      @if($extra->rekomendasi_path)
           <div class="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg mb-4">
             <div class="flex items-center gap-2">
               <i class="fas fa-file-pdf text-green-600"></i>
-              <span class="text-sm text-green-800 font-medium">Surat sudah ada</span>
-              <span class="text-xs text-green-600">· Diberikan {{ $extra->rekomendasi_granted_at?->format('d M Y') }}</span>
+              <span class="text-sm text-green-800 font-medium">Surat sudah di-generate</span>
+              <span class="text-xs text-green-600">· {{ $extra->rekomendasi_granted_at?->format('d M Y') }}</span>
             </div>
-            <div class="flex gap-2">
-              <a href="{{ asset('storage/' . $extra->rekomendasi_path) }}" target="_blank"
-                 class="text-xs text-green-700 hover:underline">Lihat</a>
-              <button type="submit" formaction="{{ route('admin.intern_extras.rekomendasi.destroy', $intern->id) }}"
-                      onclick="return confirm('Hapus surat rekomendasi ini?')"
-                      class="text-xs text-red-600 hover:underline"
-                      formmethod="POST">
-                @method('DELETE') @csrf Hapus
+            <div class="flex items-center gap-3">
+              <a href="{{ route('admin.documents.serve', ['type' => 'rekomendasi', 'filename' => basename($extra->rekomendasi_path)]) }}"
+                 target="_blank"
+                 class="text-xs font-semibold text-[#2D8659] hover:underline">Lihat</a>
+              <button type="submit" form="deleteRekomendasiForm"
+                      class="text-xs font-semibold text-red-600 hover:underline"
+                      onclick="return confirm('Hapus surat rekomendasi ini?')">
+                Hapus
               </button>
             </div>
           </div>
         @endif
 
-        <div>
-          <label class="block text-sm font-medium text-[#1B3A34] mb-2">
-            {{ $extra->rekomendasi_path ? 'Ganti' : 'Upload' }} Surat Rekomendasi (PDF)
-          </label>
-          <input type="file" name="rekomendasi_file" accept=".pdf"
-                 class="block w-full text-sm text-[#4B5F5A] file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-[#2D8659] file:text-white file:font-medium cursor-pointer">
-          <p class="text-xs text-[#4B5F5A] mt-1">Format PDF, maks. 5MB</p>
-        </div>
+        {{-- Tombol generate ulang --}}
+        <button type="submit"
+          form="generateRekomendasiForm"
+          class="flex items-center justify-center gap-2 w-full py-2.5 text-sm font-semibold text-white rounded-lg"
+          style="background-color:#2D8659;"
+          onclick="return confirm('Generate surat rekomendasi untuk {{ addslashes($intern->fullname) }}?')">
+          <i class="fas fa-file-pdf text-xs"></i>
+          {{ $extra->rekomendasi_path ? 'Generate Ulang PDF' : 'Generate Surat Rekomendasi' }}
+        </button>
+
+        <p class="text-[11px] text-[#4B5F5A] mt-2 text-center">
+          Template dikelola di
+          <a href="{{ route('admin.rekomendasi.editor') }}" class="text-[#2D8659] hover:underline font-semibold">Template Rekomendasi</a>.
+        </p>
       </div>
 
       {{-- Link Grup Alumni --}}
