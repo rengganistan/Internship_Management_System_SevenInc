@@ -322,7 +322,15 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin', 'preve
     Route::get('/intern-extras', [\App\Http\Controllers\Admin\InternExtraController::class, 'index'])->name('intern_extras.index');
     Route::get('/intern-extras/{intern}/edit', [\App\Http\Controllers\Admin\InternExtraController::class, 'edit'])->name('intern_extras.edit');
     Route::put('/intern-extras/{intern}', [\App\Http\Controllers\Admin\InternExtraController::class, 'update'])->name('intern_extras.update');
-    Route::delete('/intern-extras/{intern}/rekomendasi', [\App\Http\Controllers\Admin\InternExtraController::class, 'destroyRekomendasi'])->name('intern_extras.rekomendasi.destroy');    Route::post('/skl/editor', [SKLController::class, 'update'])->name('skl.update');
+    Route::delete('/intern-extras/{intern}/rekomendasi', [\App\Http\Controllers\Admin\InternExtraController::class, 'destroyRekomendasi'])->name('intern_extras.rekomendasi.destroy');
+
+    // Template & Generate Surat Rekomendasi
+    Route::get('/rekomendasi/editor',              [\App\Http\Controllers\Admin\RekomendasiController::class, 'edit'])->name('rekomendasi.editor');
+    Route::post('/rekomendasi/editor',             [\App\Http\Controllers\Admin\RekomendasiController::class, 'update'])->name('rekomendasi.update');
+    Route::get('/rekomendasi/preview',             [\App\Http\Controllers\Admin\RekomendasiController::class, 'preview'])->name('rekomendasi.preview');
+    Route::post('/rekomendasi/generate/{intern}',  [\App\Http\Controllers\Admin\RekomendasiController::class, 'generate'])->name('rekomendasi.generate');
+
+    Route::post('/skl/editor', [SKLController::class, 'update'])->name('skl.update');
     // Preview untuk panel editor (dipanggil dari iframe)
     Route::get('/skl/preview', [SKLController::class, 'preview'])->name('skl.preview');
 

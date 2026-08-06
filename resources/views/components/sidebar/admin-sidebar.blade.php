@@ -36,7 +36,8 @@
                 ['label' => 'Surat Penilaian',      'route' => 'interns.assessment.index',    'icon' => 'file'],
                 ['label' => 'Data SKL',             'route' => 'admin.documents.skls',        'icon' => 'file'],
                 ['label' => 'Data LOA',             'route' => 'admin.documents.loas',        'icon' => 'file'],
-                ['label' => 'Informasi Alumni',     'route' => 'admin.intern_extras.index',   'icon' => 'users'],
+                ['label' => 'Informasi Alumni',     'route' => 'admin.intern_extras.index',        'icon' => 'users'],
+                ['label' => 'Template Rekomendasi', 'route' => 'admin.rekomendasi.editor',        'icon' => 'settings'],
             ],
         ],
         [
