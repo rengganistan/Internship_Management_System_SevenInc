@@ -4,15 +4,22 @@
   <meta charset="UTF-8">
   <style>
     @page {
-      size: 85.6mm 53.98mm landscape;
+      size: 85.6mm 53.98mm;
       margin: 0;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body {
+    html {
+      width: 85.6mm;
+      height: 53.98mm;
+    }
+    body {
       width: 85.6mm;
       height: 53.98mm;
       overflow: hidden;
-      background: transparent;
+      background: #1a3a2a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .card {

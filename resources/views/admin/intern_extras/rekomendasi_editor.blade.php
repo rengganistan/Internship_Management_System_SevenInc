@@ -162,15 +162,13 @@
               </select>
             </div>
 
-            <form id="generateForm" method="POST" action="" class="inline">
-              @csrf
-              <button type="submit" id="btnGenerate"
-                disabled
-                class="flex w-full items-center justify-center gap-2 rounded-[9px] bg-[#2D8659] px-4 py-2.5 text-[13px] font-semibold text-white transition hover:bg-[#1F5F3F] disabled:opacity-50 disabled:cursor-not-allowed">
-                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Generate & Download PDF
-              </button>
-            </form>
+            {{-- Tombol submit via JS — bukan nested form --}}
+            <button type="button" id="btnGenerate"
+              disabled
+              class="flex w-full items-center justify-center gap-2 rounded-[9px] bg-[#2D8659] px-4 py-2.5 text-[13px] font-semibold text-white transition hover:bg-[#1F5F3F] disabled:opacity-50 disabled:cursor-not-allowed">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Generate & Download PDF
+            </button>
           </div>
 
           {{-- Simpan Template --}}
@@ -182,6 +180,11 @@
             </button>
           </div>
 
+        </form>
+
+        {{-- Form generate TERPISAH di luar templateForm — mencegah nested form --}}
+        <form id="generateForm" method="POST" action="" style="display:none">
+          @csrf
         </form>
       </div>
     </div>
@@ -245,8 +248,8 @@
   document.getElementById('btnRefresh')?.addEventListener('click', refreshPreview);
 
   // Load pemagang selesai ke select
-  const sel    = document.getElementById('rekInternSelect');
-  const btnGen = document.getElementById('btnGenerate');
+  const sel     = document.getElementById('rekInternSelect');
+  const btnGen  = document.getElementById('btnGenerate');
   const genForm = document.getElementById('generateForm');
 
   fetch(API_URL + '?scope=completed&per_page=1000', {
@@ -270,6 +273,12 @@
     }
     genForm.action = `${GEN_BASE}/${this.value}`;
     btnGen.disabled = false;
+  });
+
+  // Klik tombol → submit form generate yang terpisah
+  btnGen?.addEventListener('click', function () {
+    if (!sel.value || !genForm.action) return;
+    genForm.submit();
   });
 })();
 </script>
