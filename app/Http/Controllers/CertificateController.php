@@ -167,6 +167,212 @@ class CertificateController extends Controller
 
 
 
+    // ====== WEBINAR CERTIFICATE ======
+
+    /**
+     * Form create sertifikat webinar (manual, tanpa alur bukti kehadiran).
+     * Division dipaksa 'WBN' → otomatis pakai template webinar-pdf.
+     */
+    public function createWebinar()
+    {
+        $backgroundFiles = collect(Storage::files('public/images/backgrounds'))
+            ->map(fn ($f) => basename($f))
+            ->filter(fn ($f) => str_starts_with($f, 'bg_'))
+            ->values();
+
+        $logoFiles = collect(Storage::files('public/images/logos'))
+            ->map(fn ($f) => basename($f))
+            ->filter(fn ($f) => str_starts_with($f, 'logo_'))
+            ->values();
+
+        $signatureFiles = collect(Storage::files('public/images/signature'))
+            ->map(fn ($f) => basename($f))
+            ->filter(fn ($f) => str_starts_with($f, 'ttd_'))
+            ->values();
+
+        $brands = [
+            'MJ'=>'Magangjogja','AK'=>'Areakerja','RW'=>'Republikweb','TS'=>'Titipsini','AP'=>'Ambilpaket',
+            'BK'=>'Bikinkepo','BC'=>'Bimbelcerdas.com','LK'=>'Latihankerja.com','LJT'=>'Lowkerjateng.com',
+            'LJG'=>'Lowkerjogja.com','PJ'=>'Pijatjogja.com','SB'=>'Sayabantu.com','TV'=>'Titikvisual',
+            'TN'=>'Tuantanah','TL'=>'Tukanglas.org','AKI'=>'Adakamar.id','SI'=>'Seven Inc',
+        ];
+
+        // Prefill dari webinar_id jika ada (datang dari halaman attendances)
+        $prefill   = [];
+        $approvedParticipants = collect();
+
+        $webinarId = request('webinar_id');
+        if ($webinarId) {
+            $webinar = \App\Models\Webinar::find($webinarId);
+            if ($webinar) {
+                $prefill = [
+                    'webinar_title' => $webinar->title,
+                    'company'       => $webinar->certificate_company ?? 'Seven Inc',
+                    'city'          => $webinar->certificate_city ?? 'Yogyakarta',
+                    'brand'         => $webinar->certificate_brand ?? 'MJ',
+                    'event_date'    => $webinar->event_date->format('Y-m-d'),
+                    'background_image'  => $webinar->certificate_background,
+                    'logo1'             => $webinar->certificate_logo1,
+                    'signature_image1'  => $webinar->certificate_signature1,
+                    'name_signatory1'   => $webinar->certificate_signatory1_name,
+                    'role1'             => $webinar->certificate_signatory1_role,
+                ];
+
+                // Ambil nama peserta yang sudah approved & belum punya sertifikat
+                $approvedParticipants = \App\Models\WebinarAttendance::with('user')
+                    ->where('webinar_id', $webinar->id)
+                    ->where('status', \App\Models\WebinarAttendance::STATUS_APPROVED)
+                    ->whereNull('certificate_id')   // belum punya sertifikat
+                    ->get()
+                    ->map(fn ($a) => ['name' => $a->user->name, 'attendance_id' => $a->id]);
+            }
+        }
+
+        return view('certificates.create_webinar', compact(
+            'backgroundFiles','logoFiles','signatureFiles','brands',
+            'prefill','approvedParticipants','webinarId'
+        ));
+    }
+
+    /**
+     * Simpan sertifikat webinar manual (bulk).
+     * - Division = 'WBN'
+     * - start_date & end_date = event_date (1 hari)
+     * - Judul webinar disimpan sementara di session / tidak disimpan di DB certificate
+     *   (sudah muncul di template via webinar_attendances, tapi di sini manual jadi
+     *    kita simpan judul ke `division` metadata melalui trick: simpan ke notes via
+     *    `company` field tidak cocok → kita gunakan pendekatan berbeda)
+     * CATATAN: karena table certificates tidak punya kolom webinar_title,
+     * kita encode judul webinar ke dalam serial_number prefix saja, dan
+     * ambil dari relasi attendance. Untuk generate manual, judul ditampilkan
+     * lewat `certificate->company` yang sudah diisi company="[JudulWebinar]|[Company]"
+     * lalu dipecah di template.
+     * Alternatif simpel: gunakan `notes` kolom jika ada, atau kita modif template
+     * supaya judul diambil dari company dengan separator.
+     */
+    public function storeWebinar(Request $request)
+    {
+        $validBrands = ['MJ','AK','RW','TS','AP','BK','BC','LK','LJT','LJG','PJ','SB','TV','TN','TL','AKI','SI'];
+
+        $request->validate([
+            'webinar_title'    => ['required','string','max:255'],
+            'company'          => ['required','string','max:255'],
+            'city'             => ['required','string','max:255'],
+            'brand'            => ['required', Rule::in($validBrands)],
+            'event_date'       => ['required','date'],
+            'background_image' => ['nullable','string'],
+            'logo1'            => ['nullable','string'],
+            'signature_image1' => ['required','string'],
+            'name_signatory1'  => ['required','string','max:255'],
+            'role1'            => ['required','string','max:255'],
+            'participants'           => ['required','array','min:1'],
+            'participants.*.name'    => ['required','string','max:255'],
+        ], [
+            'webinar_title.required'    => 'Judul webinar wajib diisi.',
+            'signature_image1.required' => 'Tanda tangan wajib dipilih.',
+            'participants.required'     => 'Minimal satu peserta harus diisi.',
+        ]);
+
+        $data      = $request->all();
+        $eventDate = Carbon::parse($data['event_date']);
+        $brandCode = strtoupper($data['brand']);
+
+        // Encode judul webinar ke company field dengan separator | agar bisa diambil di template
+        $companyEncoded = $data['webinar_title'] . '||' . $data['company'];
+
+        $companyCode  = $this->companyCode($data['company']);
+        $divisionCode = 'WBN';
+
+        $roman      = [1=>'I',2=>'II',3=>'III',4=>'IV',5=>'V',6=>'VI',7=>'VII',8=>'VIII',9=>'IX',10=>'X',11=>'XI',12=>'XII'];
+        $monthRoman = $roman[$eventDate->month];
+        $year       = $eventDate->year;
+
+        $bgPath  = $data['background_image'] ? "images/backgrounds/{$data['background_image']}" : null;
+        $l1Path  = $data['logo1'] ? "images/logos/{$data['logo1']}" : null;
+        $sig1Path = "images/signature/{$data['signature_image1']}";
+
+        // Cek file TTD ada
+        if (!Storage::exists("public/{$sig1Path}")) {
+            return back()->withErrors(['signature_image1' => 'File tanda tangan tidak ditemukan.'])->withInput();
+        }
+
+        // Sequence
+        $last = Certificate::whereYear('created_at', $year)
+            ->whereMonth('created_at', $eventDate->month)
+            ->orderByDesc('id')->first();
+        $seq = 1;
+        if ($last && preg_match('/^(\d{3})\/SERT\//', $last->serial_number, $m)) {
+            $seq = (int)$m[1] + 1;
+        }
+
+        $created = 0;
+        DB::transaction(function () use (
+            $data, $companyEncoded, $companyCode, $brandCode, $divisionCode,
+            $eventDate, $monthRoman, $year, $bgPath, $l1Path, $sig1Path, &$seq, &$created
+        ) {
+            foreach ($data['participants'] as $p) {
+                $name = trim($p['name'] ?? '');
+                if ($name === '') continue;
+
+                $seqStr = str_pad($seq, 3, '0', STR_PAD_LEFT);
+                $serial = "{$seqStr}/SERT/{$divisionCode}/{$companyCode}.{$brandCode}/{$monthRoman}/{$year}";
+                $seq++;
+
+                $cert = Certificate::create([
+                    'name'             => $name,
+                    'division'         => $divisionCode,
+                    'company'          => $companyEncoded,
+                    'background_image' => $bgPath,
+                    'start_date'       => $eventDate,
+                    'end_date'         => $eventDate,
+                    'city'             => $data['city'],
+                    'brand'            => $brandCode,
+                    'serial_number'    => $serial,
+                    'logo1'            => $l1Path,
+                    'logo2'            => null,
+                    'signature_image1' => $sig1Path,
+                    'signature_image2' => null,
+                    'name_signatory1'  => $data['name_signatory1'],
+                    'name_signatory2'  => null,
+                    'role1'            => $data['role1'],
+                    'role2'            => null,
+                ]);
+
+                // Kalau dari alur webinar (ada attendance_id), update record attendance
+                $attendanceId = $p['attendance_id'] ?? null;
+                if ($attendanceId && $cert) {
+                    $attendance = \App\Models\WebinarAttendance::find($attendanceId);
+                    if ($attendance && !$attendance->certificate_id) {
+                        $attendance->update([
+                            'certificate_id' => $cert->id,
+                            'reviewed_by'    => $attendance->reviewed_by ?? auth()->id(),
+                            'reviewed_at'    => $attendance->reviewed_at ?? now(),
+                        ]);
+
+                        // Simpan ke document_downloads agar muncul di Dokumen Saya pemagang
+                        \App\Models\DocumentDownload::firstOrCreate(
+                            [
+                                'user_id'  => $attendance->user_id,
+                                'doc_type' => \App\Models\DocumentDownload::TYPE_SERTIFIKAT_WEBINAR,
+                                'file_url' => route('admin.certificate.pdf', $cert->id),
+                            ],
+                            [
+                                'file_path'     => null,
+                                'downloaded_at' => now(),
+                                'status'        => 'success',
+                            ]
+                        );
+                    }
+                }
+
+                $created++;
+            }
+        });
+
+        return redirect()->route('admin.certificate.index')->with('success',
+            "✅ {$created} sertifikat webinar berhasil dibuat.");
+    }
+
     // ====== EXTERNAL PARTICIPANTS ======
 
     /**
@@ -563,17 +769,24 @@ class CertificateController extends Controller
             mkdir(dirname($tmpPath), 0775, true);
         }
 
-        Browsershot::html($html)
-            ->emulateMedia('print')
+        $shot = Browsershot::html($html)
             ->format('A4')
             ->landscape()
             ->margins(0, 0, 0, 0)
             ->timeout(180)
-            ->setOption('args', [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-            ])
-            ->savePdf($tmpPath);
+            ->setOption('args', ['--no-sandbox', '--disable-setuid-sandbox']);
+
+        // Webinar: screen media agar CSS background image ter-render
+        // Magang: print media (sudah pakai data URI, aman)
+        if ($isWebinar) {
+            $shot->emulateMedia('screen')
+                 ->showBackground()
+                 ->setOption('printBackground', true);
+        } else {
+            $shot->emulateMedia('print');
+        }
+
+        $shot->savePdf($tmpPath);
 
         return response()->download($tmpPath, $filename, [
             'Content-Type' => 'application/pdf',
@@ -909,45 +1122,43 @@ class CertificateController extends Controller
             'name'              => 'required|string|max:255',
             'division'          => 'required|string|max:255',
             'company'           => 'required|string|max:255',
-            'background_image'  => 'nullable|image|max:2048',
+            'background_image'  => 'nullable|string|max:500',
             'start_date'        => 'required|date',
             'end_date'          => 'required|date',
             'city'              => 'required|string|max:255',
             'brand'             => 'required|string|max:255',
             'serial_number'     => 'required|string|max:255|unique:certificates,serial_number,' . $id,
-            'logo1'             => 'nullable|image|max:2048',
-            'logo2'             => 'nullable|image|max:2048',
-            'signature_image1'  => 'nullable|image|max:2048',
-            'signature_image2'  => 'nullable|image|max:2048',
+            'logo1'             => 'nullable|string|max:500',
+            'logo2'             => 'nullable|string|max:500',
+            'signature_image1'  => 'nullable|string|max:500',
+            'signature_image2'  => 'nullable|string|max:500',
             'name_signatory1'   => 'required|string|max:255',
             'name_signatory2'   => 'nullable|string|max:255',
             'role1'             => 'required|string|max:255',
             'role2'             => 'nullable|string|max:255',
         ]);
 
-        // Ambil data sertifikat
         $certificate = Certificate::findOrFail($id);
 
-        // Hapus file lama jika ada dan upload yang baru
-        if ($request->hasFile('background_image')) {
-            Storage::delete($certificate->background_image);
-            $certificate->background_image = $request->file('background_image')->store('backgrounds');
+        // Update aset visual — terima string path dari dropdown (bukan file upload)
+        if ($request->filled('background_image')) {
+            $certificate->background_image = $request->background_image;
         }
-        if ($request->hasFile('logo1')) {
-            Storage::delete($certificate->logo1);
-            $certificate->logo1 = $request->file('logo1')->store('logos');
+        if ($request->filled('logo1')) {
+            $certificate->logo1 = $request->logo1;
         }
-        if ($request->hasFile('logo2')) {
-            Storage::delete($certificate->logo2);
-            $certificate->logo2 = $request->file('logo2')->store('logos');
+        if ($request->filled('logo2')) {
+            $certificate->logo2 = $request->logo2;
+        } elseif ($request->has('logo2') && $request->logo2 === '') {
+            $certificate->logo2 = null;
         }
-        if ($request->hasFile('signature_image1')) {
-            Storage::delete($certificate->signature_image1);
-            $certificate->signature_image1 = $request->file('signature_image1')->store('signatures');
+        if ($request->filled('signature_image1')) {
+            $certificate->signature_image1 = $request->signature_image1;
         }
-        if ($request->hasFile('signature_image2')) {
-            Storage::delete($certificate->signature_image2);
-            $certificate->signature_image2 = $request->file('signature_image2')->store('signatures');
+        if ($request->filled('signature_image2')) {
+            $certificate->signature_image2 = $request->signature_image2;
+        } elseif ($request->has('signature_image2') && $request->signature_image2 === '') {
+            $certificate->signature_image2 = null;
         }
 
         // Update data sertifikat

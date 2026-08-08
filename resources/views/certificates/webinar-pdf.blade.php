@@ -2,12 +2,11 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{{ $pdfTitle ?? 'Sertifikat Webinar' }}</title>
   @php
     use Carbon\Carbon;
 
-    // Helper: relative path → data URI (embed gambar langsung ke HTML)
+    // Helper: relative path → data URI
     $dataUri = function ($relPath) {
         if (empty($relPath)) return '';
         $abs = storage_path('app/public/' . $relPath);
@@ -26,248 +25,294 @@
 
     $hasRightSig = $ttd2Url || !empty($certificate->name_signatory2) || !empty($certificate->role2);
 
-    // Judul webinar disimpan di kolom 'division' saat generate — tapi kita bisa
-    // coba ambil dari webinar_attendances via serial_number kalau ada.
-    // Untuk sekarang: tampilkan teks generik "Webinar" + tanggal.
-    $eventDate = Carbon::parse($certificate->start_date)->locale('id')->translatedFormat('j F Y');
+    Carbon::setLocale('id');
+    $eventDate = Carbon::parse($certificate->start_date)->isoFormat('DD MMMM YYYY');
 
-    // Coba ambil judul webinar dari webinar_attendances
+    // Ambil judul webinar dari webinar_attendances
     $webinarTitle = null;
     try {
         $attendance = \App\Models\WebinarAttendance::where('certificate_id', $certificate->id)->first();
         $webinarTitle = $attendance?->webinar?->title;
-    } catch (\Throwable $e) { /* fallback */ }
+    } catch (\Throwable $e) {}
+
+    $company = $certificate->company ?? 'Seven Inc';
+    $city    = $certificate->city    ?? 'Yogyakarta';
+
+    // Handle format "JudulWebinar||Company" untuk generate manual
+    $webinarTitleFromCompany = null;
+    if (str_contains($company, '||')) {
+        [$webinarTitleFromCompany, $company] = explode('||', $company, 2);
+    }
+
+    // Final judul webinar: dari attendance (alur bukti kehadiran) atau dari company field (generate manual)
+    $finalWebinarTitle = $webinarTitle ?? $webinarTitleFromCompany;
   @endphp
 
   <style>
-    @page { size: 1123px 794px landscape; margin: 0; }
-    html, body { height: 100%; margin: 0; padding: 0; }
-    * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    :root {
-      --page-w: 1123px;
-      --page-h: 794px;
-      --green: #1a5c38;
-      --dark:  #1B3A34;
-      --text:  #111;
-      --serif: "Times New Roman", Times, serif;
-      --script: "Edwardian Script ITC", "Segoe Script", "Brush Script MT", "Lucida Handwriting", cursive, serif;
+    @page {
+      size: A4 landscape;
+      margin: 0;
     }
-    body {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #e8e8e8;
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    html, body {
+      width: 297mm;
+      height: 210mm;
+      overflow: hidden;
+      font-family: 'Arial', 'Helvetica Neue', Helvetica, sans-serif;
+      background: #fff;
     }
+
+    /* ── PAGE WRAPPER ── */
     .page {
       position: relative;
-      width: var(--page-w);
-      height: var(--page-h);
+      width: 297mm;
+      height: 210mm;
       overflow: hidden;
-      background: {{ $bgUrl ? "url('" . $bgUrl . "') center/cover no-repeat" : 'linear-gradient(135deg,#0a2e1c 0%,#1a5c38 55%,#0d3d25 100%)' }};
+      background: #ffffff;
     }
-    /* Overlay semi-transparan supaya teks tetap terbaca meski background gelap */
+
+    /* Overlay putih ringan supaya teks mudah dibaca */
     .overlay {
       position: absolute;
       inset: 0;
-      background: rgba(255,255,255,0.62);
+      background: rgba(255, 255, 255, 0.72);
+      z-index: 1;
     }
+
+    /* ── CONTENT WRAPPER ── */
     .content {
       position: absolute;
       inset: 0;
-      padding: 48px 72px 36px;
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
+      padding: 12mm 25mm;
+      text-align: center;
+      gap: 0;
+      z-index: 2;
     }
 
-    /* ── LOGOS ── */
-    .logos {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: {{ $logo2Url ? 'space-between' : 'center' }};
-      margin-bottom: 6px;
+    /* ── LOGO ── */
+    .logo-wrap {
+      margin-bottom: 5mm;
     }
-    .logos img { max-height: 80px; max-width: 200px; object-fit: contain; }
+    .logo-wrap img {
+      max-height: 18mm;
+      max-width: 50mm;
+      object-fit: contain;
+    }
 
-    /* ── HEADING ── */
-    .title {
-      font: italic 700 68px var(--script);
-      color: var(--dark);
-      line-height: 1;
-      margin: 0 0 4px;
-      text-align: center;
-    }
-    .subtitle {
-      font: 400 17px var(--serif);
-      color: #444;
-      text-align: center;
-      letter-spacing: .6px;
+    /* ── JUDUL ── */
+    .cert-title {
+      font-size: 28pt;
+      font-weight: 900;
+      letter-spacing: 4px;
+      color: #1a1a1a;
       text-transform: uppercase;
-      margin-bottom: 6px;
+      margin-bottom: 2mm;
+      line-height: 1;
     }
 
-    /* ── SERIAL ── */
-    .serial {
-      font: 600 14px var(--serif);
-      color: var(--dark);
-      background: rgba(255,255,255,0.78);
-      border: 1px solid rgba(0,0,0,0.12);
-      border-radius: 6px;
-      padding: 4px 14px;
-      letter-spacing: .2px;
-      margin-bottom: 10px;
+    /* ── NOMOR ── */
+    .cert-number {
+      font-size: 9pt;
+      color: #444;
+      margin-bottom: 5mm;
+      letter-spacing: 0.3px;
     }
 
-    /* ── RECIPIENT ── */
+    /* ── DIBERIKAN KEPADA ── */
     .given-to {
-      font: 400 19px var(--serif);
+      font-size: 10pt;
       color: #555;
-      margin-bottom: 2px;
+      margin-bottom: 2mm;
     }
-    .name {
-      font: italic 68px var(--script);
-      color: var(--text);
+
+    /* ── NAMA PENERIMA ── */
+    .recipient-name {
+      font-size: 26pt;
+      font-weight: 900;
+      color: #1a1a1a;
+      letter-spacing: 3px;
+      text-transform: uppercase;
       line-height: 1.1;
-      text-align: center;
+      margin-bottom: 1mm;
     }
-    .name-line {
-      width: 72%;
-      max-width: 700px;
-      height: 2px;
-      background: #111;
-      margin: 2px auto 10px;
-    }
-
-    /* ── BODY TEXT ── */
-    .body {
-      font: 400 19px var(--serif);
-      color: var(--text);
-      text-align: center;
-      line-height: 1.65;
-    }
-    .body .webinar-title {
-      font-weight: 700;
-      color: var(--dark);
-      font-size: 20px;
+    .name-underline {
+      width: 75%;
+      height: 1.5px;
+      background: #1a1a1a;
+      margin: 1mm auto 4mm;
     }
 
-    /* ── SIGNATURE AREA ── */
+    /* ── SEBAGAI PESERTA ── */
+    .as-label {
+      font-size: 10pt;
+      color: #555;
+      margin-bottom: 1mm;
+    }
+    .role-label {
+      font-size: 18pt;
+      font-weight: 900;
+      letter-spacing: 3px;
+      color: #1a1a1a;
+      text-transform: uppercase;
+      margin-bottom: 4mm;
+    }
+
+    /* ── DESKRIPSI WEBINAR ── */
+    .webinar-desc {
+      font-size: 10pt;
+      color: #333;
+      line-height: 1.55;
+      max-width: 160mm;
+      margin-bottom: 4mm;
+    }
+    .webinar-desc strong {
+      color: #1a1a1a;
+    }
+
+    /* ── LOKASI & TANGGAL ── */
+    .location-date {
+      font-size: 10pt;
+      color: #555;
+      margin-bottom: 6mm;
+    }
+
+    /* ── TANDA TANGAN ── */
     .signatures {
-      width: 100%;
-      margin-top: auto;
-      padding-top: 10px;
       display: flex;
-      justify-content: {{ $hasRightSig ? 'space-between' : 'center' }};
-      align-items: flex-end;
-      padding-bottom: 0;
+      justify-content: {{ $hasRightSig ? 'space-around' : 'center' }};
+      width: 100%;
+      gap: 20mm;
     }
     .sig {
-      width: 260px;
-      text-align: center;
-      font: 400 17px var(--serif);
-      color: var(--text);
-      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 45mm;
     }
-    .sig .role  { margin-bottom: 56px; color: #444; }
-    .sig .ttd-wrap {
-      position: absolute;
-      bottom: 42px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 200px;
-      height: 80px;
-      pointer-events: none;
+    .sig-role {
+      font-size: 9pt;
+      color: #555;
+      margin-bottom: 10mm;
     }
-    .sig .ttd-wrap img {
-      width: 100%;
-      height: 100%;
+    .sig-ttd {
+      width: 40mm;
+      height: 14mm;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1mm;
+    }
+    .sig-ttd img {
+      max-width: 100%;
+      max-height: 100%;
       object-fit: contain;
-      opacity: .95;
     }
-    .sig .line { height: 2px; background: #111; margin: 0 0 5px; }
-    .sig .sig-name { font-weight: 700; font-size: 17px; }
+    .sig-line {
+      width: 45mm;
+      height: 1px;
+      background: #1a1a1a;
+      margin-bottom: 2mm;
+    }
+    .sig-name {
+      font-size: 10pt;
+      font-weight: 700;
+      color: #1a1a1a;
+    }
 
-    @media print { body { background: none; } .page { box-shadow: none; } }
+    @media print { body { background: none; } .page { box-shadow: none; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }
   </style>
 </head>
 <body>
 <div class="page">
+  @if($bgUrl)
+  {{-- Background sebagai img tag (lebih reliable di Browsershot daripada CSS background) --}}
+  <img src="{{ $bgUrl }}" alt=""
+       style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:0;display:block;">
   <div class="overlay"></div>
+  @endif
+
   <div class="content">
 
-    {{-- LOGOS --}}
-    <div class="logos">
-      @if($logo1Url)
-        <img src="{{ $logo1Url }}" alt="Logo">
-      @endif
-      @if($logo2Url)
-        <img src="{{ $logo2Url }}" alt="Logo 2">
-      @endif
+    {{-- LOGO --}}
+    @if($logo1Url)
+    <div class="logo-wrap">
+      <img src="{{ $logo1Url }}" alt="Logo">
     </div>
+    @endif
 
     {{-- JUDUL --}}
-    <div class="title">Sertifikat Kehadiran</div>
-    <div class="subtitle">Certificate of Attendance</div>
+    <div class="cert-title">Sertifikat</div>
 
-    {{-- NOMOR SERTIFIKAT --}}
-    <div class="serial">NO: {{ $certificate->serial_number }}</div>
+    {{-- NOMOR --}}
+    <div class="cert-number">Nomor: {{ $certificate->serial_number }}</div>
 
-    {{-- PENERIMA --}}
+    {{-- DIBERIKAN KEPADA --}}
     <div class="given-to">Diberikan kepada:</div>
-    <div class="name">{{ $certificate->name }}</div>
-    <div class="name-line"></div>
 
-    {{-- BODY --}}
-    <div class="body">
-      <div>Telah berpartisipasi sebagai peserta dalam webinar</div>
-      @if($webinarTitle)
-        <div class="webinar-title">"{{ $webinarTitle }}"</div>
+    {{-- NAMA PESERTA --}}
+    <div class="recipient-name">{{ $certificate->name }}</div>
+    <div class="name-underline"></div>
+
+    {{-- SEBAGAI PESERTA --}}
+    <div class="as-label">Sebagai</div>
+    <div class="role-label">Peserta</div>
+
+    {{-- DESKRIPSI --}}
+    <div class="webinar-desc">
+      Dalam Kegiatan
+      @if($finalWebinarTitle)
+        <strong>"{{ $finalWebinarTitle }}"</strong>
+      @else
+        <strong>"Webinar"</strong>
       @endif
-      <div>
-        yang diselenggarakan oleh <strong>{{ $certificate->company }}</strong>
-      </div>
-      <div>
-        pada <strong>{{ $eventDate }}</strong>
-        &nbsp;·&nbsp; <strong>{{ $certificate->city }}</strong>
-      </div>
+      yang diselenggarakan oleh <strong>{{ $company }}</strong>
+      pada tanggal <strong>{{ $eventDate }}</strong>
     </div>
+
+    {{-- LOKASI & TANGGAL --}}
+    <div class="location-date">{{ $city }}, {{ $eventDate }}</div>
 
     {{-- TANDA TANGAN --}}
     <div class="signatures">
-
-      {{-- Kiri (wajib) --}}
+      {{-- Penandatangan 1 (wajib) --}}
       <div class="sig">
         @if(!empty($certificate->role1))
-          <div class="role">{{ $certificate->role1 }}</div>
+          <div class="sig-role">{{ $certificate->role1 }}</div>
+        @else
+          <div class="sig-role">&nbsp;</div>
         @endif
-        @if($ttd1Url)
-          <div class="ttd-wrap">
-            <img src="{{ $ttd1Url }}" alt="TTD 1">
-          </div>
-        @endif
-        <div class="line"></div>
+        <div class="sig-ttd">
+          @if($ttd1Url)
+            <img src="{{ $ttd1Url }}" alt="TTD">
+          @endif
+        </div>
+        <div class="sig-line"></div>
         <div class="sig-name">{{ $certificate->name_signatory1 }}</div>
       </div>
 
-      {{-- Kanan (opsional) --}}
+      {{-- Penandatangan 2 (opsional) --}}
       @if($hasRightSig)
       <div class="sig">
         @if(!empty($certificate->role2))
-          <div class="role">{{ $certificate->role2 }}</div>
+          <div class="sig-role">{{ $certificate->role2 }}</div>
+        @else
+          <div class="sig-role">&nbsp;</div>
         @endif
-        @if($ttd2Url)
-          <div class="ttd-wrap">
+        <div class="sig-ttd">
+          @if($ttd2Url)
             <img src="{{ $ttd2Url }}" alt="TTD 2">
-          </div>
-        @endif
+          @endif
+        </div>
         @if(!empty($certificate->name_signatory2))
-          <div class="line"></div>
+          <div class="sig-line"></div>
           <div class="sig-name">{{ $certificate->name_signatory2 }}</div>
         @endif
       </div>
       @endif
-
     </div>
 
   </div>

@@ -16,20 +16,34 @@
       </div>
     </div>
 
-    {{-- Approve All --}}
-    @php $pendingCount = $attendances->where('status', 'pending')->count(); @endphp
-    @if($pendingCount > 0)
-    <form method="POST" action="{{ route('admin.webinars.attendances.approve_all', $webinar) }}"
-          onsubmit="return confirm('Setujui semua {{ $pendingCount }} bukti kehadiran yang masih pending?')">
-      @csrf
-      <button type="submit"
-              class="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-lg"
-              style="background-color:#2D8659;">
-        <i class="fas fa-check-double text-xs"></i>
-        Approve Semua ({{ $pendingCount }})
-      </button>
-    </form>
-    @endif
+    {{-- Approve All + Generate Sertifikat --}}
+    @php
+      $pendingCount  = $attendances->where('status', 'pending')->count();
+      $approvedCount = $attendances->where('status', 'approved')->count();
+    @endphp
+    <div class="flex items-center gap-2">
+      @if($pendingCount > 0)
+      <form method="POST" action="{{ route('admin.webinars.attendances.approve_all', $webinar) }}"
+            onsubmit="return confirm('Setujui semua {{ $pendingCount }} bukti kehadiran yang masih pending?')">
+        @csrf
+        <button type="submit"
+                class="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-lg"
+                style="background-color:#2D8659;">
+          <i class="fas fa-check-double text-xs"></i>
+          Approve Semua ({{ $pendingCount }})
+        </button>
+      </form>
+      @endif
+
+      @if($approvedCount > 0)
+      <a href="{{ route('admin.certificate.webinar.create', ['webinar_id' => $webinar->id]) }}"
+         class="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-lg"
+         style="background-color:#1a5c38;">
+        <i class="fas fa-award text-xs"></i>
+        Generate Sertifikat ({{ $approvedCount }})
+      </a>
+      @endif
+    </div>
   </div>
 
   @if(session('success'))

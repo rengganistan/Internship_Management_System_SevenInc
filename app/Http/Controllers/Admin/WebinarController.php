@@ -129,6 +129,66 @@ class WebinarController extends Controller
     }
 
     /**
+     * Generate sertifikat untuk SEMUA peserta approved webinar ini.
+     * Skip peserta yang sudah punya sertifikat (idempoten).
+     */
+    public function generateCerts(Webinar $webinar)
+    {
+        $approvedAttendances = WebinarAttendance::with('user')
+            ->where('webinar_id', $webinar->id)
+            ->where('status', WebinarAttendance::STATUS_APPROVED)
+            ->get();
+
+        if ($approvedAttendances->isEmpty()) {
+            return back()->with('error', 'Tidak ada peserta yang sudah diapprove untuk webinar ini.');
+        }
+
+        $generated = 0;
+        $skipped   = 0;
+
+        foreach ($approvedAttendances as $attendance) {
+            // Skip kalau sudah punya sertifikat
+            if ($attendance->certificate_id) {
+                $skipped++;
+                continue;
+            }
+
+            $cert = $this->generateWebinarCertificate($webinar, $attendance->user);
+
+            $attendance->update([
+                'certificate_id' => $cert?->id,
+                'reviewed_by'    => $attendance->reviewed_by ?? auth()->id(),
+                'reviewed_at'    => $attendance->reviewed_at ?? now(),
+            ]);
+
+            if ($cert) {
+                // Simpan ke document_downloads agar muncul di Dokumen Saya pemagang
+                DocumentDownload::firstOrCreate(
+                    [
+                        'user_id'  => $attendance->user_id,
+                        'doc_type' => DocumentDownload::TYPE_SERTIFIKAT_WEBINAR,
+                        // Gunakan file_url sebagai unique key per sertifikat
+                        'file_url' => route('admin.certificate.pdf', $cert->id),
+                    ],
+                    [
+                        'file_path'     => null,
+                        'downloaded_at' => now(),
+                        'status'        => 'success',
+                    ]
+                );
+                $generated++;
+            }
+        }
+
+        $msg = "✅ {$generated} sertifikat berhasil di-generate.";
+        if ($skipped > 0) {
+            $msg .= " {$skipped} peserta dilewati (sudah punya sertifikat).";
+        }
+
+        return back()->with('success', $msg);
+    }
+
+    /**
      * Approve bukti kehadiran + generate sertifikat otomatis.
      */
     public function approve(Request $request, Webinar $webinar, WebinarAttendance $attendance)

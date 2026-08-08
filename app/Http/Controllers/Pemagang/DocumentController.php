@@ -171,7 +171,7 @@ class DocumentController extends Controller
             'instansi' => $membercard->instansi,
         ];
 
-        // Pakai Browsershot karena DomPDF tidak support CSS gradient
+        // Pakai Browsershot — set ukuran persis kartu kredit standar (85.6 × 54mm)
         $html = view('pemagang.membercard-pdf', $data)->render();
 
         $safeName = \Illuminate\Support\Str::slug($membercard->name);
@@ -182,13 +182,16 @@ class DocumentController extends Controller
             mkdir(dirname($tmpPath), 0775, true);
         }
 
+        // Ukuran kartu kredit standar: 85.6mm × 53.98mm
+        // @ 96dpi: 85.6mm ÷ 25.4 × 96 ≈ 323px wide, 53.98mm ÷ 25.4 × 96 ≈ 204px high
+        // Scale 2× untuk kualitas tinggi → 646 × 408
         \Spatie\Browsershot\Browsershot::html($html)
             ->emulateMedia('screen')
             ->showBackground()
             ->margins(0, 0, 0, 0)
-            ->windowSize(856, 540)   // 85.6mm x 54mm @ 96dpi * 2.54 = ~323x204 → scale up for quality
+            ->windowSize(646, 408)
             ->deviceScaleFactor(2)
-            ->setOption('preferCSSPageSize', true)
+            ->paperSize(85.6, 53.98, 'mm')
             ->setOption('printBackground', true)
             ->timeout(60)
             ->savePdf($tmpPath);

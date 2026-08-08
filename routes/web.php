@@ -294,6 +294,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin', 'preve
     Route::get('/certificate/external/create', [CertificateController::class, 'createExternal'])->name('certificate.external.create');
     Route::post('/certificate/external',        [CertificateController::class, 'storeExternal'])->name('certificate.external.store');
 
+    // Webinar certificate create/store -> admin.certificate.webinar.*
+    Route::get('/certificate/webinar/create', [CertificateController::class, 'createWebinar'])->name('certificate.webinar.create');
+    Route::post('/certificate/webinar',       [CertificateController::class, 'storeWebinar'])->name('certificate.webinar.store');
+
     // Download PDF satu sertifikat -> admin.certificate.pdf
     Route::get('/certificate/{certificate}/pdf', [CertificateController::class, 'downloadPdf'])->name('certificate.pdf');
 
@@ -332,6 +336,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin', 'preve
         Route::post('/{webinar}/attendances/{attendance}/approve', [\App\Http\Controllers\Admin\WebinarController::class, 'approve'])->name('attendances.approve');
         Route::post('/{webinar}/attendances/{attendance}/reject', [\App\Http\Controllers\Admin\WebinarController::class, 'reject'])->name('attendances.reject');
         Route::post('/{webinar}/approve-all', [\App\Http\Controllers\Admin\WebinarController::class, 'approveAll'])->name('attendances.approve_all');
+
+        // Generate sertifikat untuk semua peserta approved (tanpa re-generate yang sudah ada)
+        Route::post('/{webinar}/generate-certs', [\App\Http\Controllers\Admin\WebinarController::class, 'generateCerts'])->name('generate_certs');
     });
 
     // Akses Eksklusif (Rekomendasi, Alumni, Info Kerja)
