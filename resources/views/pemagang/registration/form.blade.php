@@ -14,6 +14,16 @@
   $check = $radio;
   $item  = 'flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition cursor-pointer';
   $group = 'border border-gray-200 rounded-lg divide-y divide-gray-100 overflow-hidden';
+
+  // Normalize tanggal ke format Y-m-d untuk input type="date"
+  $toDateInput = function(string $val): string {
+    if ($val === '') return '';
+    // Sudah format Y-m-d
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $val)) return $val;
+    // Coba parse dengan Carbon
+    try { return \Carbon\Carbon::parse($val)->format('Y-m-d'); }
+    catch (\Throwable) { return ''; }
+  };
 @endphp
 
 <div class="max-w-2xl mx-auto">
@@ -60,8 +70,9 @@
         </div>
         <div>
           <label class="{{ $label }}">Tanggal Lahir <span class="text-red-500">*</span></label>
-          <input type="text" name="born_date" required placeholder="25 Juni 2005"
-            class="{{ $input }}" value="{{ $old('born_date') }}">
+          <input type="date" name="born_date" required
+            max="{{ date('Y-m-d') }}"
+            class="{{ $input }}" value="{{ $toDateInput($old('born_date')) }}">
         </div>
       </div>
 
@@ -141,13 +152,14 @@
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="{{ $label }}">Tanggal Mulai</label>
-          <input type="text" name="start_date" placeholder="10 September 2025"
-            class="{{ $input }}" value="{{ $old('start_date') }}">
+          <input type="date" name="start_date"
+            min="{{ date('Y-m-d') }}"
+            class="{{ $input }}" value="{{ $toDateInput($old('start_date')) }}">
         </div>
         <div>
           <label class="{{ $label }}">Tanggal Selesai</label>
-          <input type="text" name="end_date" placeholder="10 Desember 2025"
-            class="{{ $input }}" value="{{ $old('end_date') }}">
+          <input type="date" name="end_date"
+            class="{{ $input }}" value="{{ $toDateInput($old('end_date')) }}">
         </div>
       </div>
 
