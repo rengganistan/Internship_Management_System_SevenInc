@@ -73,26 +73,6 @@
           <td class="px-5 py-4">
             <div class="flex items-center justify-end gap-2">
 
-              {{-- Sertifikat: generate untuk semua peserta approved --}}
-              @if($webinar->approved_attendances_count > 0)
-              <form method="POST"
-                    action="{{ route('admin.webinars.generate_certs', $webinar) }}"
-                    onsubmit="return confirm('Generate sertifikat untuk {{ $webinar->approved_attendances_count }} peserta yang sudah approved?\n\nSertifikat yang sudah ada tidak akan dibuat ulang.')">
-                @csrf
-                <button type="submit"
-                        class="flex items-center gap-1.5 text-xs font-semibold text-white px-3 py-1.5 rounded-lg"
-                        style="background-color:#1a5c38;"
-                        title="Generate sertifikat untuk semua peserta approved">
-                  <i class="fas fa-award text-xs"></i> Sertifikat
-                </button>
-              </form>
-              @else
-              <span class="text-xs text-gray-300 px-3 py-1.5 rounded-lg border border-dashed border-gray-200"
-                    title="Belum ada peserta approved">
-                <i class="fas fa-award text-xs"></i> Sertifikat
-              </span>
-              @endif
-
               <a href="{{ route('admin.webinars.attendances', $webinar) }}"
                  class="text-xs font-semibold text-white px-3 py-1.5 rounded-lg"
                  style="background-color:#2D8659;">
