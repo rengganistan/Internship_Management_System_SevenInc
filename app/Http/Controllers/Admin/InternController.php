@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 
 use App\Http\Controllers\Controller;
-use App\Helpers\BrandHelper;
 use App\Models\InternshipRegistration as IR;
 use App\Services\CertificatePdf;
 use App\Mail\InternAcceptedMail;
@@ -355,7 +354,7 @@ class InternController extends Controller
         // Validasi data yang diterima
         $validatedData = $request->validate([
             'fullname' => 'required|string|max:255',
-            'born_date' => 'nullable|string|regex:/\d{4}-\d{2}-\d{2}/',
+            'born_date' => 'nullable|string|regex:/\d{4}-\d{2}-\d{2}/', // Validasi format yyyy-mm-dd
             'student_id' => 'required|string|max:50',
             'email' => 'required|email|max:255',
             'phone_number' => 'nullable|string|max:20',
@@ -365,9 +364,8 @@ class InternController extends Controller
             'current_city' => 'nullable|string|max:255',
             'internship_reason' => 'nullable|string|max:255',
             'internship_type' => 'nullable|string|max:50',
-            'start_date' => 'nullable|string|regex:/\d{4}-\d{2}-\d{2}/',
-            'end_date' => 'nullable|string|regex:/\d{4}-\d{2}-\d{2}/',
-            'brand' => 'nullable|string|max:100',
+            'start_date' => 'nullable|string|regex:/\d{4}-\d{2}-\d{2}/', // Validasi format yyyy-mm-dd
+            'end_date' => 'nullable|string|regex:/\d{4}-\d{2}-\d{2}/', // Validasi format yyyy-mm-dd
         ]);
 
         // Memperbarui data yang sudah divalidasi
@@ -418,46 +416,43 @@ class InternController extends Controller
 
     public function updateStatus(Request $request, $id)
     {
+        // Menemukan data berdasarkan ID yang diberikan
         $intern = IR::findOrFail($id);
 
+        // Validasi status yang diterima
         $validated = $request->validate([
             'internship_status' => 'required|in:waiting,active,completed,exited,pending,accepted,rejected',
-            // Brand wajib saat status accepted; nullable untuk status lain
-            'brand' => [
-                $request->input('internship_status') === 'accepted' ? 'required' : 'nullable',
-                'nullable', 'string', 'max:100',
-            ],
-        ], [
-            'brand.required' => 'Brand wajib dipilih untuk pemagang yang diterima.',
         ]);
 
-        $oldStatus = $intern->internship_status;
-        $newStatus = $validated['internship_status'];
+        $oldStatus = $intern->internship_status; // Menyimpan status lama
+        $newStatus = $validated['internship_status']; // Status baru yang diterima
 
+        // Mengupdate status internship
         $intern->internship_status = $newStatus;
 
-        // Simpan brand jika diberikan (atau saat accepted)
-        if (!empty($validated['brand'])) {
-            $intern->brand = $validated['brand'];
-        }
+        // Admin bebas mengubah status apapun tanpa perlu pengecekan status sebelumnya
 
+        // Simpan perubahan status
         $intern->save();
 
+        // Sinkronkan role user sesuai status baru
         $this->syncPemagangRole($intern);
 
+        // Buat membercard hanya saat status active atau completed
         if (in_array($intern->internship_status, [IR::STATUS_ACTIVE, IR::STATUS_COMPLETED])) {
             $intern->user?->createMemberCard();
         }
 
+        // Kirim email notifikasi jika berubah ke accepted
         if ($oldStatus !== IR::STATUS_ACCEPTED && $intern->internship_status === IR::STATUS_ACCEPTED) {
             $this->sendAcceptedEmail($intern);
         }
 
+        // Return JSON untuk AJAX (fetch), redirect untuk request biasa
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'ok'     => true,
                 'status' => $intern->internship_status,
-                'brand'  => $intern->brand,
                 'name'   => $intern->fullname,
             ]);
         }
@@ -592,18 +587,11 @@ class InternController extends Controller
             $durationText = str_replace('.', ',', (string) $months) . ' bulan';
         }
 
-        $brandKey = $intern->brand ?: 'magangjogja.com';
-        $brandLabel = BrandHelper::label($brandKey);
-        $template = BrandHelper::certificateTemplate($brandKey);
-        $viewName = view()->exists('certificates.' . $template) ? 'certificates.' . $template : 'certificates.pdf';
-
         $data = [
             'title'          => 'Sertifikat',
             'name'           => (string) $intern->fullname,
             'role'           => (string) ($intern->internship_interest ?: 'Programmer'),
-            'company'        => $brandLabel,
-            'brand'          => $brandKey,
-            'brand_label'    => $brandLabel,
+            'company'        => 'Seven Inc.',
             'duration'       => $durationText,
             'start_date'     => $startDateStr,
             'end_date'       => $endDateStr,
@@ -611,7 +599,7 @@ class InternController extends Controller
 
             // label & penandatangan
             'hr_label'       => 'HR Department',
-            'owner_label'    => 'Owner ' . $brandLabel,
+            'owner_label'    => 'Owner Seven Inc.',
             'hr_name'        => 'Ari Setia Husbana',
             'owner_name'     => 'Rekario Danny',
 
@@ -620,7 +608,8 @@ class InternController extends Controller
         $safe = trim(preg_replace('/[^A-Za-z0-9_\- ]+/', '', (string) $intern->fullname)) ?: 'Pemagang';
         $downloadName = 'Sertifikat_' . Str::slug($safe, '_') . '.pdf';
 
-        return $pdf->download($viewName, $data, $downloadName);
+        // Ganti view sesuai template yang ingin dipakai
+        return $pdf->download('certificates.certmagangjogjacom', $data, $downloadName);
     }
 
     /**

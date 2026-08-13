@@ -56,7 +56,7 @@ class GenerateDocController extends Controller
             'skl'       => $intern->user_id
                             ? route('admin.skl.download.for_user', ['user' => $intern->user_id])
                             : null,
-            'sertifikat'=> route('admin.interns.certificate.pdf', ['intern' => $intern->id]),
+            'sertifikat'=> route('admin.certificate.create') . '?intern_id=' . $intern->id,
             'penilaian' => route('interns.assessment.create') . '?intern_id=' . $intern->id,
         };
 

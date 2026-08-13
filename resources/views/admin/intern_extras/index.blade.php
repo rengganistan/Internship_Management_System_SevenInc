@@ -5,8 +5,8 @@
 
   <div class="mb-6">
     <p class="text-xs font-bold uppercase tracking-widest text-[#2D8659] mb-1">Dokumen & Sertifikat</p>
-    <h1 class="text-2xl font-extrabold text-[#1B3A34]">Alumni Terpilih</h1>
-    <p class="text-sm text-[#4B5F5A] mt-1">Admin memilih pemagang yang sudah selesai untuk mendapatkan akses surat rekomendasi, grup alumni, dan info kerja. Tidak semua pemagang otomatis mendapat akses.</p>
+    <h1 class="text-2xl font-extrabold text-[#1B3A34]">Akses Eksklusif Pemagang</h1>
+    <p class="text-sm text-[#4B5F5A] mt-1">Kelola surat rekomendasi, link grup alumni, dan info kerja untuk pemagang yang sudah selesai magang.</p>
   </div>
 
   @if(session('success'))
@@ -14,18 +14,6 @@
       {!! session('success') !!}
     </div>
   @endif
-
-  <div class="mb-4 flex justify-end">
-    <a href="{{ route('admin.rekomendasi.editor') }}"
-       class="inline-flex items-center gap-2 rounded-lg bg-[#2D8659] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1F5F3F]">
-      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path>
-        <path d="M14 2v6h6"></path>
-        <path d="M9 13h6M9 17h6"></path>
-      </svg>
-      Template Surat Rekomendasi
-    </a>
-  </div>
 
   <div class="bg-white rounded-xl border border-[#DCE7E1] overflow-hidden shadow-sm">
     <table class="w-full">
@@ -35,14 +23,12 @@
           <th class="px-5 py-3 text-center text-xs font-bold uppercase text-white tracking-wider">Rekomendasi</th>
           <th class="px-5 py-3 text-center text-xs font-bold uppercase text-white tracking-wider">Grup Alumni</th>
           <th class="px-5 py-3 text-center text-xs font-bold uppercase text-white tracking-wider">Info Kerja</th>
-          <th class="px-5 py-3 text-center text-xs font-bold uppercase text-white tracking-wider">Status</th>
           <th class="px-5 py-3 text-right text-xs font-bold uppercase text-white tracking-wider">Aksi</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-[#DCE7E1]">
         @forelse($interns as $intern)
         @php $extra = \App\Models\InternExtra::where('internship_registration_id', $intern->id)->first(); @endphp
-        @php $isSelected = $extra && ($extra->rekomendasi_path || $extra->alumni_group_url || $extra->job_info_url); @endphp
         <tr class="hover:bg-[#F4F8F6] transition">
           <td class="px-5 py-4">
             <p class="font-semibold text-[#1B3A34] text-sm">{{ $intern->fullname }}</p>
@@ -54,7 +40,7 @@
                 <i class="fas fa-check text-xs"></i> Ada
               </span>
             @else
-              <span class="text-xs text-gray-400">Belum</span>
+              <span class="text-xs text-gray-400">—</span>
             @endif
           </td>
           <td class="px-5 py-4 text-center">
@@ -63,7 +49,7 @@
                 <i class="fas fa-check text-xs"></i> Ada
               </span>
             @else
-              <span class="text-xs text-gray-400">Belum</span>
+              <span class="text-xs text-gray-400">—</span>
             @endif
           </td>
           <td class="px-5 py-4 text-center">
@@ -72,27 +58,20 @@
                 <i class="fas fa-check text-xs"></i> Ada
               </span>
             @else
-              <span class="text-xs text-gray-400">Belum</span>
-            @endif
-          </td>
-          <td class="px-5 py-4 text-center">
-            @if($isSelected)
-              <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">Terpilih</span>
-            @else
-              <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 text-gray-500 text-xs font-semibold">Belum ditetapkan</span>
+              <span class="text-xs text-gray-400">—</span>
             @endif
           </td>
           <td class="px-5 py-4 text-right">
             <a href="{{ route('admin.intern_extras.edit', $intern->id) }}"
                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white rounded-lg"
                style="background-color:#2D8659;">
-              <i class="fas fa-edit text-xs"></i> Kelola Akses
+              <i class="fas fa-edit text-xs"></i> Kelola
             </a>
           </td>
         </tr>
         @empty
         <tr>
-          <td colspan="6" class="px-5 py-12 text-center text-sm text-[#4B5F5A]">
+          <td colspan="5" class="px-5 py-12 text-center text-sm text-[#4B5F5A]">
             Belum ada pemagang yang menyelesaikan magang.
           </td>
         </tr>

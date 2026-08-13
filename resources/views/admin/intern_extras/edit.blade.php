@@ -15,10 +15,6 @@
     </div>
   </div>
 
-  <div class="mb-4 rounded-lg border border-[#DCE7E1] bg-white px-4 py-3 text-sm text-[#4B5F5A] shadow-sm">
-    Admin memilih secara manual pemagang yang berhak mendapat surat rekomendasi, grup alumni, dan info kerja. Tidak semua pemagang yang sudah selesai otomatis memiliki akses.
-  </div>
-
   @if(session('success'))
     <div class="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm font-medium">{!! session('success') !!}</div>
   @endif

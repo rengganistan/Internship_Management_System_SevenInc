@@ -8,9 +8,6 @@
 @php
   $reg   = $registration ?? null;
   $old   = fn($field) => old($field, $reg?->$field ?? '');
-  $settings = $settings ?? \App\Models\FormSetting::getInternshipFields();
-  $fieldActive = fn(string $key, bool $default = true) => (bool) ($settings[$key]['is_active'] ?? $default);
-  $fieldRequired = fn(string $key, bool $default = false) => (bool) ($settings[$key]['is_required'] ?? $default);
   $label = 'block mb-1.5 text-sm font-medium text-gray-700';
   $input = 'block w-full rounded-lg border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 px-3 py-2.5 text-sm';
   $radio = 'w-4 h-4 text-green-600 border-gray-300 focus:ring-2 focus:ring-green-500';
@@ -55,100 +52,77 @@
     <form id="form-daftar" action="{{ route('pemagang.registration.store') }}" method="POST" enctype="multipart/form-data" class="space-y-5">
       @csrf
 
-      @if($fieldActive('fullname') || $fieldActive('student_id') || $fieldActive('born_date') || $fieldActive('email') || $fieldActive('phone_number') || $fieldActive('gender') || $fieldActive('institution_name') || $fieldActive('study_program') || $fieldActive('faculty') || $fieldActive('current_city'))
-      {{-- Data Pribadi & Akademik --}}
-      @if($fieldActive('fullname'))
+      {{-- Nama Lengkap --}}
       <div>
-        <label class="{{ $label }}">Nama Lengkap @if($fieldRequired('fullname'))<span class="text-red-500">*</span>@endif</label>
-        <input type="text" name="fullname" @if($fieldRequired('fullname')) required @endif placeholder="Muhammad Sumbul"
+        <label class="{{ $label }}">Nama Lengkap <span class="text-red-500">*</span></label>
+        <input type="text" name="fullname" required placeholder="Muhammad Sumbul"
           class="{{ $input }}" value="{{ $old('fullname') }}">
       </div>
-      @endif
 
-      @if($fieldActive('student_id') || $fieldActive('born_date'))
+      {{-- NIM / NPM --}}
       <div class="grid grid-cols-2 gap-4">
-        @if($fieldActive('student_id'))
         <div>
-          <label class="{{ $label }}">NIM / NPM @if($fieldRequired('student_id'))<span class="text-red-500">*</span>@endif</label>
-          <input type="text" name="student_id" @if($fieldRequired('student_id')) required @endif placeholder="21552011045"
+          <label class="{{ $label }}">NIM / NPM <span class="text-red-500">*</span></label>
+          <input type="text" name="student_id" required placeholder="21552011045"
             pattern="[0-9A-Za-z\-]+" inputmode="text"
             class="{{ $input }}" value="{{ $old('student_id') }}">
           <p class="mt-1 text-xs text-gray-400">Contoh: 21552011045</p>
         </div>
-        @endif
-        @if($fieldActive('born_date'))
         <div>
-          <label class="{{ $label }}">Tanggal Lahir @if($fieldRequired('born_date'))<span class="text-red-500">*</span>@endif</label>
-          <input type="date" name="born_date" @if($fieldRequired('born_date')) required @endif
+          <label class="{{ $label }}">Tanggal Lahir <span class="text-red-500">*</span></label>
+          <input type="date" name="born_date" required
             max="{{ date('Y-m-d') }}"
             class="{{ $input }}" value="{{ $toDateInput($old('born_date')) }}">
         </div>
-        @endif
       </div>
-      @endif
 
-      @if($fieldActive('institution_name') || $fieldActive('study_program'))
+      {{-- Universitas & Prodi --}}
       <div class="grid grid-cols-2 gap-4">
-        @if($fieldActive('institution_name'))
         <div>
-          <label class="{{ $label }}">Universitas @if($fieldRequired('institution_name'))<span class="text-red-500">*</span>@endif</label>
-          <input type="text" name="institution_name" @if($fieldRequired('institution_name')) required @endif placeholder="Telkom University"
+          <label class="{{ $label }}">Universitas <span class="text-red-500">*</span></label>
+          <input type="text" name="institution_name" required placeholder="Telkom University"
             class="{{ $input }}" value="{{ $old('institution_name') }}">
         </div>
-        @endif
-        @if($fieldActive('study_program'))
         <div>
-          <label class="{{ $label }}">Program Studi @if($fieldRequired('study_program'))<span class="text-red-500">*</span>@endif</label>
-          <input type="text" name="study_program" @if($fieldRequired('study_program')) required @endif placeholder="Rekayasa Perangkat Lunak"
+          <label class="{{ $label }}">Program Studi <span class="text-red-500">*</span></label>
+          <input type="text" name="study_program" required placeholder="Rekayasa Perangkat Lunak"
             class="{{ $input }}" value="{{ $old('study_program') }}">
         </div>
-        @endif
       </div>
-      @endif
 
-      @if($fieldActive('faculty') || $fieldActive('current_city'))
+      {{-- Fakultas & Kota --}}
       <div class="grid grid-cols-2 gap-4">
-        @if($fieldActive('faculty'))
         <div>
-          <label class="{{ $label }}">Fakultas @if($fieldRequired('faculty'))<span class="text-red-500">*</span>@endif</label>
-          <input type="text" name="faculty" @if($fieldRequired('faculty')) required @endif placeholder="Ilmu Komputer"
+          <label class="{{ $label }}">Fakultas <span class="text-red-500">*</span></label>
+          <input type="text" name="faculty" required placeholder="Ilmu Komputer"
             class="{{ $input }}" value="{{ $old('faculty') }}">
         </div>
-        @endif
-        @if($fieldActive('current_city'))
         <div>
-          <label class="{{ $label }}">Kota Domisili @if($fieldRequired('current_city'))<span class="text-red-500">*</span>@endif</label>
-          <input type="text" name="current_city" @if($fieldRequired('current_city')) required @endif placeholder="Yogyakarta"
+          <label class="{{ $label }}">Kota Domisili <span class="text-red-500">*</span></label>
+          <input type="text" name="current_city" required placeholder="Yogyakarta"
             class="{{ $input }}" value="{{ $old('current_city') }}">
         </div>
-        @endif
       </div>
-      @endif
 
-      @if($fieldActive('email') || $fieldActive('phone_number'))
+      {{-- Email & No HP --}}
       <div class="grid grid-cols-2 gap-4">
-        @if($fieldActive('email'))
         <div>
-          <label class="{{ $label }}">Email @if($fieldRequired('email'))<span class="text-red-500">*</span>@endif</label>
-          <input type="email" name="email" @if($fieldRequired('email')) required @endif placeholder="kamu@email.com"
+          <label class="{{ $label }}">Email <span class="text-red-500">*</span></label>
+          <input type="email" name="email" required placeholder="kamu@email.com"
             class="{{ $input }}" value="{{ $old('email') }}">
         </div>
-        @endif
-        @if($fieldActive('phone_number'))
         <div>
-          <label class="{{ $label }}">No. HP (WhatsApp) @if($fieldRequired('phone_number'))<span class="text-red-500">*</span>@endif</label>
-          <input type="tel" name="phone_number" @if($fieldRequired('phone_number')) required @endif placeholder="08xxxxxxxxxx"
+          <label class="{{ $label }}">No. HP (WhatsApp) <span class="text-red-500">*</span></label>
+          <input type="tel" name="phone_number" required placeholder="08xxxxxxxxxx"
             pattern="[0-9]{10,15}" inputmode="numeric" title="Hanya boleh angka, 10-15 digit"
             class="{{ $input }}" value="{{ $old('phone_number') }}">
           <p class="mt-1 text-xs text-gray-400">Hanya angka, contoh: 08123456789</p>
         </div>
-        @endif
       </div>
-      @endif
 
-      @if($fieldActive('gender'))
+      {{-- Jenis Kelamin --}}
       <div>
-        <label class="{{ $label }}">Jenis Kelamin @if($fieldRequired('gender'))<span class="text-red-500">*</span>@endif</label>
+        <label class="{{ $label }}">Jenis Kelamin <span class="text-red-500">*</span></label>
         <div class="flex gap-4">
           <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
             <input type="radio" name="gender" value="Laki-laki" class="{{ $radio }}"
@@ -160,13 +134,11 @@
           </label>
         </div>
       </div>
-      @endif
-      @endif
 
-      @if($fieldActive('internship_interest'))
+      {{-- Divisi Diminati --}}
       <div>
-        <label class="{{ $label }}">Divisi Diminati @if($fieldRequired('internship_interest'))<span class="text-red-500">*</span>@endif</label>
-        <select name="internship_interest" @if($fieldRequired('internship_interest')) required @endif class="{{ $input }}">
+        <label class="{{ $label }}">Divisi Diminati <span class="text-red-500">*</span></label>
+        <select name="internship_interest" required class="{{ $input }}">
           <option value="">-- Pilih Divisi --</option>
           @foreach($divisions ?? [] as $div)
             <option value="{{ $div }}" @selected($old('internship_interest') === $div)>
@@ -175,135 +147,92 @@
           @endforeach
         </select>
       </div>
-      @endif
 
-      @if($fieldActive('start_date') || $fieldActive('end_date') || $fieldActive('internship_type') || $fieldActive('internship_arrangement') || $fieldActive('internship_reason') || $fieldActive('current_status') || $fieldActive('english_book_ability') || $fieldActive('design_software') || $fieldActive('programming_languages') || $fieldActive('video_software'))
-      {{-- Durasi & Informasi Magang --}}
-      @if($fieldActive('start_date') || $fieldActive('end_date'))
+      {{-- Durasi Magang --}}
       <div class="grid grid-cols-2 gap-4">
-        @if($fieldActive('start_date'))
         <div>
-          <label class="{{ $label }}">Tanggal Mulai @if($fieldRequired('start_date'))<span class="text-red-500">*</span>@endif</label>
-          <input type="date" name="start_date" @if($fieldRequired('start_date')) required @endif
+          <label class="{{ $label }}">Tanggal Mulai</label>
+          <input type="date" name="start_date"
             min="{{ date('Y-m-d') }}"
             class="{{ $input }}" value="{{ $toDateInput($old('start_date')) }}">
         </div>
-        @endif
-        @if($fieldActive('end_date'))
         <div>
-          <label class="{{ $label }}">Tanggal Selesai @if($fieldRequired('end_date'))<span class="text-red-500">*</span>@endif</label>
-          <input type="date" name="end_date" @if($fieldRequired('end_date')) required @endif
+          <label class="{{ $label }}">Tanggal Selesai</label>
+          <input type="date" name="end_date"
             class="{{ $input }}" value="{{ $toDateInput($old('end_date')) }}">
         </div>
-        @endif
       </div>
-      @endif
 
-      @if($fieldActive('internship_type') || $fieldActive('internship_arrangement'))
+      {{-- Jenis & Sistem Magang --}}
       <div class="grid grid-cols-2 gap-4">
-        @if($fieldActive('internship_type'))
         <div>
-          <label class="{{ $label }}">Jenis Magang @if($fieldRequired('internship_type'))<span class="text-red-500">*</span>@endif</label>
-          <div class="space-y-3">
-            <label class="flex items-start gap-3 rounded-lg border border-gray-200 p-3 cursor-pointer hover:bg-gray-50">
-              <input type="radio" name="internship_type" value="Magang Mitra" class="mt-1 {{ $radio }}" @checked($old('internship_type') === 'Magang Mitra')>
-              <span>
-                <span class="block text-sm font-medium text-gray-800">Magang Mitra</span>
-                <span class="block text-xs text-gray-500">Magang melalui kerja sama kampus dengan perusahaan berdasarkan rekomendasi atau penempatan dari kampus.</span>
-              </span>
-            </label>
-            <label class="flex items-start gap-3 rounded-lg border border-gray-200 p-3 cursor-pointer hover:bg-gray-50">
-              <input type="radio" name="internship_type" value="Magang Reguler (Mandiri)" class="mt-1 {{ $radio }}" @checked($old('internship_type') === 'Magang Reguler (Mandiri)')>
-              <span>
-                <span class="block text-sm font-medium text-gray-800">Magang Reguler (Mandiri)</span>
-                <span class="block text-xs text-gray-500">Magang dari kampus yang dipilih dan diajukan sendiri oleh pemagang, serta digunakan untuk pemenuhan atau penilaian akademik.</span>
-              </span>
-            </label>
-            <label class="flex items-start gap-3 rounded-lg border border-gray-200 p-3 cursor-pointer hover:bg-gray-50">
-              <input type="radio" name="internship_type" value="Magang Inisiatif Pribadi" class="mt-1 {{ $radio }}" @checked($old('internship_type') === 'Magang Inisiatif Pribadi')>
-              <span>
-                <span class="block text-sm font-medium text-gray-800">Magang Inisiatif Pribadi</span>
-                <span class="block text-xs text-gray-500">Magang atas inisiatif sendiri tanpa rekomendasi atau kerja sama khusus dari kampus, kemauan sendiri.</span>
-              </span>
-            </label>
-          </div>
+          <label class="{{ $label }}">Jenis Magang <span class="text-red-500">*</span></label>
+          <select name="internship_type" required class="{{ $input }}">
+            <option value="">-- Pilih --</option>
+            <option value="Magang Mandiri" @selected($old('internship_type') === 'Magang Mandiri')>Magang Mandiri</option>
+            <option value="Magang Kampus" @selected($old('internship_type') === 'Magang Kampus')>Magang Kampus</option>
+          </select>
         </div>
-        @endif
-        @if($fieldActive('internship_arrangement'))
         <div>
-          <label class="{{ $label }}">Sistem Magang @if($fieldRequired('internship_arrangement'))<span class="text-red-500">*</span>@endif</label>
-          <select name="internship_arrangement" @if($fieldRequired('internship_arrangement')) required @endif class="{{ $input }}">
+          <label class="{{ $label }}">Sistem Magang <span class="text-red-500">*</span></label>
+          <select name="internship_arrangement" required class="{{ $input }}">
             <option value="Onsite" @selected($old('internship_arrangement') === 'Onsite')>Onsite (WFO)</option>
           </select>
         </div>
-        @endif
       </div>
-      @endif
 
-      @if($fieldActive('internship_reason'))
+      {{-- Alasan Magang --}}
       <div>
-        <label class="{{ $label }}">Alasan Ingin Magang di Sini @if($fieldRequired('internship_reason'))<span class="text-red-500">*</span>@endif</label>
-        <textarea name="internship_reason" @if($fieldRequired('internship_reason')) required @endif rows="3" placeholder="Tuliskan alasan Anda..."
+        <label class="{{ $label }}">Alasan Ingin Magang di Sini <span class="text-red-500">*</span></label>
+        <textarea name="internship_reason" required rows="3" placeholder="Tuliskan alasan Anda..."
           class="{{ $input }} resize-none">{{ $old('internship_reason') }}</textarea>
       </div>
-      @endif
 
-      @if($fieldActive('current_status'))
+      {{-- Status Saat Ini --}}
       <div>
-        <label class="{{ $label }}">Status Saat Ini @if($fieldRequired('current_status'))<span class="text-red-500">*</span>@endif</label>
-        <select name="current_status" @if($fieldRequired('current_status')) required @endif class="{{ $input }}">
+        <label class="{{ $label }}">Status Saat Ini <span class="text-red-500">*</span></label>
+        <select name="current_status" required class="{{ $input }}">
           <option value="">-- Pilih --</option>
           <option value="Mahasiswa/Pelajar" @selected($old('current_status') === 'Mahasiswa/Pelajar')>Masih Kuliah/Sekolah</option>
           <option value="Tidak Bekerja" @selected($old('current_status') === 'Tidak Bekerja')>Lulus & Belum Bekerja</option>
           <option value="Karyawan" @selected($old('current_status') === 'Karyawan')>Lulus & Sudah Bekerja</option>
         </select>
       </div>
-      @endif
 
-      @if($fieldActive('english_book_ability'))
+      {{-- Kemampuan Bahasa Inggris --}}
       <div>
-        <label class="{{ $label }}">Kemampuan Membaca Buku Bahasa Inggris @if($fieldRequired('english_book_ability'))<span class="text-red-500">*</span>@endif</label>
-        <select name="english_book_ability" @if($fieldRequired('english_book_ability')) required @endif class="{{ $input }}">
+        <label class="{{ $label }}">Kemampuan Membaca Buku Bahasa Inggris <span class="text-red-500">*</span></label>
+        <select name="english_book_ability" required class="{{ $input }}">
           <option value="">-- Pilih --</option>
           <option value="Saya bisa" @selected($old('english_book_ability') === 'Saya bisa')>Saya bisa</option>
           <option value="Kurang bisa" @selected($old('english_book_ability') === 'Kurang bisa')>Kurang bisa</option>
           <option value="Tidak bisa" @selected($old('english_book_ability') === 'Tidak bisa')>Tidak bisa</option>
         </select>
       </div>
-      @endif
 
-      @if($fieldActive('design_software') || $fieldActive('programming_languages') || $fieldActive('video_software'))
+      {{-- Skill Fields --}}
       <div class="grid grid-cols-3 gap-4">
-        @if($fieldActive('design_software'))
         <div>
-          <label class="{{ $label }}">Software Desain @if($fieldRequired('design_software'))<span class="text-red-500">*</span>@endif</label>
+          <label class="{{ $label }}">Software Desain</label>
           <input type="text" name="design_software" placeholder="Figma, Photoshop"
             class="{{ $input }}" value="{{ $old('design_software') }}">
         </div>
-        @endif
-        @if($fieldActive('programming_languages'))
         <div>
-          <label class="{{ $label }}">Bahasa Pemrograman @if($fieldRequired('programming_languages'))<span class="text-red-500">*</span>@endif</label>
+          <label class="{{ $label }}">Bahasa Pemrograman</label>
           <input type="text" name="programming_languages" placeholder="PHP, JS"
             class="{{ $input }}" value="{{ $old('programming_languages') }}">
         </div>
-        @endif
-        @if($fieldActive('video_software'))
         <div>
-          <label class="{{ $label }}">Materi Digital Marketing @if($fieldRequired('video_software'))<span class="text-red-500">*</span>@endif</label>
+          <label class="{{ $label }}">Materi Digital Marketing</label>
           <input type="text" name="video_software" placeholder="SEO, Ads"
             class="{{ $input }}" value="{{ $old('video_software') }}">
         </div>
-        @endif
       </div>
-      @endif
-      @endif
 
-      @if($fieldActive('cv_ktp_portofolio_pdf') || $fieldActive('portofolio_visual'))
+      {{-- Upload File --}}
       <div class="grid grid-cols-2 gap-4">
-        @if($fieldActive('cv_ktp_portofolio_pdf'))
         <div>
-          <label class="{{ $label }}">Dokumen Pendukung (PDF) @if($fieldRequired('cv_ktp_portofolio_pdf'))<span class="text-red-500">*</span>@endif</label>
+          <label class="{{ $label }}">Surat Pengantar (PDF) <span class="text-red-500">*</span></label>
           <input type="file" name="cv_ktp_portofolio_pdf" accept=".pdf"
             class="{{ $input }} file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:text-white cursor-pointer"
             style="--file-bg: #1a5c38;">
@@ -313,10 +242,8 @@
             </p>
           @endif
         </div>
-        @endif
-        @if($fieldActive('portofolio_visual'))
         <div>
-          <label class="{{ $label }}">CV / Portfolio @if($fieldRequired('portofolio_visual'))<span class="text-red-500">*</span>@endif</label>
+          <label class="{{ $label }}">CV / Portfolio (PDF) <span class="text-red-500">*</span></label>
           <input type="file" name="portofolio_visual" accept=".pdf,.jpg,.jpeg,.png"
             class="{{ $input }} file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:text-white cursor-pointer">
           @if($reg?->portofolio_visual)
@@ -325,46 +252,48 @@
             </p>
           @endif
         </div>
-        @endif
       </div>
-      @if($fieldActive('cv_ktp_portofolio_pdf') || $fieldActive('portofolio_visual'))
-      <p class="text-xs text-gray-400 -mt-3">Upload dokumen bersifat opsional kecuali jika admin mengaktifkan dan menjadikannya wajib.</p>
-      @endif
-      @endif
+      <p class="text-xs text-gray-400 -mt-3">Maks. 2MB per file, format PDF saja</p>
 
       {{-- Hidden fields dengan nilai default yang tidak tampil di form --}}
       <input type="hidden" name="supervisor_contact" value="-">
       <input type="hidden" name="current_activities" value="-">
 
       {{-- ===== INFORMASI TAMBAHAN ===== --}}
-      @if($fieldActive('boarding_info') || $fieldActive('parent_wa_contact') || $fieldActive('social_media_instagram') || $fieldActive('internship_info_sources'))
       <div class="border-t border-gray-100 pt-5">
         <h3 class="text-sm font-semibold text-gray-700 mb-4">Informasi Tambahan</h3>
         <div class="space-y-4">
 
-          @if($fieldActive('boarding_info'))
+          {{-- Status Keluarga --}}
           <div>
-            <label class="{{ $label }}">Butuh Informasi Kost? @if($fieldRequired('boarding_info'))<span class="text-red-500">*</span>@endif</label>
-            <select name="boarding_info" @if($fieldRequired('boarding_info')) required @endif class="{{ $input }}">
+            <label class="{{ $label }}">Status Keluarga</label>
+            <select name="family_status" class="{{ $input }}">
+              <option value="Tidak" @selected(($old('family_status') ?: 'Tidak') === 'Tidak')>Belum Menikah</option>
+              <option value="Ya"    @selected($old('family_status') === 'Ya')>Sudah Menikah</option>
+            </select>
+          </div>
+
+          {{-- Butuh Info Kost --}}
+          <div>
+            <label class="{{ $label }}">Butuh Informasi Kost?</label>
+            <select name="boarding_info" class="{{ $input }}">
               <option value="Tidak" @selected(($old('boarding_info') ?: 'Tidak') === 'Tidak')>Tidak</option>
               <option value="Ya"    @selected($old('boarding_info') === 'Ya')>Ya</option>
             </select>
           </div>
-          @endif
 
-          @if($fieldActive('parent_wa_contact'))
+          {{-- No WA Wali / Orang Tua --}}
           <div>
-            <label class="{{ $label }}">No. WA Wali / Orang Tua @if($fieldRequired('parent_wa_contact'))<span class="text-red-500">*</span>@endif</label>
+            <label class="{{ $label }}">No. WA Wali / Orang Tua</label>
             <input type="tel" name="parent_wa_contact" placeholder="08xxxxxxxxxx"
               pattern="[0-9]*" inputmode="numeric" title="Hanya boleh angka"
               class="{{ $input }}" value="{{ $old('parent_wa_contact', $reg?->parent_wa_contact !== '-' ? $reg?->parent_wa_contact : '') }}">
             <p class="mt-1 text-xs text-gray-400">Hanya angka, opsional</p>
           </div>
-          @endif
 
-          @if($fieldActive('social_media_instagram'))
+          {{-- Instagram --}}
           <div>
-            <label class="{{ $label }}">Instagram @if($fieldRequired('social_media_instagram'))<span class="text-red-500">*</span>@endif</label>
+            <label class="{{ $label }}">Instagram</label>
             <div class="flex items-center gap-0">
               <span class="inline-flex items-center px-3 py-2.5 rounded-l-lg border border-r-0 border-gray-200 bg-gray-50 text-sm text-gray-500">@</span>
               <input type="text" name="social_media_instagram" placeholder="username_kamu"
@@ -372,11 +301,10 @@
                 value="{{ $old('social_media_instagram', $reg?->social_media_instagram !== '-' ? $reg?->social_media_instagram : '') }}">
             </div>
           </div>
-          @endif
 
-          @if($fieldActive('internship_info_sources'))
+          {{-- Info Magang Dari Mana --}}
           <div>
-            <label class="{{ $label }}">Tahu Info Magang Dari @if($fieldRequired('internship_info_sources'))<span class="text-red-500">*</span>@endif</label>
+            <label class="{{ $label }}">Tahu Info Magang Dari</label>
             <div class="{{ $group }}">
               @php
                 $infoSources = $old('internship_info_sources', $reg?->internship_info_sources ?? '');
@@ -401,11 +329,9 @@
               @endforeach
             </div>
           </div>
-          @endif
 
         </div>
       </div>
-      @endif
 
       {{-- Info unpaid --}}
       @if(!$registration || $registration->is_draft || $registration->internship_status === 'waiting')

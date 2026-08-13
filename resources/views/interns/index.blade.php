@@ -222,7 +222,6 @@
                     <tr>
                         <th class="bg-[#1B3A34] px-5 py-3 text-[11px] font-bold uppercase tracking-[0.06em] text-white rounded-tl-none first:rounded-tl-lg">Nama Pendaftar</th>
                         <th class="bg-[#1B3A34] px-5 py-3 text-[11px] font-bold uppercase tracking-[0.06em] text-white">Divisi</th>
-                        <th class="bg-[#1B3A34] px-5 py-3 text-[11px] font-bold uppercase tracking-[0.06em] text-white">Brand</th>
                         <th class="bg-[#1B3A34] px-5 py-3 text-[11px] font-bold uppercase tracking-[0.06em] text-white">Universitas</th>
                         <th class="bg-[#1B3A34] px-5 py-3 text-[11px] font-bold uppercase tracking-[0.06em] text-white">Tgl Daftar</th>
                         <th class="bg-[#1B3A34] px-5 py-3 text-[11px] font-bold uppercase tracking-[0.06em] text-white">Status</th>
@@ -231,7 +230,7 @@
                 </thead>
                 <tbody id="rows" class="divide-y divide-[#DCE7E1] bg-white">
                     <tr>
-                        <td colspan="7" class="px-5 py-10 text-center text-sm text-[#4B5F5A]">
+                        <td colspan="6" class="px-5 py-10 text-center text-sm text-[#4B5F5A]">
                             Memuat data pemagang...
                         </td>
                     </tr>
@@ -277,14 +276,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const MODE               = @json($mode  ?? 'all');
     const GENERATE_URL       = @json(route('admin.interns.generate.doc'));
     const csrf               = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-
-    @php
-        $brandList = array_map(fn($k, $v) => ['key' => $k, 'label' => $v],
-            array_keys(\App\Helpers\BrandHelper::list()),
-            array_values(\App\Helpers\BrandHelper::list())
-        );
-    @endphp
-    const BRAND_LIST = @json($brandList);
 
     const rowsEl       = document.getElementById('rows');
     const pagerEl      = document.getElementById('pager');
@@ -454,32 +445,15 @@ document.addEventListener('DOMContentLoaded', () => {
             return `<option value="${val}" ${val === cur ? 'selected' : ''}>${m.label}</option>`;
         }).join('');
 
-        // Brand dropdown — muncul hanya saat status dipilih ke 'accepted'
-        const brandOptions = BRAND_LIST.map(b =>
-            `<option value="${b.key}" ${it.brand === b.key ? 'selected' : ''}>${b.label}</option>`
-        ).join('');
-
-        const brandHtml = `
-        <select class="js-brand-select rounded-[8px] border border-[#DCE7E1] bg-white px-2 py-1.5 text-[11px] font-semibold text-[#1B3A34] outline-none focus:border-[#2D8659] transition
-            ${cur !== 'accepted' ? 'hidden' : ''}"
-            data-id="${it.id}" name="brand_${it.id}"
-            title="Pilih Brand untuk pemagang yang diterima">
-            <option value="">-- Pilih Brand --</option>
-            ${brandOptions}
-        </select>`;
-
         return `
         <div class="flex flex-wrap items-center gap-2">
             ${badgeHtml(cur, it.id)}
-            <div class="flex flex-col gap-1">
-                <select
-                    class="js-status-select rounded-[8px] border border-[#DCE7E1] bg-white px-2 py-1.5 text-[11px] font-semibold text-[#1B3A34] outline-none focus:border-[#2D8659]"
-                    data-url="${it.status_update_url || `${ADMIN_INTERNS_BASE}/${it.id}/status`}"
-                    data-id="${it.id}" data-current="${cur}" data-intern-id="${it.id}">
-                    ${statusOptions}
-                </select>
-                ${brandHtml}
-            </div>
+            <select
+                class="js-status-select rounded-[8px] border border-[#DCE7E1] bg-white px-2 py-1.5 text-[11px] font-semibold text-[#1B3A34] outline-none focus:border-[#2D8659]"
+                data-url="${it.status_update_url || `${ADMIN_INTERNS_BASE}/${it.id}/status`}"
+                data-id="${it.id}" data-current="${cur}" data-intern-id="${it.id}">
+                ${statusOptions}
+            </select>
         </div>`;
     }
 
@@ -497,7 +471,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!data || data.length === 0) {
             rowsEl.innerHTML = `
                 <tr>
-                    <td colspan="7" class="px-5 py-12 text-center text-sm text-[#4B5F5A]">
+                    <td colspan="6" class="px-5 py-12 text-center text-sm text-[#4B5F5A]">
                         Belum ada data pemagang untuk ditampilkan.
                     </td>
                 </tr>`;
@@ -513,8 +487,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const institution  = fmtStr(it.institution_name || '-');
             const division     = fmtStr(it.internship_interest || '-');
             const createdAt    = fmtDate(it.created_at);
-            const brandKey     = (it.brand || '').toLowerCase();
-            const brandLabel   = BRAND_LIST.find(b => b.key === brandKey)?.label || (brandKey ? brandKey : '—');
             const searchText   = `${it.fullname || ''} ${it.email || ''} ${institution} ${division}`.toLowerCase();
 
             return `
@@ -538,16 +510,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 {{-- Divisi --}}
                 <td class="px-5 py-4 text-[13px] text-[#4B5F5A]">${division}</td>
 
-                {{-- Brand --}}
-                <td class="px-5 py-4">
-                    ${brandKey
-                        ? `<span class="inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-2.5 py-1 text-[11px] font-semibold text-amber-700">${brandLabel}</span>`
-                        : `<span class="text-[12px] text-gray-400">—</span>`
-                    }
-                </td>
-
                 {{-- Universitas --}}
                 <td class="px-5 py-4 text-[13px] text-[#4B5F5A]">${institution}</td>
+
                 {{-- Tgl Daftar --}}
                 <td class="px-5 py-4 text-[13px] text-[#4B5F5A]">${createdAt}</td>
 
@@ -574,13 +539,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const from = this.dataset.current;
                 const to   = this.value;
 
-                // Show/hide brand dropdown
-                const brandSel = this.closest('.flex').querySelector('.js-brand-select');
-                if (brandSel) {
-                    brandSel.classList.toggle('hidden', to !== 'accepted');
-                    if (to !== 'accepted') brandSel.value = '';
-                }
-
                 if (to === from) {
                     if (pending.has(id)) {
                         pending.delete(id);
@@ -598,6 +556,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 markSelect(this, true);
                 updatePendingBar();
 
+                // Setelah status berubah, update tombol generate di baris ini secara real-time
                 const row = this.closest('tr[data-row-id]');
                 if (row) {
                     refreshGenerateButtons(row, id, to);
@@ -1021,7 +980,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${detailRow('Jenis Magang', it.internship_type)}
                 ${detailRow('Sistem Kerja', it.internship_arrangement)}
                 ${detailRow('Minat Program', it.internship_interest)}
-                ${detailRow('Brand', it.brand ? (BRAND_LIST.find(b=>b.key===it.brand)?.label || it.brand) : '—')}
                 ${detailRow('Alasan Magang', it.internship_reason)}
                 ${detailRow('Status Saat Ini', it.current_status)}
                 ${detailRow('Bisa Bahasa Inggris', it.english_book_ability)}
@@ -1199,17 +1157,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${statusOpts}
                     </select>
                 </div>
-                <div class="sm:col-span-2">
-                    <label class="mb-1 block text-[12px] font-semibold text-[#1B3A34]">
-                        Brand
-                        <span class="ml-1 text-[10.5px] font-normal text-[#4B5F5A]">— wajib saat status Diterima</span>
-                    </label>
-                    <select name="brand"
-                        class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659]">
-                        <option value="">-- Pilih Brand --</option>
-                        ${BRAND_LIST.map(b => `<option value="${b.key}" ${it.brand === b.key ? 'selected' : ''}>${b.label}</option>`).join('')}
-                    </select>
-                </div>
             </div>
 
             <div class="flex justify-end gap-3 border-t border-[#DCE7E1] pt-4 mt-4">
@@ -1375,26 +1322,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const fd = new FormData();
             fd.append('_method', 'PATCH');
             fd.append('internship_status', item.to);
-
-            // Sertakan brand jika status = accepted
-            if (item.to === 'accepted') {
-                const brandSel = item.select?.closest('.flex')?.querySelector('.js-brand-select');
-                const brandVal = brandSel?.value || '';
-                if (!brandVal) {
-                    throw new Error(`Brand wajib dipilih untuk "${item.name}". Pilih brand terlebih dahulu.`);
-                }
-                fd.append('brand', brandVal);
-            }
-
             const res = await fetch(item.url, {
                 method: 'POST', body: fd,
                 headers: { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
                 credentials: 'same-origin'
             });
-            if (!res.ok) {
-                const json = await res.json().catch(() => ({}));
-                throw new Error(json?.message || `HTTP ${res.status}`);
-            }
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             return item;
         });
 

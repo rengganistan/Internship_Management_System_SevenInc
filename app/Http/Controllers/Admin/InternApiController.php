@@ -68,17 +68,11 @@ class InternApiController extends Controller
     ];
 
     private array $mapType = [ // JENIS MAGANG (skema)
-        'mitra'                   => 'Magang Mitra',
-        'magang-mitra'            => 'Magang Mitra',
-        'reguler'                 => 'Magang Reguler (Mandiri)',
-        'mandiri'                 => 'Magang Reguler (Mandiri)',
-        'magang-reguler-mandiri'  => 'Magang Reguler (Mandiri)',
-        'inisiatif-pribadi'       => 'Magang Inisiatif Pribadi',
-        'pribadi'                 => 'Magang Inisiatif Pribadi',
-        'campus'                  => 'Magang Mitra',
-        'pkl'                     => 'Magang Reguler (Mandiri)',
-        'kampus-merdeka'          => 'Magang Reguler (Mandiri)',
-        'mbkm'                    => 'Magang Reguler (Mandiri)',
+        'campus'          => 'Magang Kampus',
+        'mandiri'         => 'Magang Mandiri',
+        'pkl'             => 'PKL',
+        'kampus-merdeka'  => 'Kampus Merdeka',
+        'mbkm'            => 'Kampus Merdeka',
     ];
 
     private array $mapInterest = [
@@ -354,7 +348,6 @@ class InternApiController extends Controller
                 'portofolio_visual' => $r->portofolio_visual ? asset('storage/'.$r->portofolio_visual) : null,
                 'created_at' => optional($r->created_at)?->toIso8601String(),
                 'user_id'    => $r->user_id,
-                'brand'      => $r->brand,
                 'certificate_url' => $canCert ? route('admin.interns.certificate', $r) : null,
                 'certificate_pdf_url' => $canCert ? route('admin.interns.certificate.pdf', $r) : null,
                 'status_update_url' => route('admin.interns.status.update', $r),

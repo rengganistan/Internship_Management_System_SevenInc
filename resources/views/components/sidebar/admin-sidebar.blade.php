@@ -17,10 +17,9 @@
         [
             'label' => 'Dashboard & Monitoring',
             'items' => [
-                ['label' => 'Dashboard',            'route' => 'admin.dashboard.index',         'icon' => 'dashboard'],
-                ['label' => 'Semua Pengguna',        'route' => 'admin.users.index',             'icon' => 'users'],
-                ['label' => 'Pengaturan Form',       'route' => 'admin.form-settings.index',    'icon' => 'settings'],
-                ['label' => 'Pengaturan Divisi',     'route' => 'admin.form-settings.divisions', 'icon' => 'settings'],
+                ['label' => 'Dashboard',         'route' => 'admin.dashboard.index',          'icon' => 'dashboard'],
+                ['label' => 'Semua Pengguna',     'route' => 'admin.users.index',              'icon' => 'users'],
+                ['label' => 'Pengaturan Divisi',  'route' => 'admin.form-settings.divisions',  'icon' => 'settings'],
             ],
         ],
         [
@@ -39,7 +38,7 @@
                 ['label' => 'Data SKL',             'route' => 'admin.documents.skls',        'icon' => 'file'],
                 ['label' => 'Data LOA',             'route' => 'admin.documents.loas',        'icon' => 'file'],
                 ['label' => 'Informasi Alumni',     'route' => 'admin.intern_extras.index',   'icon' => 'users'],
-                ['label' => 'Generate per Brand',   'route' => 'admin.bulk-generate.index',   'icon' => 'file'],
+                ['label' => 'Template Rekomendasi', 'route' => 'admin.rekomendasi.editor',    'icon' => 'settings'],
             ],
         ],
         [

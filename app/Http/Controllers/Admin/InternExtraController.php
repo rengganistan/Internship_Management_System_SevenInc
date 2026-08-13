@@ -11,8 +11,7 @@ use Illuminate\Support\Facades\Storage;
 class InternExtraController extends Controller
 {
     /**
-     * Daftar pemagang completed yang bisa dipilih admin untuk akses alumni.
-     * Tidak semua pemagang otomatis mendapatkan akses; admin menentukan yang berhak.
+     * Daftar semua pemagang completed beserta status extras-nya.
      */
     public function index()
     {

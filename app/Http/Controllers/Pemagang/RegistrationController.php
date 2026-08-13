@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Pemagang;
 
 use App\Http\Controllers\Controller;
-use App\Models\FormSetting;
 use App\Models\InternshipRegistration as IR;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -26,7 +25,6 @@ class RegistrationController extends Controller
     {
         $user         = auth()->user();
         $registration = IR::where('user_id', $user->id)->latest('id')->first();
-        $settings     = FormSetting::getInternshipFields();
 
         // Ambil divisi aktif dari DB; fallback ke list hardcode jika DB kosong
         $divisions = \App\Models\Division::active()->pluck('name');
@@ -54,7 +52,7 @@ class RegistrationController extends Controller
             ]);
         }
 
-        return view('pemagang.registration.form', compact('registration', 'divisions', 'settings'));
+        return view('pemagang.registration.form', compact('registration', 'divisions'));
     }
 
     /**
@@ -80,12 +78,11 @@ class RegistrationController extends Controller
     private function saveRegistration(Request $request, bool $isDraft): \Illuminate\Http\RedirectResponse
     {
         $user = auth()->user();
-        $settings = FormSetting::getInternshipFields();
 
         // Aturan validasi — draft boleh isi sebagian, submit wajib semua
         $rules = $isDraft
-            ? $this->draftRules($settings)
-            : $this->submitRules($settings);
+            ? $this->draftRules()
+            : $this->submitRules();
 
         $validated = $request->validate($rules, [
             'phone_number.regex'   => 'No. HP hanya boleh berisi angka (10-15 digit).',
@@ -122,21 +119,20 @@ class RegistrationController extends Controller
             }
         }
 
-        // Pastikan kolom NOT NULL yang tidak tampil di form selalu punya nilai.
-        // Field yang dihapus/legacy seperti family_status tetap dipertahankan di DB,
-        // tapi tidak lagi dipakai pada form aktif.
+        // Pastikan kolom NOT NULL yang tidak tampil di form selalu punya nilai
         $notNullDefaults = [
-            'boarding_info'          => $validated['boarding_info'] ?? 'Tidak',
+            'family_status'          => 'Tidak',
+            'boarding_info'          => 'Tidak',
             'supervisor_contact'     => '-',
-            'parent_wa_contact'      => $validated['parent_wa_contact'] ?? '-',
-            'social_media_instagram' => $validated['social_media_instagram'] ?? '-',
+            'parent_wa_contact'      => '-',
+            'social_media_instagram' => '-',
             'current_activities'     => '-',
             'design_software'        => $validated['design_software'] ?? '-',
             'video_software'         => $validated['video_software'] ?? '-',
             'programming_languages'  => $validated['programming_languages'] ?? '-',
+            // Kolom NOT NULL yang bisa kosong saat draft
             'gender'                 => $validated['gender'] ?? 'Laki-laki',
-            'family_status'          => $validated['family_status'] ?? 'Tidak',
-            'internship_type'        => $validated['internship_type'] ?? 'Magang Reguler (Mandiri)',
+            'internship_type'        => $validated['internship_type'] ?? 'Magang Mandiri',
             'internship_arrangement' => $validated['internship_arrangement'] ?? 'Onsite',
             'current_status'         => $validated['current_status'] ?? 'Mahasiswa/Pelajar',
             'english_book_ability'   => $validated['english_book_ability'] ?? 'Saya bisa',
@@ -208,11 +204,10 @@ class RegistrationController extends Controller
             ->with('success', '🎉 Pendaftaran berhasil dikirim! Silakan login untuk memantau status magangmu.');
     }
 
-    private function draftRules(array $settings = []): array
+    private function draftRules(): array
     {
-        $active = fn(string $key, bool $default = true) => (bool) ($settings[$key]['is_active'] ?? $default);
-
-        $rules = [
+        // Draft: semua field opsional
+        return [
             'fullname'           => 'nullable|string|max:255',
             'born_date'          => 'nullable|string|max:255',
             'student_id'         => 'nullable|string|max:50',
@@ -228,58 +223,45 @@ class RegistrationController extends Controller
             'internship_arrangement' => 'nullable|string|max:50',
             'current_status'     => 'nullable|string|max:50',
             'english_book_ability' => 'nullable|string|max:50',
-            'internship_interest' => 'nullable|string|max:255',
+            'internship_interest'  => 'nullable|string|max:255',
             'start_date'         => 'nullable|string|max:255',
             'end_date'           => 'nullable|string|max:255',
             'cv_ktp_portofolio_pdf' => 'nullable|file|mimes:pdf|max:10240',
             'portofolio_visual'  => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
+            // fields lainnya opsional
             'design_software'    => 'nullable|string|max:255',
             'video_software'     => 'nullable|string|max:255',
             'programming_languages' => 'nullable|string|max:255',
+            'family_status'      => 'nullable|string|max:50',
             'boarding_info'      => 'nullable|string|max:50',
             'parent_wa_contact'  => 'nullable|regex:/^[0-9]{0,15}$/',
             'social_media_instagram' => 'nullable|string|max:255',
             'internship_info_sources' => 'nullable|array',
             'internship_info_sources.*' => 'nullable|string|max:100',
         ];
-
-        foreach (['fullname','student_id','born_date','gender','email','phone_number','institution_name','study_program','faculty','current_city','internship_interest','internship_type','internship_arrangement','internship_reason','start_date','end_date','current_status','english_book_ability','design_software','programming_languages','video_software','cv_ktp_portofolio_pdf','portofolio_visual','boarding_info','parent_wa_contact','social_media_instagram','internship_info_sources'] as $field) {
-            if (!$active($field, true) && isset($rules[$field])) {
-                $rules[$field] = 'nullable';
-            }
-        }
-
-        return $rules;
     }
 
-    private function submitRules(array $settings = []): array
+    private function submitRules(): array
     {
-        $rules = $this->draftRules($settings);
-
-        foreach (['fullname','student_id','born_date','gender','email','phone_number','institution_name','study_program','faculty','current_city','internship_interest','internship_type','internship_reason'] as $field) {
-            if (($settings[$field]['is_active'] ?? true) === false) {
-                continue;
-            }
-            if (isset($rules[$field])) {
-                $rules[$field] = preg_replace('/^nullable\|?/', '', $rules[$field]);
-                $rules[$field] = trim((string) $rules[$field], '|');
-                $rules[$field] = 'required|' . $rules[$field];
-            }
-        }
-
-        if (($settings['cv_ktp_portofolio_pdf']['is_active'] ?? true) && (($settings['cv_ktp_portofolio_pdf']['is_required'] ?? false) === true)) {
-            $rules['cv_ktp_portofolio_pdf'] = 'required|file|mimes:pdf|max:10240';
-        } elseif (isset($rules['cv_ktp_portofolio_pdf'])) {
-            $rules['cv_ktp_portofolio_pdf'] = 'nullable|file|mimes:pdf|max:10240';
-        }
-
-        if (($settings['portofolio_visual']['is_active'] ?? true) && (($settings['portofolio_visual']['is_required'] ?? false) === true)) {
-            $rules['portofolio_visual'] = 'required|file|mimes:jpg,jpeg,png,pdf|max:10240';
-        } elseif (isset($rules['portofolio_visual'])) {
-            $rules['portofolio_visual'] = 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240';
-        }
-
-        return $rules;
+        // Submit: field utama wajib diisi
+        return array_merge($this->draftRules(), [
+            'fullname'           => 'required|string|max:255',
+            'born_date'          => 'required|string|max:255',
+            'student_id'         => 'required|string|max:50',
+            'email'              => 'required|string|max:255',
+            'gender'             => 'required|string|max:50',
+            'phone_number'       => 'required|regex:/^[0-9]{10,15}$/',
+            'institution_name'   => 'required|string|max:255',
+            'study_program'      => 'required|string|max:255',
+            'faculty'            => 'required|string|max:255',
+            'current_city'       => 'required|string|max:255',
+            'internship_reason'  => 'required|string',
+            'internship_type'    => 'required|string|max:50',
+            'internship_arrangement' => 'required|string|max:50',
+            'current_status'     => 'required|string|max:50',
+            'english_book_ability'   => 'required|string|max:50',
+            'internship_interest'    => 'required|string|max:255',
+        ]);
     }
 
     private function arrayToCsv(mixed $input): ?string
