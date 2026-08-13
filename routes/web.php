@@ -208,14 +208,31 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin', 'preve
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
     Route::get('/', fn () => redirect()->route('admin.dashboard.index'))->name('home');
 
-    // Pengaturan Form — Divisi
+    // Bulk Generate Dokumen per Brand
+    Route::get('/bulk-generate',  [\App\Http\Controllers\Admin\BulkGenerateController::class, 'index'])->name('bulk-generate.index');
+    Route::post('/bulk-generate', [\App\Http\Controllers\Admin\BulkGenerateController::class, 'generate'])->name('bulk-generate.generate');
+
+    // Pengaturan Form — Divisi & Field Settings
     Route::prefix('form-settings')->name('form-settings.')->group(function () {
+        // Divisi
         Route::get('/divisions',                              [\App\Http\Controllers\Admin\DivisionController::class, 'index'])->name('divisions');
         Route::post('/divisions',                             [\App\Http\Controllers\Admin\DivisionController::class, 'store'])->name('divisions.store');
         Route::put('/divisions/{division}',                   [\App\Http\Controllers\Admin\DivisionController::class, 'update'])->name('divisions.update');
         Route::post('/divisions/{division}/toggle',           [\App\Http\Controllers\Admin\DivisionController::class, 'toggle'])->name('divisions.toggle');
         Route::post('/divisions/reorder',                     [\App\Http\Controllers\Admin\DivisionController::class, 'reorder'])->name('divisions.reorder');
         Route::delete('/divisions/{division}',                [\App\Http\Controllers\Admin\DivisionController::class, 'destroy'])->name('divisions.destroy');
+
+        // Pengaturan Field Form Pendaftaran
+        Route::get('/',                                       [\App\Http\Controllers\Admin\FormSettingController::class, 'index'])->name('index');
+        Route::post('/',                                      [\App\Http\Controllers\Admin\FormSettingController::class, 'update'])->name('update');
+        Route::post('/reset',                                 [\App\Http\Controllers\Admin\FormSettingController::class, 'reset'])->name('reset');
+
+        // Custom Fields CRUD
+        Route::post('/custom',                                [\App\Http\Controllers\Admin\FormSettingController::class, 'storeCustom'])->name('custom.store');
+        Route::put('/custom/{customField}',                   [\App\Http\Controllers\Admin\FormSettingController::class, 'updateCustom'])->name('custom.update');
+        Route::delete('/custom/{customField}',                [\App\Http\Controllers\Admin\FormSettingController::class, 'destroyCustom'])->name('custom.destroy');
+        Route::post('/custom/{customField}/toggle',           [\App\Http\Controllers\Admin\FormSettingController::class, 'toggleCustom'])->name('custom.toggle');
+        Route::post('/custom/reorder',                        [\App\Http\Controllers\Admin\FormSettingController::class, 'reorderCustom'])->name('custom.reorder');
     });
 
     // Users CRUD -> admin.users.*
