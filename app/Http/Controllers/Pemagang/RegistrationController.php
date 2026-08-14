@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 
 class RegistrationController extends Controller
@@ -31,28 +32,33 @@ class RegistrationController extends Controller
 
         if ($divisions->isEmpty()) {
             $divisions = collect([
-                'Administration',
-                'Human Resources (HR)',
-                'UI/UX Designer',
-                'Programmer (Front End / Backend)',
-                'Photographer',
-                'Videographer',
-                'Graphic Designer (Konten Kreatif)',
-                'Social Media Specialist',
-                'Content Writer',
-                'Content Planner',
-                'Sales & Marketing',
-                'Public Relations (Marcomm)',
-                'Digital Marketing',
-                'TikTok Creator',
-                'Project Manager',
-                'Pengelasan',
-                'Animasi',
-                'Customer Service',
+                'Administration', 'Human Resources (HR)', 'UI/UX Designer',
+                'Programmer (Front End / Backend)', 'Photographer', 'Videographer',
+                'Graphic Designer (Konten Kreatif)', 'Social Media Specialist',
+                'Content Writer', 'Content Planner', 'Sales & Marketing',
+                'Public Relations (Marcomm)', 'Digital Marketing', 'TikTok Creator',
+                'Project Manager', 'Pengelasan', 'Animasi', 'Customer Service',
             ]);
         }
 
-        return view('pemagang.registration.form', compact('registration', 'divisions'));
+        // Ambil konfigurasi field dari DB (jika tabel sudah ada)
+        $mainFields  = collect();
+        $extraFields = collect();
+        $useFormFields = false;
+
+        try {
+            if (Schema::hasTable('form_fields')) {
+                $mainFields  = \App\Models\FormField::active()->whereNull('group_name')->get();
+                $extraFields = \App\Models\FormField::active()->where('group_name', 'informasi_tambahan')->get();
+                $useFormFields = $mainFields->isNotEmpty();
+            }
+        } catch (\Throwable $e) {
+            // Tabel belum ada → fallback ke form statis
+        }
+
+        return view('pemagang.registration.form', compact(
+            'registration', 'divisions', 'mainFields', 'extraFields', 'useFormFields'
+        ));
     }
 
     /**

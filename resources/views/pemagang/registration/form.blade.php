@@ -52,6 +52,25 @@
     <form id="form-daftar" action="{{ route('pemagang.registration.store') }}" method="POST" enctype="multipart/form-data" class="space-y-5">
       @csrf
 
+      @if(!empty($useFormFields) && $useFormFields)
+        {{-- ===== FORM DINAMIS (dari pengaturan admin) ===== --}}
+        @include('pemagang.registration.partials.dynamic-form', [
+            'mainFields'  => $mainFields,
+            'extraFields' => $extraFields,
+            'divisions'   => $divisions,
+            'reg'         => $reg,
+            'old'         => $old,
+            'input'       => $input,
+            'label'       => $label,
+            'radio'       => $radio,
+            'toDateInput' => $toDateInput,
+        ])
+        {{-- Hidden fields untuk kolom NOT NULL yang tidak dirender --}}
+        <input type="hidden" name="supervisor_contact" value="-">
+        <input type="hidden" name="current_activities" value="-">
+      @else
+        {{-- ===== FORM STATIS (fallback) ===== --}}
+
       {{-- Nama Lengkap --}}
       <div>
         <label class="{{ $label }}">Nama Lengkap <span class="text-red-500">*</span></label>
@@ -167,11 +186,27 @@
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="{{ $label }}">Jenis Magang <span class="text-red-500">*</span></label>
-          <select name="internship_type" required class="{{ $input }}">
+          <select name="internship_type" required class="{{ $input }}" id="select-internship-type-static">
             <option value="">-- Pilih --</option>
-            <option value="Magang Mandiri" @selected($old('internship_type') === 'Magang Mandiri')>Magang Mandiri</option>
-            <option value="Magang Kampus" @selected($old('internship_type') === 'Magang Kampus')>Magang Kampus</option>
+            <option value="Magang Mitra"             @selected($old('internship_type') === 'Magang Mitra')>Magang Mitra</option>
+            <option value="Magang Reguler"           @selected($old('internship_type') === 'Magang Reguler')>Magang Reguler</option>
+            <option value="Magang Inisiatif Pribadi" @selected($old('internship_type') === 'Magang Inisiatif Pribadi')>Magang Inisiatif Pribadi</option>
           </select>
+          {{-- Keterangan jenis magang --}}
+          <div id="internship-type-desc-static" class="mt-2 rounded-lg bg-gray-50 border border-gray-100 px-3 py-2 space-y-1">
+            <p class="text-xs text-gray-500 leading-snug desc-item" data-for-type="Magang Mitra">
+              <span class="font-semibold text-gray-700">Magang Mitra:</span>
+              Magang melalui kerja sama kampus dengan perusahaan berdasarkan rekomendasi atau penempatan dari kampus.
+            </p>
+            <p class="text-xs text-gray-500 leading-snug desc-item" data-for-type="Magang Reguler">
+              <span class="font-semibold text-gray-700">Magang Reguler:</span>
+              Magang dari kampus yang dipilih dan diajukan sendiri oleh pemagang, serta digunakan untuk pemenuhan atau penilaian akademik.
+            </p>
+            <p class="text-xs text-gray-500 leading-snug desc-item" data-for-type="Magang Inisiatif Pribadi">
+              <span class="font-semibold text-gray-700">Magang Inisiatif Pribadi:</span>
+              Magang atas inisiatif sendiri tanpa rekomendasi atau kerja sama khusus dari kampus.
+            </p>
+          </div>
         </div>
         <div>
           <label class="{{ $label }}">Sistem Magang <span class="text-red-500">*</span></label>
@@ -332,6 +367,8 @@
 
         </div>
       </div>
+
+      @endif {{-- end @else (form statis) --}}
 
       {{-- Info unpaid --}}
       @if(!$registration || $registration->is_draft || $registration->internship_status === 'waiting')
@@ -577,6 +614,24 @@
       'input[name="parent_wa_contact"]',
       '⚠ No. HP hanya boleh berisi angka'
     );
+
+    // ===== Keterangan Jenis Magang (form statis fallback) =====
+    (function() {
+      var sel = document.getElementById('select-internship-type-static');
+      var box = document.getElementById('internship-type-desc-static');
+      if (!sel || !box) return;
+
+      function updateDesc() {
+        var v = sel.value;
+        box.querySelectorAll('.desc-item').forEach(function(el) {
+          // Tampilkan semua jika belum dipilih, atau hanya yang cocok
+          el.style.display = (!v || el.dataset.forType === v) ? '' : 'none';
+        });
+      }
+
+      sel.addEventListener('change', updateDesc);
+      updateDesc(); // run on load
+    })();
   });
 </script>
 @endpush
