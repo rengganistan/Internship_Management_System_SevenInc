@@ -762,13 +762,20 @@ document.addEventListener('DOMContentLoaded', () => {
             url:      (id) => `{{ route('interns.assessment.create') }}?intern_id=${id}`,
             method:   'REDIRECT',
         },
+        alumni: {
+            title:    'Informasi Alumni',
+            subtitle: 'Akses Eksklusif & Grup Alumni',
+            info:     'Anda akan diarahkan ke halaman Informasi Alumni untuk mengatur link grup alumni, surat rekomendasi, dan info kerja pemagang yang sudah selesai.',
+            url:      (id) => `{{ url('admin/intern-extras') }}/${id}/edit`,
+            method:   'REDIRECT',
+        },
     };
 
     // Opsi yang tersedia per mode
     const GEN_OPTIONS_BY_MODE = {
         pendaftar: ['loa'],
-        pemagang:  ['skl', 'sertifikat', 'penilaian'],
-        all:       ['loa', 'skl', 'sertifikat', 'penilaian'],
+        pemagang:  ['skl', 'sertifikat', 'penilaian', 'alumni'],
+        all:       ['loa', 'skl', 'sertifikat', 'penilaian', 'alumni'],
     };
 
     let _genInternId  = null;
@@ -801,18 +808,25 @@ document.addEventListener('DOMContentLoaded', () => {
         // Render opsi jenis surat
         const optContainer = document.getElementById('genDocOptions');
         const modeKey = MODE in GEN_OPTIONS_BY_MODE ? MODE : 'all';
-        const allowed  = GEN_OPTIONS_BY_MODE[modeKey];
+        // Opsi 'alumni' hanya tersedia jika status pemagang sudah 'completed'
+        const allowed = GEN_OPTIONS_BY_MODE[modeKey].filter(jenis =>
+            jenis !== 'alumni' || status === 'completed'
+        );
 
         optContainer.innerHTML = allowed.map(jenis => {
             const cfg     = GEN_CONFIG[jenis];
             const isActive = jenis === (defaultJenis || allowed[0]);
+            // Ikon berbeda untuk alumni
+            const icon = jenis === 'alumni'
+                ? `<svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`
+                : `<svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/></svg>`;
             return `
             <button type="button" data-jenis="${jenis}"
                 class="gen-opt-btn flex items-center gap-2 rounded-[9px] border px-3 py-2.5 text-left text-[12.5px] font-semibold transition
                     ${isActive
                         ? 'border-[#2D8659] bg-[#E8F5E9] text-[#1F5F3F]'
                         : 'border-[#DCE7E1] bg-white text-[#4B5F5A] hover:border-[#2D8659] hover:text-[#1F5F3F]'}">
-                <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/></svg>
+                ${icon}
                 ${cfg.title}
             </button>`;
         }).join('');
