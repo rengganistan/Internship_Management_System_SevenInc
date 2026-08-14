@@ -208,14 +208,26 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin', 'preve
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
     Route::get('/', fn () => redirect()->route('admin.dashboard.index'))->name('home');
 
-    // Pengaturan Form — Divisi
+    // Pengaturan Form — Divisi & Field Builder
     Route::prefix('form-settings')->name('form-settings.')->group(function () {
+        // Divisi
         Route::get('/divisions',                              [\App\Http\Controllers\Admin\DivisionController::class, 'index'])->name('divisions');
         Route::post('/divisions',                             [\App\Http\Controllers\Admin\DivisionController::class, 'store'])->name('divisions.store');
         Route::put('/divisions/{division}',                   [\App\Http\Controllers\Admin\DivisionController::class, 'update'])->name('divisions.update');
         Route::post('/divisions/{division}/toggle',           [\App\Http\Controllers\Admin\DivisionController::class, 'toggle'])->name('divisions.toggle');
         Route::post('/divisions/reorder',                     [\App\Http\Controllers\Admin\DivisionController::class, 'reorder'])->name('divisions.reorder');
         Route::delete('/divisions/{division}',                [\App\Http\Controllers\Admin\DivisionController::class, 'destroy'])->name('divisions.destroy');
+
+        // Form Fields Builder
+        Route::get('/fields',                                 [\App\Http\Controllers\Admin\FormFieldController::class, 'index'])->name('fields');
+        Route::post('/fields',                                [\App\Http\Controllers\Admin\FormFieldController::class, 'store'])->name('fields.store');
+        Route::get('/fields/preview-data',                    [\App\Http\Controllers\Admin\FormFieldController::class, 'previewData'])->name('fields.preview-data');
+        Route::post('/fields/reorder',                        [\App\Http\Controllers\Admin\FormFieldController::class, 'reorder'])->name('fields.reorder');
+        Route::get('/fields/{field}/data',                    [\App\Http\Controllers\Admin\FormFieldController::class, 'show'])->name('fields.show');
+        Route::put('/fields/{field}',                         [\App\Http\Controllers\Admin\FormFieldController::class, 'update'])->name('fields.update');
+        Route::post('/fields/{field}/toggle',                 [\App\Http\Controllers\Admin\FormFieldController::class, 'toggle'])->name('fields.toggle');
+        Route::post('/fields/{field}/toggle-required',        [\App\Http\Controllers\Admin\FormFieldController::class, 'toggleRequired'])->name('fields.toggle-required');
+        Route::delete('/fields/{field}',                      [\App\Http\Controllers\Admin\FormFieldController::class, 'destroy'])->name('fields.destroy');
     });
 
     // Users CRUD -> admin.users.*

@@ -19,7 +19,7 @@
             'items' => [
                 ['label' => 'Dashboard',         'route' => 'admin.dashboard.index',          'icon' => 'dashboard'],
                 ['label' => 'Semua Pengguna',     'route' => 'admin.users.index',              'icon' => 'users'],
-                ['label' => 'Pengaturan Divisi',  'route' => 'admin.form-settings.divisions',  'icon' => 'settings'],
+                ['label' => 'Pengaturan Form',     'route' => 'admin.form-settings.fields',     'icon' => 'settings'],
             ],
         ],
         [
