@@ -162,6 +162,165 @@ class SKLController extends Controller
         ));
     }
 
+    /**
+     * GET /admin/skl/generate/{intern}
+     * Form review sebelum generate SKL
+     */
+    public function generateForm(Request $request, IR $intern)
+    {
+        if ($intern->internship_status !== IR::STATUS_COMPLETED) {
+            return redirect()->route('admin.interns.pemagang')
+                ->with('error', 'SKL hanya bisa dibuat untuk pemagang yang sudah Selesai.');
+        }
+
+        $config = SKLSetting::first();
+
+        // Override company name dengan brand pemagang jika ada
+        $companyName    = $intern->brand ?: ($config->company_name    ?? 'Seven Inc');
+        $companyAddress = $config->company_address ?? 'Jl. Raya Janti Gg. Harjuna No.59';
+        $companyCity    = $config->company_city    ?? 'Yogyakarta';
+        $leaderName     = $config->leader_name     ?? 'Nama Pimpinan / HRD';
+        $leaderTitle    = $config->leader_title    ?? 'Manajer HRD';
+        $activityDescription    = $config->activity_description     ?? '';
+        $participantAchievement = $config->participant_achievement   ?? '';
+
+        // Ambil daftar logo & stempel dari storage
+        $logoFiles = collect(Storage::disk('public')->files('images/logos'))
+            ->filter(fn($f) => preg_match('/\.(png|jpe?g)$/i', $f))
+            ->values();
+        $stampFiles = collect(Storage::disk('public')->files('images/signature'))
+            ->filter(fn($f) => preg_match('/\.(png|jpe?g)$/i', $f))
+            ->values();
+
+        return view('admin.skl_generate_form', compact(
+            'intern',
+            'companyName', 'companyAddress', 'companyCity',
+            'leaderName', 'leaderTitle',
+            'activityDescription', 'participantAchievement',
+            'logoFiles', 'stampFiles'
+        ));
+    }
+
+    /**
+     * POST /admin/skl/generate/{intern}
+     * Proses generate & download SKL dari form
+     */
+    public function generateDownload(Request $request, IR $intern)
+    {
+        if ($intern->internship_status !== IR::STATUS_COMPLETED) {
+            abort(403, 'SKL hanya tersedia untuk pemagang yang sudah Selesai.');
+        }
+
+        $request->validate([
+            'company_name'           => 'required|string|max:100',
+            'company_address'        => 'required|string|max:500',
+            'company_city'           => 'required|string|max:100',
+            'leader_name'            => 'required|string|max:150',
+            'leader_title'           => 'required|string|max:100',
+            'activity_description'   => 'nullable|string|max:2000',
+            'participant_achievement'=> 'nullable|string|max:2000',
+            'logo_select'            => 'nullable|string',
+            'stamp_select'           => 'nullable|string',
+        ]);
+
+        Carbon::setLocale('id');
+
+        $companyName    = $request->company_name;
+        $companyAddress = $request->company_address;
+        $companyCity    = $request->company_city;
+        $leaderName     = $request->leader_name;
+        $leaderTitle    = $request->leader_title;
+        $activityDescription    = $request->activity_description    ?? '';
+        $participantAchievement = $request->participant_achievement ?? '';
+
+        // Resolve logo
+        $logoSelect = $request->logo_select;
+        $logoFile   = $logoSelect
+            ? storage_path('app/public/' . $logoSelect)
+            : storage_path('app/public/images/logos/logo_seveninc.png');
+        $logoData = file_exists($logoFile)
+            ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoFile))
+            : null;
+
+        // Resolve stempel
+        $stampSelect = $request->stamp_select;
+        $stampFile   = $stampSelect
+            ? storage_path('app/public/' . $stampSelect)
+            : storage_path('app/public/images/signature/ttd_arisetiahusbana.png');
+        if (!file_exists($stampFile)) {
+            $candidates = glob(storage_path('app/public/images/signature/*.{png,jpg,jpeg}'), GLOB_BRACE);
+            $stampFile  = !empty($candidates) ? $candidates[0] : null;
+        }
+        $stampExt  = $stampFile ? strtolower(pathinfo($stampFile, PATHINFO_EXTENSION)) : 'png';
+        $stampMime = in_array($stampExt, ['jpg','jpeg']) ? 'image/jpeg' : 'image/png';
+        $stampData = $stampFile && file_exists($stampFile)
+            ? "data:{$stampMime};base64," . base64_encode(file_get_contents($stampFile))
+            : null;
+
+        // Data peserta
+        $user                 = $intern->user;
+        $participantName      = $intern->fullname ?? ($user?->name ?? '-');
+        $participantId        = $intern->student_id ?? '-';
+        $participantMajor     = $intern->study_program ?? '-';
+        $participantInstitute = $intern->institution_name ?? '-';
+        $divisionName         = $intern->internship_interest ?? '-';
+
+        Carbon::setLocale('id');
+        $startStr      = $intern->start_date ? Carbon::parse($intern->start_date)->isoFormat('D MMMM Y') : '-';
+        $endStr        = $intern->end_date   ? Carbon::parse($intern->end_date)->isoFormat('D MMMM Y')   : '-';
+        $letterDateStr = $intern->end_date   ? Carbon::parse($intern->end_date)->isoFormat('D MMMM Y')   : now()->isoFormat('D MMMM Y');
+        $running       = str_pad((string) $intern->id, 4, '0', STR_PAD_LEFT);
+        $letterNumber  = 'SKL/' . ($intern->end_date ? Carbon::parse($intern->end_date)->format('Y') : now()->format('Y')) . '/' . $running;
+
+        $data = compact(
+            'companyName','companyAddress','companyCity','leaderName','leaderTitle',
+            'letterNumber','logoData','stampData',
+            'participantName','participantId','participantMajor','participantInstitute','divisionName',
+            'startStr','endStr','letterDateStr','activityDescription','participantAchievement'
+        );
+
+        $html = view('user.skl', $data)->render();
+
+        $safeName = preg_replace('/[^a-z0-9\-_]+/i', '_', $participantName);
+        $fileName = "SKL_{$safeName}_" . now()->format('Ymd_His') . ".pdf";
+        $relPath  = "documents/skl/{$fileName}";
+        $fullDir  = storage_path('app/public/documents/skl');
+        $fullPath = storage_path("app/public/{$relPath}");
+
+        if (!is_dir($fullDir)) {
+            mkdir($fullDir, 0777, true);
+        }
+
+        Browsershot::html($html)
+            ->setOption('no-sandbox', true)
+            ->emulateMedia('print')
+            ->format('A4')
+            ->margins(10, 10, 10, 10)
+            ->showBackground()
+            ->waitUntilNetworkIdle()
+            ->timeout(180)
+            ->savePdf($fullPath);
+
+        // Log download
+        DocumentDownload::create([
+            'user_id'                    => $intern->user_id,
+            'internship_registration_id' => $intern->id,
+            'doc_type'                   => DocumentDownload::TYPE_SKL,
+            'file_path'                  => $relPath,
+            'file_url'                   => asset('storage/' . $relPath),
+            'downloaded_at'              => now(),
+            'ip_address'                 => $request->ip(),
+            'user_agent'                 => $request->userAgent(),
+            'status'                     => 'success',
+        ]);
+
+        return response()->download($fullPath, $fileName, ['Content-Type' => 'application/pdf'])
+            ->deleteFileAfterSend(false);
+    }
+
+    /**
+     * GET /admin/skl/download/{user} — download SKL dari Data SKL (tetap ada)
+     */
     public function download(Request $request, $userId = null)
     {
         try {
@@ -187,7 +346,8 @@ class SKLController extends Controller
 
             // Ambil config perusahaan
             $config = SKLSetting::first();
-            $companyName    = $config->company_name ?? 'Seven Inc';
+            // Override company name dengan brand pemagang jika ada
+            $companyName    = $ir->brand ?: ($config->company_name ?? 'Seven Inc');
             $companyAddress = $config->company_address ?? 'Jl. Raya Janti Gg. Harjuna No.59, Jaranan, Karangjambe, Kec. Banguntapan, Kabupaten Bantul, Daerah Istimewa Yogyakarta 55198';
             $companyCity    = $config->company_city ?? 'Yogyakarta';
             $leaderName     = $config->leader_name ?? 'Nama Pimpinan / HRD';

@@ -58,6 +58,33 @@ class LoaController extends Controller
     }
 
     /**
+     * GET /admin/loa/generate/{intern}
+     * Form review sebelum generate LOA
+     */
+    public function generateForm(Request $request, IR $intern)
+    {
+        $loaSettings = LoaSettings::first();
+
+        // Override company_name dengan brand pemagang
+        $companyName = $intern->brand ?: ($loaSettings?->company_name ?? 'Seven Inc');
+
+        $signatoryName     = $loaSettings?->signatory_name     ?? 'Ari Setia Husbana';
+        $signatoryPosition = $loaSettings?->signatory_position ?? 'HRD';
+        $openingGreeting   = $loaSettings?->header_text        ?? 'Dengan ini kami mengonfirmasi bahwa pendaftar di bawah ini telah diterima untuk mengikuti program magang.';
+        $closingGreeting   = $loaSettings?->footer_text        ?? 'Harap konfirmasi kehadiran Anda melalui email atau telepon yang tertera.';
+
+        return view('admin.loa_generate_form', compact(
+            'intern',
+            'loaSettings',
+            'companyName',
+            'signatoryName',
+            'signatoryPosition',
+            'openingGreeting',
+            'closingGreeting'
+        ));
+    }
+
+    /**
      * Generate LOA untuk single intern (PDF)
      */
     public function generate(Request $request)
@@ -83,6 +110,28 @@ class LoaController extends Controller
 
         // Get the LOA settings (e.g., logo, signature)
         $loaSettings = LoaSettings::first();
+
+        // Override dari form generate (jika admin datang dari loa_generate_form)
+        if ($loaSettings) {
+            $loaSettings = clone $loaSettings;
+        } else {
+            $loaSettings = new LoaSettings();
+        }
+
+        // Override nama perusahaan: prioritas form > brand > setting
+        $loaSettings->company_name = $request->input('company_name_display')
+            ?: ($intern->brand ?: ($loaSettings->company_name ?? 'Seven Inc'));
+
+        // Override penandatangan jika dikirim dari form
+        if ($request->filled('signatory_name')) {
+            $loaSettings->signatory_name = $request->input('signatory_name');
+        }
+        if ($request->filled('signatory_position')) {
+            $loaSettings->signatory_position = $request->input('signatory_position');
+        }
+        if ($request->filled('contact_email')) {
+            $loaSettings->company_contact_email = $request->input('contact_email');
+        }
 
         // Kalau admin tidak isi kolom manual, langsung pakai data dari registrasi
         $loaNamaSiswa = $request->input('loa_nama_siswa', []);
@@ -189,8 +238,17 @@ class LoaController extends Controller
             ]);
 
             // Return the PDF for download
-            // Kalau admin → tidak perlu download, cukup simpan dan kasih notifikasi
+            // Kalau admin dari form generate → redirect ke Data Pemagang dengan notif + link
             if ($user->role === 'admin') {
+                $serveUrl = route('admin.documents.serve', [
+                    'type'     => 'loa',
+                    'filename' => basename($path),
+                ]);
+                // Cek apakah request datang dari form generate (ada signatory_name)
+                if ($request->filled('signatory_name') || $request->filled('openingGreeting')) {
+                    return redirect()->route('admin.interns.pemagang')
+                        ->with('success', "✅ LOA untuk <strong>{$intern->fullname}</strong> berhasil dibuat. <a href=\"{$serveUrl}\" target=\"_blank\" class=\"underline font-bold\">Buka PDF →</a>");
+                }
                 return back()->with('success',
                     "✅ LOA untuk <strong>{$intern->fullname}</strong> berhasil dibuat dan sudah tersedia di halaman Dokumen pemagang."
                 );
