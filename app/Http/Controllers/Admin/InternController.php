@@ -366,6 +366,7 @@ class InternController extends Controller
             'internship_type' => 'nullable|string|max:50',
             'start_date' => 'nullable|string|regex:/\d{4}-\d{2}-\d{2}/', // Validasi format yyyy-mm-dd
             'end_date' => 'nullable|string|regex:/\d{4}-\d{2}-\d{2}/', // Validasi format yyyy-mm-dd
+            'brand' => 'nullable|string|max:100',
         ]);
 
         // Memperbarui data yang sudah divalidasi
@@ -422,6 +423,7 @@ class InternController extends Controller
         // Validasi status yang diterima
         $validated = $request->validate([
             'internship_status' => 'required|in:waiting,active,completed,exited,pending,accepted,rejected',
+            'brand'             => 'nullable|string|max:100',
         ]);
 
         $oldStatus = $intern->internship_status; // Menyimpan status lama
@@ -429,6 +431,11 @@ class InternController extends Controller
 
         // Mengupdate status internship
         $intern->internship_status = $newStatus;
+
+        // Simpan brand jika status accepted & brand dikirim
+        if ($newStatus === IR::STATUS_ACCEPTED && !empty($validated['brand'])) {
+            $intern->brand = $validated['brand'];
+        }
 
         // Admin bebas mengubah status apapun tanpa perlu pengecekan status sebelumnya
 
@@ -591,7 +598,7 @@ class InternController extends Controller
             'title'          => 'Sertifikat',
             'name'           => (string) $intern->fullname,
             'role'           => (string) ($intern->internship_interest ?: 'Programmer'),
-            'company'        => 'Seven Inc.',
+            'company'        => (string) ($intern->brand ?: 'Seven Inc.'),
             'duration'       => $durationText,
             'start_date'     => $startDateStr,
             'end_date'       => $endDateStr,
@@ -599,7 +606,7 @@ class InternController extends Controller
 
             // label & penandatangan
             'hr_label'       => 'HR Department',
-            'owner_label'    => 'Owner Seven Inc.',
+            'owner_label'    => 'Owner ' . ($intern->brand ?: 'Seven Inc.'),
             'hr_name'        => 'Ari Setia Husbana',
             'owner_name'     => 'Rekario Danny',
 

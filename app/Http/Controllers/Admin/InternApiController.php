@@ -348,6 +348,7 @@ class InternApiController extends Controller
                 'portofolio_visual' => $r->portofolio_visual ? asset('storage/'.$r->portofolio_visual) : null,
                 'created_at' => optional($r->created_at)?->toIso8601String(),
                 'user_id'    => $r->user_id,
+                'brand'      => $r->brand,
                 'certificate_url' => $canCert ? route('admin.interns.certificate', $r) : null,
                 'certificate_pdf_url' => $canCert ? route('admin.interns.certificate.pdf', $r) : null,
                 'status_update_url' => route('admin.interns.status.update', $r),

@@ -333,6 +333,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin', 'preve
     Route::get('/user/{user}/pending-tasks', [DashboardController::class, 'showTasks'])->name('user.pendingTasks');
 
     Route::get('/skl/editor', [SKLController::class, 'edit'])->name('skl.editor');
+    Route::get('/skl/generate/{intern}', [SKLController::class, 'generateForm'])->name('skl.generate.form');
+    Route::post('/skl/generate/{intern}', [SKLController::class, 'generateDownload'])->name('skl.generate.download');
+
+    // LOA generate form (review sebelum generate)
+    Route::get('/loa/generate/{intern}', [\App\Http\Controllers\LoaController::class, 'generateForm'])->name('loa.generate.form');
 
     // ===== WEBINAR (menggantikan Sertifikat Non-Magang) =====
     Route::prefix('webinars')->name('webinars.')->group(function () {

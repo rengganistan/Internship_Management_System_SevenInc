@@ -63,6 +63,69 @@
     </div>
 </div>
 
+{{-- Modal: Pilih Brand (saat acc/terima) --}}
+<div id="brandModal" class="fixed inset-0 z-[115] hidden">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-[2px]" id="brandModalOverlay"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+        <div class="w-full max-w-md rounded-[16px] bg-white shadow-xl overflow-hidden">
+            {{-- Header --}}
+            <div class="flex items-center gap-3 border-b border-[#DCE7E1] px-5 py-4">
+                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] bg-[#E8F5E9]">
+                    <svg class="h-5 w-5 text-[#2D8659]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                </div>
+                <div>
+                    <h3 class="text-[15px] font-bold text-[#1B3A34]">Pilih Brand</h3>
+                    <p id="brandModalSubtitle" class="text-[11.5px] text-[#4B5F5A]">Pilih brand untuk pemagang yang diterima</p>
+                </div>
+            </div>
+            {{-- Body --}}
+            <div class="p-5 space-y-3">
+                <p class="text-[12.5px] text-[#4B5F5A]">
+                    Sebelum menerima pendaftar ini, tentukan brand mana yang akan ditempati.
+                    <span class="font-semibold text-[#1B3A34]">Brand wajib dipilih.</span>
+                </p>
+                <div>
+                    <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Brand <span class="text-red-500">*</span></label>
+                    <select id="brandSelect"
+                        class="w-full rounded-[9px] border border-[#DCE7E1] bg-white px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] focus:ring-1 focus:ring-[#2D8659]">
+                        <option value="">— Pilih Brand —</option>
+                        <option value="Magangjogja">Magangjogja</option>
+                        <option value="Areakerja">Areakerja</option>
+                        <option value="Republikweb">Republikweb</option>
+                        <option value="Titipsini">Titipsini</option>
+                        <option value="Ambilpaket">Ambilpaket</option>
+                        <option value="Bikinkepo">Bikinkepo</option>
+                        <option value="Bimbelcerdas.com">Bimbelcerdas.com</option>
+                        <option value="Latihankerja.com">Latihankerja.com</option>
+                        <option value="Lowkerjateng.com">Lowkerjateng.com</option>
+                        <option value="Lowkerjogja.com">Lowkerjogja.com</option>
+                        <option value="Pijatjogja.com">Pijatjogja.com</option>
+                        <option value="Sayabantu.com">Sayabantu.com</option>
+                        <option value="Titikvisual">Titikvisual</option>
+                        <option value="Tuantanah">Tuantanah</option>
+                        <option value="Tukanglas.org">Tukanglas.org</option>
+                        <option value="Adakamar.id">Adakamar.id</option>
+                        <option value="Seven Inc">Seven Inc</option>
+                    </select>
+                    <p id="brandSelectError" class="mt-1 hidden text-[11.5px] text-red-600">Silakan pilih brand terlebih dahulu.</p>
+                </div>
+            </div>
+            {{-- Footer --}}
+            <div class="flex items-center justify-end gap-3 border-t border-[#DCE7E1] px-5 py-4">
+                <button id="brandModalCancel"
+                    class="rounded-[9px] border border-[#DCE7E1] bg-white px-4 py-2 text-sm font-semibold text-[#4B5F5A] hover:bg-[#F4F8F6]">
+                    Batal
+                </button>
+                <button id="brandModalConfirm"
+                    class="flex items-center gap-2 rounded-[9px] bg-[#2D8659] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1F5F3F]">
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    Terima & Simpan
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- Modal: Konfirmasi Hapus --}}
 <div id="confirmModal" class="fixed inset-0 z-[110] hidden">
     <div class="absolute inset-0 bg-black/50 backdrop-blur-[2px]" data-confirm-close></div>
@@ -164,6 +227,30 @@
 
 {{-- ===== TOAST ===== --}}
 <div id="toastStack" class="fixed bottom-5 right-5 z-[200] flex flex-col gap-2"></div>
+
+{{-- Flash session → toast --}}
+@if(session('success'))
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const el = document.createElement('div');
+    el.className = 'flex items-center gap-2 rounded-[10px] border bg-[#1B3A34] border-[#2D8659] text-white px-4 py-3 text-[13px] font-semibold shadow-lg';
+    el.innerHTML = `<div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#2D8659]"><svg class="h-3 w-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div><span>{!! addslashes(session('success')) !!}</span>`;
+    document.getElementById('toastStack').appendChild(el);
+    setTimeout(() => el.remove(), 6000);
+});
+</script>
+@endif
+@if(session('error'))
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const el = document.createElement('div');
+    el.className = 'flex items-center gap-2 rounded-[10px] border bg-red-50 border-red-200 text-red-800 px-4 py-3 text-[13px] font-semibold shadow-lg';
+    el.innerHTML = `<span>{{ addslashes(session('error')) }}</span>`;
+    document.getElementById('toastStack').appendChild(el);
+    setTimeout(() => el.remove(), 5000);
+});
+</script>
+@endif
 
 {{-- ===== KONTEN UTAMA ===== --}}
 <div class="min-h-screen bg-[#F4F8F6] p-4 sm:p-6 lg:p-7">
@@ -503,6 +590,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div>
                             <p class="font-semibold text-[#1B3A34]">${fmtStr(it.fullname || 'Tanpa nama')}</p>
                             <p class="mt-0.5 text-[11.5px] text-[#4B5F5A]">${fmtStr(it.email || '-')}</p>
+                            ${it.brand ? `<span class="mt-1 inline-flex items-center rounded-full bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-[10px] font-semibold text-indigo-700">${it.brand}</span>` : ''}
                         </div>
                     </div>
                 </td>
@@ -529,6 +617,112 @@ document.addEventListener('DOMContentLoaded', () => {
         buildPager(meta);
     }
 
+    // ── Brand Modal ──────────────────────────────────────────────────────────────
+    // Saat admin pilih "accepted" di mode pendaftar, muncul modal pilih brand
+    // Pending item disimpan dulu dengan brand = null, lalu setelah konfirmasi brand diisi
+
+    const brandModal        = document.getElementById('brandModal');
+    const brandSelect       = document.getElementById('brandSelect');
+    const brandSelectError  = document.getElementById('brandSelectError');
+    const brandModalCancel  = document.getElementById('brandModalCancel');
+    const brandModalConfirm = document.getElementById('brandModalConfirm');
+    const brandModalOverlay = document.getElementById('brandModalOverlay');
+    let   _brandPendingId   = null; // id intern yang sedang menunggu konfirmasi brand
+
+    function openBrandModal(internId, internName) {
+        _brandPendingId = internId;
+        document.getElementById('brandModalSubtitle').textContent =
+            `Menerima: ${internName || 'pemagang ini'}`;
+        brandSelect.value = '';
+        brandSelectError.classList.add('hidden');
+        brandModal.classList.remove('hidden');
+        brandSelect.focus();
+    }
+
+    function closeBrandModal(revertSelect = false) {
+        brandModal.classList.add('hidden');
+        if (revertSelect && _brandPendingId !== null) {
+            // Kembalikan select ke nilai lama
+            const item = pending.get(_brandPendingId);
+            if (item?.select) {
+                item.select.value = item.from;
+                markSelect(item.select, false);
+            }
+            pending.delete(_brandPendingId);
+            updatePendingBar();
+        }
+        _brandPendingId = null;
+    }
+
+    brandModalOverlay?.addEventListener('click', () => closeBrandModal(true));
+    brandModalCancel?.addEventListener('click',  () => closeBrandModal(true));
+
+    brandModalConfirm?.addEventListener('click', () => {
+        const brand = brandSelect.value.trim();
+        if (!brand) {
+            brandSelectError.classList.remove('hidden');
+            brandSelect.focus();
+            return;
+        }
+        brandSelectError.classList.add('hidden');
+
+        // Simpan id sebelum closeBrandModal men-null-kan _brandPendingId
+        const itemId = _brandPendingId;
+
+        // Simpan brand ke pending item
+        if (itemId !== null && pending.has(itemId)) {
+            pending.get(itemId).brand = brand;
+        }
+
+        closeBrandModal(false);
+
+        // Ambil item dan simpan langsung
+        const savedItem = pending.get(itemId);
+        if (savedItem) {
+            saveOneItem(savedItem);
+        }
+    });
+
+    // Simpan satu item pending (accept + brand)
+    async function saveOneItem(item) {
+        try {
+            const fd = new FormData();
+            fd.append('_method', 'PATCH');
+            fd.append('internship_status', item.to);
+            if (item.brand) fd.append('brand', item.brand);
+
+            const res = await fetch(item.url, {
+                method: 'POST', body: fd,
+                headers: { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin'
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            item.select.dataset.current = item.to;
+            markSelect(item.select, false);
+            applyBadge(item.badge, item.to);
+            pending.delete(item.id);
+            updatePendingBar();
+
+            // Update rowData brand
+            const rowObj = window.rowData.get(item.id);
+            if (rowObj) rowObj.brand = item.brand;
+
+            // Refresh tombol di baris ini
+            const row = item.select.closest('tr[data-row-id]');
+            if (row) refreshGenerateButtons(row, item.id, item.to);
+
+            pushToast(`${item.name} diterima${item.brand ? ` untuk brand ${item.brand}` : ''}.`, 'success');
+        } catch(e) {
+            pushToast(`Gagal menyimpan: ${e.message}`, 'error');
+            // Kembalikan select ke nilai lama
+            item.select.value = item.from;
+            markSelect(item.select, false);
+            pending.delete(item.id);
+            updatePendingBar();
+        }
+    }
+
     // ── Bind status select ───────────────────────────────────────────────────────
     function bindStatusListeners() {
         document.querySelectorAll('.js-status-select').forEach(sel => {
@@ -548,19 +742,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
+                // Simpan ke pending dulu
                 pending.set(id, {
                     id, name, from, to, url,
+                    brand: null,
                     select: this,
                     badge: document.getElementById(`badge-${id}`)
                 });
                 markSelect(this, true);
                 updatePendingBar();
 
-                // Setelah status berubah, update tombol generate di baris ini secara real-time
-                const row = this.closest('tr[data-row-id]');
-                if (row) {
-                    refreshGenerateButtons(row, id, to);
+                // Kalau status → accepted di mode pendaftar, wajib pilih brand dulu
+                if (MODE === 'pendaftar' && to === 'accepted') {
+                    openBrandModal(id, name);
+                    return; // jangan refresh tombol dulu — dilakukan setelah konfirmasi
                 }
+
+                // Untuk status lain, langsung refresh tombol di baris
+                const row = this.closest('tr[data-row-id]');
+                if (row) refreshGenerateButtons(row, id, to);
             };
         });
     }
@@ -731,21 +931,15 @@ document.addEventListener('DOMContentLoaded', () => {
         loa: {
             title:    'Generate LOA',
             subtitle: 'Letter of Acceptance — surat penerimaan magang',
-            info:     'LOA akan dikirim ke data dokumen pemagang setelah di-generate. Pastikan data pemagang sudah lengkap.',
-            url:      (id) => `{{ route('admin.loa.generate') }}`,
-            method:   'POST',
-            body:     (id) => ({ intern_id: id }),
+            info:     'Anda akan diarahkan ke form LOA. Data pemagang sudah terisi otomatis, Anda bisa review sebelum generate.',
+            url:      (id) => `{{ url('admin/loa/generate') }}/${id}`,
+            method:   'REDIRECT',
         },
         skl: {
             title:    'Generate SKL',
             subtitle: 'Surat Keterangan Selesai Magang',
-            info:     'SKL akan di-download langsung. Pastikan data template SKL sudah dikonfigurasi di halaman Data SKL.',
-            url:      (id) => {
-                const row = window.rowData.get(id);
-                const userId = row?.user_id;
-                if (!userId) return null;
-                return `{{ route('admin.skl.download.for_user', ['user' => '__UID__']) }}`.replace('__UID__', userId);
-            },
+            info:     'Anda akan diarahkan ke form SKL. Data pemagang sudah terisi otomatis, Anda bisa review dan ubah sebelum generate PDF.',
+            url:      (id) => `{{ url('admin/skl/generate') }}/${id}`,
             method:   'REDIRECT',
         },
         sertifikat: {
@@ -994,6 +1188,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${detailRow('Jenis Magang', it.internship_type)}
                 ${detailRow('Sistem Kerja', it.internship_arrangement)}
                 ${detailRow('Minat Program', it.internship_interest)}
+                ${detailRow('Brand', it.brand || '-')}
                 ${detailRow('Alasan Magang', it.internship_reason)}
                 ${detailRow('Status Saat Ini', it.current_status)}
                 ${detailRow('Bisa Bahasa Inggris', it.english_book_ability)}
@@ -1164,11 +1359,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
 
                 ${section('Status Pendaftaran')}
-                <div class="sm:col-span-2">
+                <div>
                     <label class="mb-1 block text-[12px] font-semibold text-[#1B3A34]">Status Magang</label>
                     <select name="internship_status"
                         class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659]">
                         ${statusOpts}
+                    </select>
+                </div>
+                <div>
+                    <label class="mb-1 block text-[12px] font-semibold text-[#1B3A34]">Brand</label>
+                    <select name="brand"
+                        class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659]">
+                        <option value="">— Belum dipilih —</option>
+                        ${[
+                            'Magangjogja','Areakerja','Republikweb','Titipsini','Ambilpaket',
+                            'Bikinkepo','Bimbelcerdas.com','Latihankerja.com','Lowkerjateng.com',
+                            'Lowkerjogja.com','Pijatjogja.com','Sayabantu.com','Titikvisual',
+                            'Tuantanah','Tukanglas.org','Adakamar.id','Seven Inc'
+                        ].map(b => `<option value="${b}" ${it.brand === b ? 'selected' : ''}>${b}</option>`).join('')}
                     </select>
                 </div>
             </div>
@@ -1328,6 +1536,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     saveAllBtn?.addEventListener('click', async () => {
         if (pending.size === 0) return;
+
+        // Cek apakah ada pending 'accepted' yang belum punya brand (di mode pendaftar)
+        if (MODE === 'pendaftar') {
+            const needBrand = Array.from(pending.values()).find(x => x.to === 'accepted' && !x.brand);
+            if (needBrand) {
+                openBrandModal(needBrand.id, needBrand.name);
+                return;
+            }
+        }
+
         const items = Array.from(pending.values());
         saveAllBtn.disabled = true;
         discardBtn.disabled = true;
@@ -1336,6 +1554,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const fd = new FormData();
             fd.append('_method', 'PATCH');
             fd.append('internship_status', item.to);
+            if (item.brand) fd.append('brand', item.brand);
             const res = await fetch(item.url, {
                 method: 'POST', body: fd,
                 headers: { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
