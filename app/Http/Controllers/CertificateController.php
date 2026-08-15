@@ -801,11 +801,11 @@ class CertificateController extends Controller
     }
 
 
-    public function create()
+    public function create(Request $request)
     {
 
         $interns = IR::orderByDesc('id')
-            ->select('id','fullname','start_date','end_date','current_city','internship_interest','institution_name')
+            ->select('id','fullname','start_date','end_date','current_city','internship_interest','institution_name','brand')
             ->get();
 
         $internData = ($interns ?? collect())
@@ -818,10 +818,17 @@ class CertificateController extends Controller
                     'city'        => $ir->current_city,
                     'interest'    => $ir->internship_interest,
                     'institution' => $ir->institution_name,
+                    'brand'       => $ir->brand,
                 ];
             })
             ->values()
             ->toArray();
+
+        // Pre-fill dari intern_id jika ada
+        $selectedIntern = null;
+        if ($request->filled('intern_id')) {
+            $selectedIntern = $interns->firstWhere('id', (int) $request->get('intern_id'));
+        }
 
         // List file dari storage (hanya nama file)
         $backgroundFiles = collect(Storage::files('public/images/backgrounds'))
@@ -882,7 +889,7 @@ class CertificateController extends Controller
         ];
 
         return view('certificates.create', compact(
-            'backgroundFiles', 'logoFiles', 'signatureFiles', 'divisions', 'brands', 'interns', 'internData'
+            'backgroundFiles', 'logoFiles', 'signatureFiles', 'divisions', 'brands', 'interns', 'internData', 'selectedIntern'
         ));
     }
 

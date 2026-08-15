@@ -355,7 +355,62 @@ class InternAssessmentController extends Controller
         // ===== Data pemagang =====
         $interns = IR::whereIn('internship_status', [IR::STATUS_ACTIVE, IR::STATUS_COMPLETED])
             ->orderBy('fullname', 'asc')
-            ->get(['id', 'fullname', 'student_id', 'study_program']);
+            ->get(['id', 'fullname', 'student_id', 'study_program', 'brand', 'internship_interest']);
+
+        // Pre-fill semua data dari pemagang yang dipilih (jika ada intern_id di URL)
+        $selectedIntern = null;
+        $prefilledBrand = null;
+        if ($request->filled('intern_id')) {
+            $selectedIntern = $interns->firstWhere('id', (int) $request->get('intern_id'));
+            if ($selectedIntern) {
+                $prefilledBrand = $selectedIntern->brand;
+
+                // Map internship_interest (slug/label) ke pilihan divisi yang valid
+                $interestRaw = (string) ($selectedIntern->internship_interest ?? '');
+                $divisionOptions = $this->getDivisionOptions();
+
+                // Cek exact match dulu
+                if (in_array($interestRaw, $divisionOptions, true)) {
+                    $matchedDiv = $interestRaw;
+                } else {
+                    // Map slug → label
+                    $slugMap = [
+                        'project-manager'          => 'Project Manager',
+                        'administration'            => 'Administration',
+                        'administrasi'              => 'Administration',
+                        'hr'                        => 'Human Resources (HR)',
+                        'uiux'                      => 'UI/UX',
+                        'ui/ux'                     => 'UI/UX',
+                        'programmer'                => 'Programmer (Front End / Backend)',
+                        'programmer (front end / backend)' => 'Programmer (Front End / Backend)',
+                        'photographer'              => 'Photographer',
+                        'fotografer'                => 'Photographer',
+                        'videographer'              => 'Videographer',
+                        'videografer'               => 'Videographer',
+                        'graphic-designer'          => 'Graphic Designer',
+                        'desainer grafis'           => 'Graphic Designer',
+                        'social-media-specialist'   => 'Social Media Specialist',
+                        'content-writer'            => 'Content Writer',
+                        'content-planner'           => 'Content Planner',
+                        'marketing-and-sales'       => 'Sales & Marketing',
+                        'public-relation'           => 'Public Relations (Marcomm)',
+                        'public relations (marcomm)'=> 'Public Relations (Marcomm)',
+                        'digital-marketing'         => 'Digital Marketing',
+                        'tiktok-creator'            => 'TikTok Creator',
+                        'welding'                   => 'Welding',
+                        'pengelasan'                => 'Welding',
+                        'customer-service'          => 'Customer Service',
+                    ];
+                    $key        = strtolower(trim($interestRaw));
+                    $matchedDiv = $slugMap[$key] ?? null;
+                }
+
+                if ($matchedDiv && in_array($matchedDiv, $divisionOptions, true)) {
+                    $division = $matchedDiv;
+                    $aspects  = $this->getDefaultAspects()[$division] ?? $this->getDefaultAspects()['Content Writer'];
+                }
+            }
+        }
 
         // ===== Koleksi logo & tanda tangan (aman jika folder belum ada) =====
         $logoFiles = Storage::disk('public')->exists('images/logos')
@@ -377,7 +432,7 @@ class InternAssessmentController extends Controller
 
         // ===== Kirim ke view =====
         return view('admin.interns.create_assessment', compact(
-            'aspects', 'division', 'divisions', 'interns', 'logos', 'signatures'
+            'aspects', 'division', 'divisions', 'interns', 'logos', 'signatures', 'prefilledBrand', 'selectedIntern'
         ));
     }
 

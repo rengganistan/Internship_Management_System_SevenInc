@@ -39,16 +39,18 @@
                         <svg class="h-4 w-4 shrink-0 text-[#4B5F5A]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                         <input type="text" id="searchIntern" placeholder="Ketik nama pemagang..." autocomplete="off"
                             onkeyup="filterInternList()"
+                            value="{{ $selectedIntern?->fullname ?? '' }}"
                             class="w-full border-0 bg-transparent text-[13px] text-[#1B3A34] outline-none placeholder:text-[#4B5F5A]">
                     </div>
-                    <input type="hidden" name="fullname" id="fullname_hidden">
+                    <input type="hidden" name="fullname" id="fullname_hidden" value="{{ $selectedIntern?->fullname ?? '' }}">
                     <div id="internDropdown"
                         class="absolute z-20 hidden mt-1 max-h-56 w-full overflow-y-auto rounded-[10px] border border-[#DCE7E1] bg-white shadow-lg">
                         @foreach($interns as $intern)
                         <div class="intern-option cursor-pointer px-4 py-2.5 text-[13px] text-[#1B3A34] hover:bg-[#F4F8F6]"
                             data-name="{{ $intern->fullname }}"
                             data-nim="{{ $intern->student_id }}"
-                            data-prodi="{{ $intern->study_program }}">
+                            data-prodi="{{ $intern->study_program }}"
+                            data-brand="{{ $intern->brand ?? '' }}">
                             {{ $intern->fullname }}
                             <span class="text-[11px] text-[#4B5F5A]">— {{ $intern->study_program }}</span>
                         </div>
@@ -58,14 +60,14 @@
 
                 <div>
                     <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">NIM / NIS</label>
-                    <input type="text" id="nimField" name="nim_or_nis" value="{{ old('nim_or_nis') }}"
+                    <input type="text" id="nimField" name="nim_or_nis" value="{{ old('nim_or_nis', $selectedIntern?->student_id ?? '') }}"
                         placeholder="Masukkan NIM/NIS"
                         class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
                 </div>
 
                 <div>
                     <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Program Studi</label>
-                    <input type="text" id="prodiField" name="study_program" value="{{ old('study_program') }}"
+                    <input type="text" id="prodiField" name="study_program" value="{{ old('study_program', $selectedIntern?->study_program ?? '') }}"
                         placeholder="Contoh: Teknik Informatika"
                         class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
                 </div>
@@ -76,7 +78,7 @@
                         class="w-full rounded-[8px] border border-[#DCE7E1] bg-white px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
                         <option value="">-- Pilih Divisi --</option>
                         @foreach($divisions as $div)
-                        <option value="{{ $div }}" {{ old('div') === $div ? 'selected' : '' }}>{{ $div }}</option>
+                        <option value="{{ $div }}" {{ (old('div', $division)) === $div ? 'selected' : '' }}>{{ $div }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -90,8 +92,8 @@
 
                 <div>
                     <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Nama Perusahaan</label>
-                    <input type="text" name="company_name"
-                        value="{{ old('company_name', 'SEVEN INC.') }}"
+                    <input type="text" id="companyNameField" name="company_name"
+                        value="{{ old('company_name', $prefilledBrand ?? 'SEVEN INC.') }}"
                         class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
                 </div>
 
@@ -224,6 +226,7 @@ const allOptions     = dropdown.querySelectorAll('.intern-option');
 const fullnameHidden = document.getElementById('fullname_hidden');
 const nimField       = document.getElementById('nimField');
 const prodiField     = document.getElementById('prodiField');
+const companyNameField = document.getElementById('companyNameField');
 
 searchInput.addEventListener('focus', () => dropdown.classList.remove('hidden'));
 document.addEventListener('click', e => {
@@ -244,6 +247,10 @@ allOptions.forEach(opt => {
         fullnameHidden.value   = opt.dataset.name;
         nimField.value         = opt.dataset.nim || '';
         prodiField.value       = opt.dataset.prodi || '';
+        // Auto-fill nama perusahaan dari brand pemagang
+        if (companyNameField && opt.dataset.brand) {
+            companyNameField.value = opt.dataset.brand;
+        }
         dropdown.classList.add('hidden');
     });
 });

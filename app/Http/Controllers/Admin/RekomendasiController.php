@@ -151,6 +151,13 @@ class RekomendasiController extends Controller
             return back()->with('error', 'Konfigurasi template rekomendasi belum diatur. Silakan atur di halaman Template Rekomendasi.');
         }
 
+        // Override nama perusahaan dengan brand pemagang jika ada
+        if (!empty($intern->brand)) {
+            $config = clone $config;
+            $config->company_name  = $intern->brand;
+            $config->company_brand = $intern->brand;
+        }
+
         try {
             Carbon::setLocale('id');
 

@@ -39,9 +39,10 @@
                         <svg class="h-4 w-4 shrink-0 text-[#4B5F5A]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                         <input type="text" id="intern_search" autocomplete="off"
                             placeholder="Ketik minimal 2 huruf..."
+                            value="{{ $selectedIntern?->fullname ?? '' }}"
                             class="w-full border-0 bg-transparent text-[13px] text-[#1B3A34] outline-none placeholder:text-[#4B5F5A]">
                     </div>
-                    <input type="hidden" id="intern_id">
+                    <input type="hidden" id="intern_id" value="{{ $selectedIntern?->id ?? '' }}">
                     <div id="intern_results"
                         class="absolute z-20 mt-1 max-h-72 w-full overflow-auto rounded-[10px] border border-[#DCE7E1] bg-white shadow-lg hidden">
                     </div>
@@ -50,15 +51,21 @@
                 <div class="rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] p-3 text-[13px] space-y-1.5">
                     <div class="flex gap-2">
                         <span class="font-semibold text-[#4B5F5A] w-20 shrink-0">Institusi</span>
-                        <span id="preview_institution" class="text-[#1B3A34]">—</span>
+                        <span id="preview_institution" class="text-[#1B3A34]">{{ $selectedIntern?->institution_name ?? '—' }}</span>
                     </div>
                     <div class="flex gap-2">
                         <span class="font-semibold text-[#4B5F5A] w-20 shrink-0">Minat</span>
-                        <span id="preview_interest" class="text-[#1B3A34]">—</span>
+                        <span id="preview_interest" class="text-[#1B3A34]">{{ $selectedIntern?->internship_interest ?? '—' }}</span>
                     </div>
                     <div class="flex gap-2">
                         <span class="font-semibold text-[#4B5F5A] w-20 shrink-0">Periode</span>
-                        <span id="preview_period" class="text-[#1B3A34]">—</span>
+                        <span id="preview_period" class="text-[#1B3A34]">
+                            @if($selectedIntern?->start_date && $selectedIntern?->end_date)
+                                {{ $selectedIntern->start_date }} s/d {{ $selectedIntern->end_date }}
+                            @else
+                                —
+                            @endif
+                        </span>
                     </div>
                 </div>
             </div>
@@ -71,7 +78,7 @@
 
                 <div>
                     <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Nama <span class="text-[#D32F2F]">*</span></label>
-                    <input type="text" id="name" name="name" value="{{ old('name') }}" required
+                    <input type="text" id="name" name="name" value="{{ old('name', $selectedIntern?->fullname ?? '') }}" required
                         class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
                 </div>
 
@@ -80,21 +87,35 @@
                     <select id="division" name="division" required
                         class="w-full rounded-[8px] border border-[#DCE7E1] bg-white px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
                         <option value="">Pilih Divisi</option>
+                        @php
+                            // Map interest → division code untuk pre-select
+                            $interestMap = [
+                                'administration'=>'ADM','administrasi'=>'ADM','uiux'=>'UIUX','ui/ux'=>'UIUX',
+                                'programmer'=>'PROG','hr'=>'HR','social-media-specialist'=>'SMM',
+                                'photographer'=>'PV','videographer'=>'VID','content-writer'=>'CW',
+                                'marketing-and-sales'=>'MS','graphic-designer'=>'CD','digital-marketing'=>'DM',
+                                'public-relation'=>'PR','tiktok-creator'=>'TC','content-planner'=>'CP',
+                                'project-manager'=>'PM','welding'=>'LAS','customer-service'=>'CS',
+                            ];
+                            $preDiv = old('division',
+                                $interestMap[strtolower($selectedIntern?->internship_interest ?? '')] ?? ''
+                            );
+                        @endphp
                         @foreach($divisions as $code => $label)
-                        <option value="{{ $code }}" {{ old('division') === $code ? 'selected' : '' }}>{{ $label }}</option>
+                        <option value="{{ $code }}" {{ $preDiv === $code ? 'selected' : '' }}>{{ $label }}</option>
                         @endforeach
                     </select>
                 </div>
 
                 <div>
                     <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Perusahaan <span class="text-[#D32F2F]">*</span></label>
-                    <input type="text" id="company" name="company" value="{{ old('company') }}" required
+                    <input type="text" id="company" name="company" value="{{ old('company', $selectedIntern?->brand ?? '') }}" required
                         class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
                 </div>
 
                 <div>
                     <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Kota <span class="text-[#D32F2F]">*</span></label>
-                    <input type="text" id="city" name="city" value="{{ old('city') }}" required
+                    <input type="text" id="city" name="city" value="{{ old('city', $selectedIntern?->current_city ?? '') }}" required
                         class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
                 </div>
 
@@ -103,8 +124,15 @@
                     <select id="brand" name="brand" required
                         class="w-full rounded-[8px] border border-[#DCE7E1] bg-white px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
                         <option value="">Pilih Brand</option>
+                        @php
+                            // Map brand label → kode untuk pre-select
+                            $brandLabelToCode = array_flip($brands); // label => code
+                            $preBrand = old('brand',
+                                $brandLabelToCode[$selectedIntern?->brand ?? ''] ?? ''
+                            );
+                        @endphp
                         @foreach($brands as $code => $label)
-                        <option value="{{ $code }}" {{ old('brand') === $code ? 'selected' : '' }}>{{ $label }}</option>
+                        <option value="{{ $code }}" {{ $preBrand === $code ? 'selected' : '' }}>{{ $label }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -118,13 +146,13 @@
 
                 <div>
                     <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Tanggal Mulai <span class="text-[#D32F2F]">*</span></label>
-                    <input type="date" id="start_date" name="start_date" value="{{ old('start_date') }}" required
+                    <input type="date" id="start_date" name="start_date" value="{{ old('start_date', $selectedIntern?->start_date ?? '') }}" required
                         class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
                 </div>
 
                 <div>
                     <label class="mb-1.5 block text-[12.5px] font-semibold text-[#1B3A34]">Tanggal Selesai <span class="text-[#D32F2F]">*</span></label>
-                    <input type="date" id="end_date" name="end_date" value="{{ old('end_date') }}" required
+                    <input type="date" id="end_date" name="end_date" value="{{ old('end_date', $selectedIntern?->end_date ?? '') }}" required
                         class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2.5 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition">
                 </div>
             </div>
@@ -293,7 +321,12 @@ document.addEventListener('DOMContentLoaded', () => {
         elBrand?.addEventListener(ev, buildSerial);
         elEndDate?.addEventListener(ev, buildSerial);
     });
+    buildSerial(); // build awal
+
+    // Jika ada pre-fill dari intern_id, trigger buildSerial ulang
+    @if($selectedIntern)
     buildSerial();
+    @endif
 
     elStartDate?.addEventListener('change', () => {
         if (elEndDate.value && new Date(elEndDate.value) < new Date(elStartDate.value)) {
