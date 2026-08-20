@@ -426,12 +426,26 @@ class InternApiController extends Controller
         ];
 
 
+        // Ambil konfigurasi form fields untuk detail & edit modal (dinamis)
+        $formFields = [];
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('form_fields')) {
+                $formFields = \App\Models\FormField::active()
+                    ->orderBy('sort_order')
+                    ->get(['id', 'field_key', 'label', 'field_type', 'group_name', 'options', 'column_span', 'is_required', 'is_system'])
+                    ->toArray();
+            }
+        } catch (\Throwable $e) {
+            // tabel belum ada, biarkan kosong
+        }
+
         return response()->json([
             'data'            => $rows,
             'meta'            => $meta,
             'links'           => $links,
             'select_options'  => $selectOptions,
             'certificate_templates' => $certificateTemplates,
+            'form_fields'     => $formFields,
         ]);
 
     }

@@ -348,31 +348,75 @@ class InternController extends Controller
      */
     public function update(Request $request, $id)
     {
-        // Menemukan data berdasarkan ID yang diberikan
         $intern = IR::findOrFail($id);
 
-        // Validasi data yang diterima
+        // Validasi semua field yang bisa diedit via modal Edit
         $validatedData = $request->validate([
-            'fullname' => 'required|string|max:255',
-            'born_date' => 'nullable|string|regex:/\d{4}-\d{2}-\d{2}/', // Validasi format yyyy-mm-dd
-            'student_id' => 'required|string|max:50',
-            'email' => 'required|email|max:255',
-            'phone_number' => 'nullable|string|max:20',
-            'institution_name' => 'nullable|string|max:255',
-            'study_program' => 'nullable|string|max:255',
-            'faculty' => 'nullable|string|max:255',
-            'current_city' => 'nullable|string|max:255',
-            'internship_reason' => 'nullable|string|max:255',
-            'internship_type' => 'nullable|string|max:50',
-            'start_date' => 'nullable|string|regex:/\d{4}-\d{2}-\d{2}/', // Validasi format yyyy-mm-dd
-            'end_date' => 'nullable|string|regex:/\d{4}-\d{2}-\d{2}/', // Validasi format yyyy-mm-dd
-            'brand' => 'nullable|string|max:100',
+            // Data Pribadi
+            'fullname'               => 'required|string|max:255',
+            'born_date'              => 'nullable|string|max:255',
+            'student_id'             => 'required|string|max:50',
+            'email'                  => 'required|email|max:255',
+            'gender'                 => 'nullable|string|max:50',
+            'phone_number'           => 'nullable|string|max:20',
+            'current_city'           => 'nullable|string|max:255',
+            // Data Akademik
+            'institution_name'       => 'nullable|string|max:255',
+            'study_program'          => 'nullable|string|max:255',
+            'faculty'                => 'nullable|string|max:255',
+            // Informasi Magang
+            'internship_type'        => 'nullable|string|max:50',
+            'internship_arrangement' => 'nullable|string|max:50',
+            'internship_interest'    => 'nullable|string|max:255',
+            'internship_reason'      => 'nullable|string',
+            'current_status'         => 'nullable|string|max:50',
+            'english_book_ability'   => 'nullable|string|max:100',
+            'supervisor_contact'     => 'nullable|string|max:20',
+            'start_date'             => 'nullable|string|max:255',
+            'end_date'               => 'nullable|string|max:255',
+            // Keahlian & Alat
+            'design_software'        => 'nullable|string|max:255',
+            'video_software'         => 'nullable|string|max:255',
+            'programming_languages'  => 'nullable|string|max:255',
+            'digital_marketing_type' => 'nullable|string|max:255',
+            'laptop_equipment'       => 'nullable|string|max:50',
+            'owned_tools'            => 'nullable|string|max:255',
+            // Informasi Tambahan
+            'current_activities'     => 'nullable|string',
+            'boarding_info'          => 'nullable|string|max:50',
+            'family_status'          => 'nullable|string|max:50',
+            'parent_wa_contact'      => 'nullable|string|max:20',
+            'social_media_instagram' => 'nullable|string|max:255',
+            'internship_info_sources'=> 'nullable|string|max:500',
+            // Status & Brand (dikelola admin)
+            'internship_status'      => 'nullable|in:waiting,active,completed,exited,pending,accepted,rejected',
+            'brand'                  => 'nullable|string|max:100',
         ]);
 
-        // Memperbarui data yang sudah divalidasi
-        $intern->update($validatedData);
+        // Normalisasi tanggal ke Y-m-d jika berhasil di-parse
+        foreach (['born_date', 'start_date', 'end_date'] as $dateField) {
+            if (!empty($validatedData[$dateField])) {
+                try {
+                    $validatedData[$dateField] = Carbon::parse($validatedData[$dateField])->format('Y-m-d');
+                } catch (\Throwable) {
+                    // biarkan string asli
+                }
+            }
+        }
 
-        // Mengembalikan response berupa data yang telah diperbarui
+        // Jangan timpa internship_status lewat update biasa jika tidak dikirim
+        if (isset($validatedData['internship_status']) && $validatedData['internship_status'] !== $intern->internship_status) {
+            $oldStatus = $intern->internship_status;
+            $intern->fill($validatedData)->save();
+            $this->syncPemagangRole($intern);
+            if ($oldStatus !== IR::STATUS_ACCEPTED && $intern->internship_status === IR::STATUS_ACCEPTED) {
+                $this->sendAcceptedEmail($intern);
+            }
+        } else {
+            unset($validatedData['internship_status']);
+            $intern->fill($validatedData)->save();
+        }
+
         return response()->json($intern, 200);
     }
 

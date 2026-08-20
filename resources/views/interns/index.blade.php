@@ -1144,19 +1144,153 @@ document.addEventListener('DOMContentLoaded', () => {
     );
 
     // ── Modal: Detail ────────────────────────────────────────────────────────────
+
+    /**
+     * Mapping field_key → nilai dari objek data intern.
+     * Beberapa field_key sistem tidak 1:1 dengan key di JSON API karena sudah di-humanize.
+     */
+    function getFieldValue(it, fieldKey) {
+        return it[fieldKey] !== undefined ? it[fieldKey] : null;
+    }
+
     function openDetailModal(it) {
         document.getElementById('appModalTitle').textContent = 'Detail Pemagang';
         const ini    = initials(it.fullname);
         const status = String(it.internship_status || 'waiting').toLowerCase();
         const m      = STATUS_META[status] || { label: status, cls: 'bg-gray-100 text-gray-700' };
 
-        const section = (title) =>
+        const sectionHtml = (title) =>
             `<p class="col-span-2 mt-2 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#2D8659] border-b border-[#DCE7E1] pb-1">${title}</p>`;
+
+        // Render field menggunakan form_fields jika tersedia
+        let fieldsHtml = '';
+        if (__formFields.length > 0) {
+            // Kelompokkan per group_name
+            const groups = {};
+            __formFields.forEach(f => {
+                const g = f.group_name || '__main__';
+                if (!groups[g]) groups[g] = [];
+                groups[g].push(f);
+            });
+
+            const groupLabels = {
+                '__main__': null, // akan dipecah berdasarkan section system
+                'informasi_tambahan': 'Informasi Tambahan',
+            };
+
+            // Definisi section berdasarkan field_key sistem
+            const SECTION_MAP = {
+                fullname:            'Data Pribadi',
+                born_date:           'Data Pribadi',
+                student_id:          'Data Pribadi',
+                gender:              'Data Pribadi',
+                email:               'Data Pribadi',
+                phone_number:        'Data Pribadi',
+                current_city:        'Data Pribadi',
+                institution_name:    'Data Akademik',
+                study_program:       'Data Akademik',
+                faculty:             'Data Akademik',
+                internship_type:     'Informasi Magang',
+                internship_arrangement: 'Informasi Magang',
+                internship_interest: 'Informasi Magang',
+                internship_reason:   'Informasi Magang',
+                current_status:      'Informasi Magang',
+                english_book_ability:'Informasi Magang',
+                supervisor_contact:  'Informasi Magang',
+                start_date:          'Informasi Magang',
+                end_date:            'Informasi Magang',
+                design_software:     'Keahlian & Alat',
+                video_software:      'Keahlian & Alat',
+                programming_languages:'Keahlian & Alat',
+                digital_marketing_type:'Keahlian & Alat',
+                laptop_equipment:    'Keahlian & Alat',
+                owned_tools:         'Keahlian & Alat',
+            };
+
+            // Render grup utama (null group_name)
+            const mainFields = groups['__main__'] || [];
+            let lastSection = null;
+            mainFields.forEach(f => {
+                const sectionName = SECTION_MAP[f.field_key] || 'Informasi Lainnya';
+                if (sectionName !== lastSection) {
+                    fieldsHtml += sectionHtml(sectionName);
+                    lastSection = sectionName;
+                }
+                const val = getFieldValue(it, f.field_key);
+                const spanClass = (f.column_span === 1) ? 'col-span-2' : '';
+                fieldsHtml += `<div class="${spanClass}">` + detailRow(f.label, val) + '</div>';
+            });
+
+            // Brand (selalu ditampilkan setelah field sistem Informasi Magang)
+            if (it.brand) {
+                fieldsHtml += detailRow('Brand', it.brand);
+            }
+
+            // Grup tambahan
+            Object.keys(groups).forEach(gKey => {
+                if (gKey === '__main__') return;
+                const label = groupLabels[gKey] || gKey;
+                fieldsHtml += sectionHtml(label);
+                groups[gKey].forEach(f => {
+                    const val = getFieldValue(it, f.field_key);
+                    const spanClass = (f.column_span === 1) ? 'col-span-2' : '';
+                    fieldsHtml += `<div class="${spanClass}">` + detailRow(f.label, val) + '</div>';
+                });
+            });
+
+            // Tgl daftar selalu di akhir
+            fieldsHtml += detailRow('Tgl Daftar', fmtDate(it.created_at));
+
+        } else {
+            // Fallback: hardcoded field list (bila form_fields belum ter-load)
+            fieldsHtml = `
+                ${sectionHtml('Data Pribadi')}
+                ${detailRow('Nama Lengkap', it.fullname)}
+                ${detailRow('Tahun Lahir', it.born_date)}
+                ${detailRow('NIM / NIS', it.student_id)}
+                ${detailRow('Jenis Kelamin', it.gender)}
+                ${detailRow('Email', it.email)}
+                ${detailRow('No. HP / WA', it.phone_number)}
+                ${detailRow('Kota Tinggal', it.current_city)}
+
+                ${sectionHtml('Data Akademik')}
+                ${detailRow('Asal Sekolah / Kampus', it.institution_name)}
+                ${detailRow('Program Studi', it.study_program)}
+                ${detailRow('Fakultas', it.faculty)}
+
+                ${sectionHtml('Informasi Magang')}
+                ${detailRow('Jenis Magang', it.internship_type)}
+                ${detailRow('Sistem Kerja', it.internship_arrangement)}
+                ${detailRow('Minat Program', it.internship_interest)}
+                ${detailRow('Brand', it.brand || '-')}
+                ${detailRow('Alasan Magang', it.internship_reason)}
+                ${detailRow('Status Saat Ini', it.current_status)}
+                ${detailRow('Bisa Bahasa Inggris', it.english_book_ability)}
+                ${detailRow('No. WA Pembimbing', it.supervisor_contact)}
+                ${detailRow('Tgl Mulai', it.start_date)}
+                ${detailRow('Tgl Selesai', it.end_date)}
+
+                ${sectionHtml('Keahlian & Alat')}
+                ${detailRow('Software Desain', it.design_software)}
+                ${detailRow('Software Video', it.video_software)}
+                ${detailRow('Bahasa Pemrograman', it.programming_languages)}
+                ${detailRow('Materi Digital Marketing', it.digital_marketing_type)}
+                ${detailRow('Punya Laptop', it.laptop_equipment)}
+                ${detailRow('Alat yang Dimiliki', it.owned_tools)}
+
+                ${sectionHtml('Informasi Tambahan')}
+                ${detailRow('Kegiatan Lain', it.current_activities)}
+                ${detailRow('Butuh Info Kost', it.boarding_info)}
+                ${detailRow('Status Keluarga', it.family_status)}
+                ${detailRow('No. WA Wali / Ortu', it.parent_wa_contact)}
+                ${detailRow('Instagram', it.social_media_instagram)}
+                ${detailRow('Info Magang Dari', it.internship_info_sources)}
+                ${detailRow('Tgl Daftar', fmtDate(it.created_at))}
+            `;
+        }
 
         document.getElementById('appModalBody').innerHTML = `
         <div class="space-y-4">
-
-            {{-- Identity header --}}
             <div class="flex items-center gap-4 rounded-[10px] bg-[#F4F8F6] px-4 py-3">
                 <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#E8F5E9] text-lg font-bold text-[#1F5F3F]">
                     ${ini}
@@ -1169,52 +1303,9 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
 
             <div class="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
-
-                ${section('Data Pribadi')}
-                ${detailRow('Nama Lengkap', it.fullname)}
-                ${detailRow('Tahun Lahir', it.born_date)}
-                ${detailRow('NIM / NIS', it.student_id)}
-                ${detailRow('Jenis Kelamin', it.gender)}
-                ${detailRow('Email', it.email)}
-                ${detailRow('No. HP / WA', it.phone_number)}
-                ${detailRow('Kota Tinggal', it.current_city)}
-
-                ${section('Data Akademik')}
-                ${detailRow('Asal Sekolah / Kampus', it.institution_name)}
-                ${detailRow('Program Studi', it.study_program)}
-                ${detailRow('Fakultas', it.faculty)}
-
-                ${section('Informasi Magang')}
-                ${detailRow('Jenis Magang', it.internship_type)}
-                ${detailRow('Sistem Kerja', it.internship_arrangement)}
-                ${detailRow('Minat Program', it.internship_interest)}
-                ${detailRow('Brand', it.brand || '-')}
-                ${detailRow('Alasan Magang', it.internship_reason)}
-                ${detailRow('Status Saat Ini', it.current_status)}
-                ${detailRow('Bisa Bahasa Inggris', it.english_book_ability)}
-                ${detailRow('No. WA Pembimbing', it.supervisor_contact)}
-                ${detailRow('Tgl Mulai', it.start_date)}
-                ${detailRow('Tgl Selesai', it.end_date)}
-
-                ${section('Keahlian & Alat')}
-                ${detailRow('Software Desain', it.design_software)}
-                ${detailRow('Software Video', it.video_software)}
-                ${detailRow('Bahasa Pemrograman', it.programming_languages)}
-                ${detailRow('Materi Digital Marketing', it.digital_marketing_type)}
-                ${detailRow('Punya Laptop', it.laptop_equipment)}
-                ${detailRow('Alat yang Dimiliki', it.owned_tools)}
-
-                ${section('Informasi Tambahan')}
-                ${detailRow('Kegiatan Lain', it.current_activities)}
-                ${detailRow('Butuh Info Kost', it.boarding_info)}
-                ${detailRow('Status Keluarga', it.family_status)}
-                ${detailRow('No. WA Wali / Ortu', it.parent_wa_contact)}
-                ${detailRow('Instagram', it.social_media_instagram)}
-                ${detailRow('Info Magang Dari', it.internship_info_sources)}
-                ${detailRow('Tgl Daftar', fmtDate(it.created_at))}
+                ${fieldsHtml}
             </div>
 
-            {{-- Berkas --}}
             ${(it.cv_ktp_portofolio_pdf || it.portofolio_visual) ? `
             <div class="border-t border-[#DCE7E1] pt-4">
                 <p class="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-[#4B5F5A]">Berkas Unggahan</p>
@@ -1252,51 +1343,152 @@ document.addEventListener('DOMContentLoaded', () => {
             `<option value="${val}" ${val === it.internship_status ? 'selected' : ''}>${m.label}</option>`
         ).join('');
 
-        const genderOpts = [
-            ['male',   'Laki-laki'],
-            ['female', 'Perempuan'],
-        ].map(([v, l]) => `<option value="${v}" ${it.gender === v ? 'selected' : ''}>${l}</option>`).join('');
-
-        const typeOpts = [
-            ['mandiri',        'Magang Mandiri'],
-            ['campus',         'Magang Kampus / Reguler'],
-            ['pkl',            'PKL'],
-            ['kampus-merdeka', 'Kampus Merdeka'],
-        ].map(([v, l]) => `<option value="${v}" ${it.internship_type === v ? 'selected' : ''}>${l}</option>`).join('');
-
-        const arrangementOpts = [
-            ['onsite', 'WFO (Work From Office)'],
-            ['hybrid', 'Hybrid'],
-            ['remote', 'WFH (Work From Home)'],
-        ].map(([v, l]) => `<option value="${v}" ${it.internship_arrangement === v ? 'selected' : ''}>${l}</option>`).join('');
-
-        const interestOpts = [
-            'project-manager','administration','hr','uiux','programmer',
-            'photographer','videographer','graphic-designer','social-media-specialist',
-            'content-writer','content-planner','marketing-and-sales','public-relation',
-            'digital-marketing','tiktok-creator','welding','customer-service',
-        ].map(v => {
-            const labels = {
-                'project-manager':'Project Manager','administration':'Administrasi','hr':'HR',
-                'uiux':'UI/UX','programmer':'Programmer (Front End/Backend)','photographer':'Photographer',
-                'videographer':'Videographer','graphic-designer':'Desainer Grafis',
-                'social-media-specialist':'Social Media Specialist','content-writer':'Content Writer',
-                'content-planner':'Content Planner','marketing-and-sales':'Marketing dan Sales',
-                'public-relation':'Marcomm / Public Relation','digital-marketing':'Digital Marketing',
-                'tiktok-creator':'Tiktok Creator','welding':'Las','customer-service':'Customer Service',
-            };
-            return `<option value="${v}" ${it.internship_interest === v ? 'selected' : ''}>${labels[v] || v}</option>`;
-        }).join('');
-
         const section = (title) =>
             `<div class="col-span-2 mt-1 border-b border-[#DCE7E1] pb-1">
                 <p class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#2D8659]">${title}</p>
             </div>`;
 
-        document.getElementById('appModalBody').innerHTML = `
-        <form id="editForm" class="space-y-1">
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        // Helper: render satu edit field berdasarkan definisi FormField
+        function renderEditField(f, it) {
+            const rawVal  = it[f.field_key] !== undefined ? it[f.field_key] : '';
+            const v       = (fmtStr(rawVal) === '-') ? '' : fmtStr(rawVal);
+            const spanClass = (f.column_span === 1) ? 'sm:col-span-2' : '';
+            const reqMark = f.is_required ? '<span class="text-red-500 ml-0.5">*</span>' : '';
+            const inputClass = 'w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] transition';
 
+            switch (f.field_type) {
+                case 'select': {
+                    const opts = (f.options || []).map(o => {
+                        const optVal = (typeof o === 'object') ? (o.value ?? o) : o;
+                        const optLbl = (typeof o === 'object') ? (o.label ?? o.value ?? o) : o;
+                        const sel = String(rawVal) === String(optVal) ? 'selected' : '';
+                        return `<option value="${optVal}" ${sel}>${optLbl}</option>`;
+                    }).join('');
+                    return `<div class="${spanClass}">
+                        <label class="mb-1 block text-[12px] font-semibold text-[#1B3A34]">${f.label}${reqMark}</label>
+                        <select name="${f.field_key}" class="${inputClass}">
+                            <option value="">-- Pilih --</option>${opts}
+                        </select>
+                    </div>`;
+                }
+                case 'radio': {
+                    const opts = (f.options || []).map(o => {
+                        const optVal = (typeof o === 'object') ? (o.value ?? o) : o;
+                        const optLbl = (typeof o === 'object') ? (o.label ?? o.value ?? o) : o;
+                        const chk = String(rawVal) === String(optVal) ? 'checked' : '';
+                        return `<label class="inline-flex items-center gap-1.5 text-[12.5px]">
+                            <input type="radio" name="${f.field_key}" value="${optVal}" ${chk} class="accent-[#2D8659]"> ${optLbl}
+                        </label>`;
+                    }).join('');
+                    return `<div class="${spanClass}">
+                        <label class="mb-1 block text-[12px] font-semibold text-[#1B3A34]">${f.label}${reqMark}</label>
+                        <div class="flex flex-wrap gap-3">${opts}</div>
+                    </div>`;
+                }
+                case 'textarea':
+                    return `<div class="${spanClass}">
+                        <label class="mb-1 block text-[12px] font-semibold text-[#1B3A34]">${f.label}${reqMark}</label>
+                        <textarea name="${f.field_key}" rows="2" class="${inputClass} resize-none">${v}</textarea>
+                    </div>`;
+                case 'date':
+                    return `<div class="${spanClass}">
+                        <label class="mb-1 block text-[12px] font-semibold text-[#1B3A34]">${f.label}${reqMark}</label>
+                        <input type="date" name="${f.field_key}" value="${v}" class="${inputClass}">
+                    </div>`;
+                default:
+                    return `<div class="${spanClass}">
+                        <label class="mb-1 block text-[12px] font-semibold text-[#1B3A34]">${f.label}${reqMark}</label>
+                        <input type="${f.field_type || 'text'}" name="${f.field_key}" value="${v}" class="${inputClass}">
+                    </div>`;
+            }
+        }
+
+        // Render semua field dari form_fields atau fallback ke hardcoded
+        let dynamicFieldsHtml = '';
+
+        if (__formFields.length > 0) {
+            const SECTION_MAP = {
+                fullname:            'Data Pribadi',
+                born_date:           'Data Pribadi',
+                student_id:          'Data Pribadi',
+                gender:              'Data Pribadi',
+                email:               'Data Pribadi',
+                phone_number:        'Data Pribadi',
+                current_city:        'Data Pribadi',
+                institution_name:    'Data Akademik',
+                study_program:       'Data Akademik',
+                faculty:             'Data Akademik',
+                internship_type:     'Informasi Magang',
+                internship_arrangement: 'Informasi Magang',
+                internship_interest: 'Informasi Magang',
+                internship_reason:   'Informasi Magang',
+                current_status:      'Informasi Magang',
+                english_book_ability:'Informasi Magang',
+                supervisor_contact:  'Informasi Magang',
+                start_date:          'Informasi Magang',
+                end_date:            'Informasi Magang',
+                design_software:     'Keahlian & Alat',
+                video_software:      'Keahlian & Alat',
+                programming_languages:'Keahlian & Alat',
+                digital_marketing_type:'Keahlian & Alat',
+                laptop_equipment:    'Keahlian & Alat',
+                owned_tools:         'Keahlian & Alat',
+            };
+
+            const mainFields = __formFields.filter(f => !f.group_name);
+            const extraFields = __formFields.filter(f => f.group_name === 'informasi_tambahan');
+
+            let lastSection = null;
+            mainFields.forEach(f => {
+                const sName = SECTION_MAP[f.field_key] || 'Informasi Lainnya';
+                if (sName !== lastSection) {
+                    dynamicFieldsHtml += section(sName);
+                    lastSection = sName;
+                }
+                dynamicFieldsHtml += renderEditField(f, it);
+            });
+
+            if (extraFields.length > 0) {
+                dynamicFieldsHtml += section('Informasi Tambahan');
+                extraFields.forEach(f => {
+                    dynamicFieldsHtml += renderEditField(f, it);
+                });
+            }
+
+        } else {
+            // Fallback hardcoded
+            const genderOpts = [
+                ['male','Laki-laki'],['female','Perempuan'],
+            ].map(([v,l]) => `<option value="${v}" ${it.gender===v?'selected':''}>${l}</option>`).join('');
+
+            const typeOpts = [
+                ['mandiri','Magang Mandiri'],['campus','Magang Kampus / Reguler'],
+                ['pkl','PKL'],['kampus-merdeka','Kampus Merdeka'],
+            ].map(([v,l]) => `<option value="${v}" ${it.internship_type===v?'selected':''}>${l}</option>`).join('');
+
+            const arrangementOpts = [
+                ['onsite','WFO (Work From Office)'],['hybrid','Hybrid'],['remote','WFH (Work From Home)'],
+            ].map(([v,l]) => `<option value="${v}" ${it.internship_arrangement===v?'selected':''}>${l}</option>`).join('');
+
+            const interestOpts = [
+                'project-manager','administration','hr','uiux','programmer',
+                'photographer','videographer','graphic-designer','social-media-specialist',
+                'content-writer','content-planner','marketing-and-sales','public-relation',
+                'digital-marketing','tiktok-creator','welding','customer-service',
+            ].map(v => {
+                const labels = {
+                    'project-manager':'Project Manager','administration':'Administrasi','hr':'HR',
+                    'uiux':'UI/UX','programmer':'Programmer (Front End/Backend)','photographer':'Photographer',
+                    'videographer':'Videographer','graphic-designer':'Desainer Grafis',
+                    'social-media-specialist':'Social Media Specialist','content-writer':'Content Writer',
+                    'content-planner':'Content Planner','marketing-and-sales':'Marketing dan Sales',
+                    'public-relation':'Marcomm / Public Relation','digital-marketing':'Digital Marketing',
+                    'tiktok-creator':'Tiktok Creator','welding':'Las','customer-service':'Customer Service',
+                };
+                return `<option value="${v}" ${it.internship_interest===v?'selected':''}>${labels[v]||v}</option>`;
+            }).join('');
+
+            dynamicFieldsHtml = `
                 ${section('Data Pribadi')}
                 ${editField('Nama Lengkap', 'fullname', it.fullname)}
                 ${editField('Tahun Lahir', 'born_date', it.born_date)}
@@ -1340,7 +1532,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="sm:col-span-2">
                     <label class="mb-1 block text-[12px] font-semibold text-[#1B3A34]">Alasan Magang</label>
                     <textarea name="internship_reason" rows="2"
-                        class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] resize-none">${fmtStr(it.internship_reason) === '-' ? '' : fmtStr(it.internship_reason)}</textarea>
+                        class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] resize-none">${fmtStr(it.internship_reason)==='- '?'':fmtStr(it.internship_reason)}</textarea>
                 </div>
                 ${editField('No. WA Pembimbing', 'supervisor_contact', it.supervisor_contact)}
 
@@ -1355,10 +1547,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="sm:col-span-2">
                     <label class="mb-1 block text-[12px] font-semibold text-[#1B3A34]">Kegiatan Lain Selain Magang</label>
                     <textarea name="current_activities" rows="2"
-                        class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] resize-none">${fmtStr(it.current_activities) === '-' ? '' : fmtStr(it.current_activities)}</textarea>
+                        class="w-full rounded-[8px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2 text-[13px] text-[#1B3A34] outline-none focus:border-[#2D8659] resize-none">${fmtStr(it.current_activities)==='-'?'':fmtStr(it.current_activities)}</textarea>
                 </div>
+            `;
+        }
 
-                ${section('Status Pendaftaran')}
+        document.getElementById('appModalBody').innerHTML = `
+        <form id="editForm" class="space-y-1">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                ${dynamicFieldsHtml}
+
+                <div class="col-span-2 mt-1 border-b border-[#DCE7E1] pb-1">
+                    <p class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#2D8659]">Status Pendaftaran</p>
+                </div>
                 <div>
                     <label class="mb-1 block text-[12px] font-semibold text-[#1B3A34]">Status Magang</label>
                     <select name="internship_status"
@@ -1602,6 +1803,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ── Load page (fetch API) ────────────────────────────────────────────────────
+    let __formFields = []; // cache form_fields dari API
+
     async function loadPage(page = 1) {
         const searchQuery = (searchInput?.value || '').trim();
         const params = new URLSearchParams({
@@ -1628,6 +1831,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const json = await res.json();
+            // Cache form_fields dari API (hanya update saat pertama atau berubah)
+            if (json.form_fields && json.form_fields.length > 0) {
+                __formFields = json.form_fields;
+            }
             renderRows(json);
             window.__CURRENT_PAGE = page;
             if (searchQuery) pagerEl.innerHTML = '';
