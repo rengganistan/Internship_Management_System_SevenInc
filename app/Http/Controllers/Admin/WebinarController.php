@@ -47,25 +47,45 @@ class WebinarController extends Controller
             'certificate_logo2'          => 'nullable|string',
             'certificate_signature1'     => 'nullable|string',
             'certificate_signature2'     => 'nullable|string',
-            'certificate_signatory1_name'=> 'nullable|string|max:255',
-            'certificate_signatory1_role'=> 'nullable|string|max:255',
+            'certificate_signatory1_name'=> 'required|string|max:255',
+            'certificate_signatory1_role'=> 'required|string|max:255',
             'certificate_signatory2_name'=> 'nullable|string|max:255',
             'certificate_signatory2_role'=> 'nullable|string|max:255',
             'certificate_company'        => 'nullable|string|max:255',
             'certificate_city'           => 'nullable|string|max:255',
             'certificate_brand'          => 'nullable|string|max:10',
+            'certificate_description'    => 'nullable|string|max:1000',
+            'allowed_brands'             => 'nullable|array',
+            'allowed_brands.*'           => 'string|max:10',
+            // File upload langsung
+            'upload_background'          => 'nullable|image|mimes:jpg,jpeg,png,gif|max:4096',
+            'upload_logo1'               => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
+            'upload_logo2'               => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
+            'upload_signature1'          => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
+            'upload_signature2'          => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
         ]);
 
         $validated['created_by'] = auth()->id();
         $validated['is_active']  = $request->boolean('is_active', true);
 
+        // Proses upload langsung — override pilihan dropdown jika file baru diupload
+        $validated = $this->processAssetUploads($request, $validated);
+
+        // allowed_brands: null = semua, array kosong atau mode=all = null
+        $mode = $request->input('_allowed_brands_mode', 'all');
+        $validated['allowed_brands'] = ($mode === 'specific' && !empty($validated['allowed_brands']))
+            ? array_values(array_unique($validated['allowed_brands']))
+            : null;
+
+        // Sinkron certificate_company dengan nama brand
+        if (!empty($validated['certificate_brand'])) {
+            $validated['certificate_company'] = Webinar::brandLabel($validated['certificate_brand']);
+        }
+
         Webinar::create($validated);
 
-        // Kirim notifikasi ke semua pemagang aktif via session
-        // (notifikasi realtime akan muncul lewat AppServiceProvider)
-
         return redirect()->route('admin.webinars.index')
-            ->with('success', '✅ Webinar berhasil dibuat. Semua pemagang aktif akan melihat webinar ini.');
+            ->with('success', '✅ Webinar berhasil dibuat.');
     }
 
     public function edit(Webinar $webinar)
@@ -90,16 +110,40 @@ class WebinarController extends Controller
             'certificate_logo2'          => 'nullable|string',
             'certificate_signature1'     => 'nullable|string',
             'certificate_signature2'     => 'nullable|string',
-            'certificate_signatory1_name'=> 'nullable|string|max:255',
-            'certificate_signatory1_role'=> 'nullable|string|max:255',
+            'certificate_signatory1_name'=> 'required|string|max:255',
+            'certificate_signatory1_role'=> 'required|string|max:255',
             'certificate_signatory2_name'=> 'nullable|string|max:255',
             'certificate_signatory2_role'=> 'nullable|string|max:255',
             'certificate_company'        => 'nullable|string|max:255',
             'certificate_city'           => 'nullable|string|max:255',
             'certificate_brand'          => 'nullable|string|max:10',
+            'certificate_description'    => 'nullable|string|max:1000',
+            'allowed_brands'             => 'nullable|array',
+            'allowed_brands.*'           => 'string|max:10',
+            // File upload langsung
+            'upload_background'          => 'nullable|image|mimes:jpg,jpeg,png,gif|max:4096',
+            'upload_logo1'               => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
+            'upload_logo2'               => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
+            'upload_signature1'          => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
+            'upload_signature2'          => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
         ]);
 
         $validated['is_active'] = $request->boolean('is_active', true);
+
+        // Proses upload langsung — override pilihan dropdown jika file baru diupload
+        $validated = $this->processAssetUploads($request, $validated);
+
+        // allowed_brands
+        $mode = $request->input('_allowed_brands_mode', 'all');
+        $validated['allowed_brands'] = ($mode === 'specific' && !empty($validated['allowed_brands']))
+            ? array_values(array_unique($validated['allowed_brands']))
+            : null;
+
+        // Sinkron certificate_company dengan nama brand
+        if (!empty($validated['certificate_brand'])) {
+            $validated['certificate_company'] = Webinar::brandLabel($validated['certificate_brand']);
+        }
+
         $webinar->update($validated);
 
         return redirect()->route('admin.webinars.index')
@@ -285,11 +329,9 @@ class WebinarController extends Controller
 
     /**
      * Generate sertifikat webinar untuk satu peserta.
-     * Reuse engine CertificateController.
      */
     private function generateWebinarCertificate(Webinar $webinar, $user): ?Certificate
     {
-        // Ambil data tanggal webinar
         $startDate = $webinar->event_date;
         $endDate   = $webinar->event_end_date ?? $webinar->event_date;
 
@@ -297,11 +339,13 @@ class WebinarController extends Controller
         $monthRoman = $roman[$endDate->month];
         $year       = $endDate->year;
 
-        $companyCode = $this->companyCode($webinar->certificate_company ?? 'Seven Inc');
-        $brandCode   = strtoupper($webinar->certificate_brand ?? 'SI');
-        $divisionCode = 'WBN'; // Kode khusus webinar
+        $brandCode    = strtoupper($webinar->certificate_brand ?? 'SI');
+        // Company = nama brand (bukan field terpisah)
+        $companyName  = Webinar::brandLabel($brandCode);
+        $companyCode  = $this->companyCode($companyName);
+        $divisionCode = 'WBN';
 
-        // Running number
+        // Running number per bulan-tahun (atomic)
         $last = Certificate::whereYear('created_at', $year)
             ->whereMonth('created_at', $endDate->month)
             ->orderByDesc('id')->first();
@@ -314,15 +358,19 @@ class WebinarController extends Controller
 
         // Normalisasi path
         $bg   = $webinar->certificate_background ? "images/backgrounds/{$webinar->certificate_background}" : null;
-        $l1   = $webinar->certificate_logo1 ? "images/logos/{$webinar->certificate_logo1}" : null;
-        $l2   = $webinar->certificate_logo2 ? "images/logos/{$webinar->certificate_logo2}" : null;
-        $sig1 = $webinar->certificate_signature1 ? "images/signature/{$webinar->certificate_signature1}" : null;
-        $sig2 = $webinar->certificate_signature2 ? "images/signature/{$webinar->certificate_signature2}" : null;
+        $l1   = $webinar->certificate_logo1      ? "images/logos/{$webinar->certificate_logo1}"            : null;
+        $l2   = $webinar->certificate_logo2      ? "images/logos/{$webinar->certificate_logo2}"            : null;
+        $sig1 = $webinar->certificate_signature1 ? "images/signature/{$webinar->certificate_signature1}"   : null;
+        $sig2 = $webinar->certificate_signature2 ? "images/signature/{$webinar->certificate_signature2}"   : null;
+
+        // Judul webinar di-encode ke field company agar template bisa membacanya
+        $companyEncoded = $webinar->title . '||' . $companyName;
 
         return Certificate::create([
             'name'              => $user->name,
             'division'          => $divisionCode,
-            'company'           => $webinar->certificate_company ?? 'Seven Inc',
+            'company'           => $companyEncoded,
+            'description'       => $webinar->certificate_description ?: null,
             'background_image'  => $bg,
             'start_date'        => $startDate,
             'end_date'          => $endDate,
@@ -333,11 +381,65 @@ class WebinarController extends Controller
             'logo2'             => $l2,
             'signature_image1'  => $sig1,
             'signature_image2'  => $sig2,
-            'name_signatory1'   => $webinar->certificate_signatory1_name ?? 'Nama Penandatangan',
+            'name_signatory1'   => $webinar->certificate_signatory1_name ?? 'Penandatangan',
             'name_signatory2'   => $webinar->certificate_signatory2_name,
             'role1'             => $webinar->certificate_signatory1_role ?? 'Penyelenggara',
             'role2'             => $webinar->certificate_signatory2_role,
         ]);
+    }
+
+    /**
+     * Handle inline file uploads for certificate assets.
+     * If a new file is uploaded, store it to the shared asset folder and
+     * override the corresponding certificate_* field in $validated.
+     */
+    private function processAssetUploads(Request $request, array $validated): array
+    {
+        $map = [
+            'upload_background' => [
+                'disk'   => 'public/images/backgrounds',
+                'prefix' => 'bg_',
+                'field'  => 'certificate_background',
+            ],
+            'upload_logo1' => [
+                'disk'   => 'public/images/logos',
+                'prefix' => 'logo_',
+                'field'  => 'certificate_logo1',
+            ],
+            'upload_logo2' => [
+                'disk'   => 'public/images/logos',
+                'prefix' => 'logo_',
+                'field'  => 'certificate_logo2',
+            ],
+            'upload_signature1' => [
+                'disk'   => 'public/images/signature',
+                'prefix' => 'ttd_',
+                'field'  => 'certificate_signature1',
+            ],
+            'upload_signature2' => [
+                'disk'   => 'public/images/signature',
+                'prefix' => 'ttd_',
+                'field'  => 'certificate_signature2',
+            ],
+        ];
+
+        foreach ($map as $inputName => $cfg) {
+            if ($request->hasFile($inputName) && $request->file($inputName)->isValid()) {
+                $file      = $request->file($inputName);
+                $ext       = $file->getClientOriginalExtension();
+                $filename  = $cfg['prefix'] . \Illuminate\Support\Str::slug(
+                    pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)
+                ) . '_' . time() . '.' . $ext;
+
+                $file->storeAs($cfg['disk'], $filename);
+                $validated[$cfg['field']] = $filename;
+            }
+
+            // Buang field upload_ dari validated agar tidak masuk fillable
+            unset($validated[$inputName]);
+        }
+
+        return $validated;
     }
 
     private function companyCode(string $company): string
@@ -360,9 +462,6 @@ class WebinarController extends Controller
 
     private function brandList(): array
     {
-        return [
-            'MJ'=>'Magangjogja','AK'=>'Areakerja','RW'=>'Republikweb','TS'=>'Titipsini',
-            'AP'=>'Ambilpaket','BK'=>'Bikinkepo','SI'=>'Seven Inc',
-        ];
+        return Webinar::brandList();
     }
 }

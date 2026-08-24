@@ -30,6 +30,8 @@ class Webinar extends Model
         'certificate_company',
         'certificate_city',
         'certificate_brand',
+        'certificate_description',
+        'allowed_brands',
         'is_active',
         'created_by',
     ];
@@ -38,7 +40,28 @@ class Webinar extends Model
         'event_date'     => 'datetime',
         'event_end_date' => 'datetime',
         'is_active'      => 'boolean',
+        'allowed_brands' => 'array',    // null = semua brand boleh ikut
     ];
+
+    /**
+     * Perusahaan penerbit sertifikat = nama brand yang dipilih.
+     * Hapus field certificate_company dari DB-driven logic, pakai brand label saja.
+     */
+    public static function brandLabel(string $code): string
+    {
+        return self::brandList()[$code] ?? $code;
+    }
+
+    public static function brandList(): array
+    {
+        return [
+            'MJ'=>'Magangjogja','AK'=>'Areakerja','RW'=>'Republikweb','TS'=>'Titipsini',
+            'AP'=>'Ambilpaket','BK'=>'Bikinkepo','BC'=>'Bimbelcerdas.com','LK'=>'Latihankerja.com',
+            'LJT'=>'Lowkerjateng.com','LJG'=>'Lowkerjogja.com','PJ'=>'Pijatjogja.com',
+            'SB'=>'Sayabantu.com','TV'=>'Titikvisual','TN'=>'Tuantanah','TL'=>'Tukanglas.org',
+            'AKI'=>'Adakamar.id','SI'=>'Seven Inc',
+        ];
+    }
 
     /** Admin yang membuat webinar */
     public function creator(): BelongsTo

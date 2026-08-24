@@ -14,7 +14,7 @@
     </div>
   </div>
 
-  <form action="{{ route('admin.webinars.update', $webinar) }}" method="POST">
+  <form action="{{ route('admin.webinars.update', $webinar) }}" method="POST" enctype="multipart/form-data">
     @csrf @method('PUT')
     @include('admin.webinars._form', ['webinar' => $webinar])
     <div class="mt-5 flex gap-3">

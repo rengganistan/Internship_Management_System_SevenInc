@@ -20,7 +20,7 @@
     </div>
   @endif
 
-  <form action="{{ route('admin.webinars.store') }}" method="POST">
+  <form action="{{ route('admin.webinars.store') }}" method="POST" enctype="multipart/form-data">
     @csrf
     @include('admin.webinars._form', ['webinar' => null])
     <div class="mt-5 flex gap-3">
