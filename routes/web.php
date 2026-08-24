@@ -235,6 +235,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin', 'preve
     // Ban / Unban user
     Route::post('users/{user}/ban',   [AdminUserController::class, 'ban'])->name('users.ban');
     Route::post('users/{user}/unban', [AdminUserController::class, 'unban'])->name('users.unban');
+
+    // API: ambil pemagang selesai berdasarkan brand (HARUS sebelum resource agar tidak bentrok dengan {certificate})
+    Route::get('/certificate/interns-by-brand', [CertificateController::class, 'getInternsByBrand'])->name('certificate.interns-by-brand');
+
+    // API: ambil detail webinar + peserta approved (untuk AJAX di halaman create sertifikat webinar)
+    Route::get('/certificate/webinar-participants', [CertificateController::class, 'getWebinarParticipants'])->name('certificate.webinar-participants');
+
     Route::resource('certificate', CertificateController::class);
 
     Route::get('/certificate/index', [CertificateController::class, 'index'])->name('certificate'); // Add route for viewing certificates list
@@ -418,6 +425,14 @@ Route::prefix('admin')->name('admin.')->group(function () {
     // index
     Route::get('membercards', [MembercardController::class, 'index'])
         ->name('membercards.index');
+
+    // Bulk generate — harus sebelum {code} agar tidak konflik
+    Route::post('membercards/generate-bulk', [MembercardController::class, 'generateBulk'])
+        ->name('membercards.generate.bulk');
+
+    // Generate satu pemagang
+    Route::post('membercards/{code}/generate', [MembercardController::class, 'generateOne'])
+        ->name('membercards.generate.one');
 
     // show by code (public admin view for a membercard)
     Route::get('membercards/{code}', [MembercardController::class, 'show'])
