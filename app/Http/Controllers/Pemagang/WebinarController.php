@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Pemagang;
 use App\Http\Controllers\Controller;
 use App\Models\Webinar;
 use App\Models\WebinarAttendance;
+use App\Models\InternshipRegistration;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -17,21 +18,66 @@ class WebinarController extends Controller
     }
 
     /**
-     * Daftar webinar aktif.
+     * Daftar webinar aktif — hanya tampilkan webinar yang brand pemagang ini diizinkan.
      */
     public function index()
     {
         $user = auth()->user();
 
+        // Ambil brand pemagang dari internship_registrations terbaru
+        $internBrandRaw = \App\Models\InternshipRegistration::where('user_id', $user->id)
+            ->whereNotNull('brand')
+            ->latest()
+            ->value('brand');
+
+        // Normalisasi brand ke kode (allowed_brands menyimpan kode, bukan nama lengkap)
+        // internship_registrations bisa menyimpan nama lengkap ATAU kode, tangani keduanya
+        $internBrand = $this->normalizeBrandCode($internBrandRaw);
+
         $webinars = Webinar::where('is_active', true)
             ->latest('event_date')
             ->get()
+            ->filter(function ($webinar) use ($internBrand) {
+                // allowed_brands null = semua brand boleh ikut
+                if (is_null($webinar->allowed_brands)) return true;
+                // Kalau ada batasan brand dan pemagang punya brand, cek kode
+                if ($internBrand && in_array($internBrand, $webinar->allowed_brands)) return true;
+                // Kalau pemagang tidak punya brand, tampilkan semua (fallback)
+                if (!$internBrand) return true;
+                return false;
+            })
             ->map(function ($webinar) use ($user) {
                 $webinar->my_attendance = $webinar->attendanceOf($user->id);
                 return $webinar;
             });
 
         return view('pemagang.webinars.index', compact('webinars'));
+    }
+
+    /**
+     * Normalisasi brand ke kode (misal "Seven Inc" → "SI", "Magangjogja" → "MJ").
+     * Kalau sudah kode, kembalikan apa adanya.
+     */
+    private function normalizeBrandCode(?string $brand): ?string
+    {
+        if (!$brand) return null;
+
+        $brandMap = \App\Models\Webinar::brandList(); // ['MJ' => 'Magangjogja', ...]
+
+        // Cek apakah sudah berbentuk kode
+        if (isset($brandMap[strtoupper($brand)])) {
+            return strtoupper($brand);
+        }
+
+        // Cari kode berdasarkan nama lengkap (case-insensitive)
+        foreach ($brandMap as $code => $label) {
+            if (strcasecmp($label, $brand) === 0) {
+                return $code;
+            }
+        }
+
+        // Tidak ketemu — kembalikan as-is (mungkin format lain)
+        return $brand;
     }
 
     /**
