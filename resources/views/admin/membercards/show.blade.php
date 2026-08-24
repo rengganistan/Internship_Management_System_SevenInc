@@ -108,8 +108,19 @@
 
             {{-- Actions --}}
             <div class="mt-6 flex items-center gap-3 border-t border-[#DCE7E1] pt-5">
+                {{-- Generate --}}
+                <form action="{{ route('admin.membercards.generate.one', $download->code ?? '-') }}"
+                      method="POST">
+                    @csrf
+                    <button type="submit"
+                        onclick="return confirm('Generate ulang membercard untuk {{ addslashes($download->name) }}? Pastikan status pemagang sudah Selesai.')"
+                        class="flex items-center gap-2 rounded-[9px] bg-[#2D8659] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1F5F3F]">
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="16 12 12 8 8 12"/><line x1="12" y1="16" x2="12" y2="8"/></svg>
+                        Generate Membercard
+                    </button>
+                </form>
                 <a href="{{ route('admin.membercards.edit', $download->code ?? '-') }}"
-                    class="flex items-center gap-2 rounded-[9px] bg-[#2D8659] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1F5F3F]">
+                    class="flex items-center gap-2 rounded-[9px] border border-[#DCE7E1] bg-white px-4 py-2 text-sm font-semibold text-[#1B3A34] transition hover:bg-[#F4F8F6]">
                     <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>
                     Edit Data
                 </a>

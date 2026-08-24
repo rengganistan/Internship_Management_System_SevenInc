@@ -44,16 +44,99 @@
         <p class="mt-1 text-sm text-[#4B5F5A]">Kelola data member card pemagang aktif dan selesai.</p>
     </div>
 
+    {{-- Flash messages --}}
     @if(session('success'))
-    <div class="mb-4 flex items-center gap-3 rounded-[10px] border border-[#A5D6A7] bg-[#E8F5E9] px-4 py-3 text-sm font-semibold text-[#1F5F3F]">
-        <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-        {{ session('success') }}
+    <div class="mb-4 flex items-start gap-3 rounded-[10px] border border-[#A5D6A7] bg-[#E8F5E9] px-4 py-3 text-sm font-semibold text-[#1F5F3F]">
+        <svg class="h-4 w-4 mt-0.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <span>{!! session('success') !!}</span>
+    </div>
+    @endif
+    @if(session('error'))
+    <div class="mb-4 flex items-start gap-3 rounded-[10px] border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+        <svg class="h-4 w-4 mt-0.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span>{!! session('error') !!}</span>
     </div>
     @endif
 
+    {{-- ===== PANEL BULK GENERATE ===== --}}
+    <div class="mb-5 rounded-[12px] border border-[#DCE7E1] bg-white p-5 shadow-sm">
+        <p class="mb-3 text-[11px] font-bold uppercase tracking-[0.08em] text-[#2D8659]">Generate Membercard</p>
+        <p class="mb-4 text-[13px] text-[#4B5F5A]">
+            Generate membercard untuk pemagang yang sudah <strong>Selesai</strong> magang. Membercard yang sudah di-generate akan otomatis tersedia di halaman pemagang.
+        </p>
+        <form action="{{ route('admin.membercards.generate.bulk') }}" method="POST"
+              class="flex flex-wrap items-end gap-3">
+            @csrf
+            <div class="flex-1 min-w-[160px] max-w-xs">
+                <label class="block text-[11px] font-semibold uppercase tracking-wide text-[#4B5F5A] mb-1">
+                    Filter Brand (opsional)
+                </label>
+                <select name="brand"
+                    class="w-full rounded-[9px] border border-[#DCE7E1] bg-[#F4F8F6] px-3 py-2 text-sm text-[#1B3A34] focus:outline-none focus:ring-2 focus:ring-[#2D8659]">
+                    <option value="">— Semua Brand —</option>
+                    @php
+                        $allBrands = [
+                            'magangjogja.com'  => 'Magangjogja.com',
+                            'areakerja.com'    => 'Areakerja.com',
+                            'republikweb.net'  => 'Republikweb.net',
+                            'titipsini.com'    => 'Titipsini.com',
+                            'ambilpaket.com'   => 'Ambilpaket.com',
+                            'bikinkepo.com'    => 'Bikinkepo.com',
+                            'bimbelcerdas.com' => 'Bimbelcerdas.com',
+                            'latihankerja.com' => 'Latihankerja.com',
+                            'lowkerjateng.com' => 'Lowkerjateng.com',
+                            'lowkerjogja.com'  => 'Lowkerjogja.com',
+                            'pijatjogja.com'   => 'Pijatjogja.com',
+                            'sayabantu.com'    => 'Sayabantu.com',
+                            'titikvisual.com'  => 'Titikvisual.com',
+                            'tuantanah.com'    => 'Tuantanah.com',
+                            'tukanglas.org'    => 'Tukanglas.org',
+                            'adakamarid'       => 'Adakamar.id',
+                            'seven inc'        => 'Seven Inc',
+                            'Ambilpaket'       => 'Ambilpaket',
+                            'Seven Inc'        => 'Seven Inc (kapital)',
+                        ];
+                    @endphp
+                    @foreach($allBrands as $val => $label)
+                        <option value="{{ $val }}">{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <button type="submit"
+                class="inline-flex items-center gap-2 rounded-[9px] bg-[#2D8659] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#1F5F3F]">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="16 12 12 8 8 12"/><line x1="12" y1="16" x2="12" y2="8"/></svg>
+                Generate Sekarang
+            </button>
+            <a href="{{ route('admin.membercards.generate.bulk') }}"
+               onclick="this.closest('form').submit(); return false;"
+               class="hidden"></a>
+        </form>
+    </div>
+
+    {{-- ===== FILTER + TABEL ===== --}}
     <div class="overflow-hidden rounded-[12px] border border-[#DCE7E1] bg-white shadow-sm">
+
+        {{-- Filter bar --}}
+        <div class="flex flex-wrap items-center gap-3 border-b border-[#DCE7E1] px-5 py-3 bg-[#F4F8F6]">
+            <form method="GET" action="{{ route('admin.membercards.index') }}"
+                  class="flex flex-wrap items-center gap-2 flex-1">
+                <select name="brand" onchange="this.form.submit()"
+                    class="rounded-[9px] border border-[#DCE7E1] bg-white px-3 py-1.5 text-sm text-[#1B3A34] focus:outline-none focus:ring-2 focus:ring-[#2D8659]">
+                    <option value="">Semua Brand</option>
+                    @foreach($availableBrands as $b)
+                        <option value="{{ $b }}" @selected($brandFilter === $b)>{{ $b }}</option>
+                    @endforeach
+                </select>
+                @if($brandFilter)
+                    <a href="{{ route('admin.membercards.index') }}"
+                       class="text-xs text-[#4B5F5A] hover:text-red-500 underline">Reset filter</a>
+                @endif
+            </form>
+            <span class="text-xs text-[#4B5F5A]">{{ $downloads->count() }} data</span>
+        </div>
+
         <div class="overflow-x-auto">
-            <table class="w-full min-w-[800px] text-left text-sm">
+            <table class="w-full min-w-[860px] text-left text-sm">
                 <thead>
                     <tr>
                         <th class="bg-[#1B3A34] px-5 py-3 text-[11px] font-bold uppercase tracking-[0.06em] text-white">No.</th>
@@ -103,6 +186,18 @@
                         <td class="px-5 py-4">
                             <div class="flex items-center justify-end gap-1.5">
                                 @if($dl->code)
+                                {{-- Generate per baris --}}
+                                <form action="{{ route('admin.membercards.generate.one', $dl->code) }}"
+                                      method="POST" class="inline">
+                                    @csrf
+                                    <button type="submit"
+                                        title="Generate Membercard"
+                                        onclick="return confirm('Generate ulang membercard untuk {{ addslashes($dl->name) }}?')"
+                                        class="flex h-8 w-8 items-center justify-center rounded-[8px] border border-[#DCE7E1] bg-white text-[#2D8659] transition hover:border-[#2D8659] hover:bg-[#E8F5E9]">
+                                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="16 12 12 8 8 12"/><line x1="12" y1="16" x2="12" y2="8"/></svg>
+                                    </button>
+                                </form>
+
                                 <a href="{{ route('admin.membercards.show', $dl->code) }}" title="Detail"
                                     class="flex h-8 w-8 items-center justify-center rounded-[8px] border border-[#DCE7E1] bg-white text-[#4B5F5A] transition hover:border-[#2D8659] hover:text-[#1F5F3F]">
                                     <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -133,6 +228,11 @@
             </table>
         </div>
     </div>
+
+    {{-- Info brand --}}
+    <p class="mt-3 text-[11px] text-[#4B5F5A]">
+        * Tombol <svg class="inline h-3 w-3 text-[#2D8659]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="16 12 12 8 8 12"/><line x1="12" y1="16" x2="12" y2="8"/></svg> untuk generate ulang membercard (hanya berhasil jika status pemagang sudah <strong>Selesai</strong>).
+    </p>
 </div>
 
 <script>
