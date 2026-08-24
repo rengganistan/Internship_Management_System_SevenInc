@@ -93,16 +93,12 @@
             </p>
         </div>
         <div class="flex flex-wrap gap-2">
-            <a href="{{ route('admin.certificate.create') }}"
+            {{-- Tombol utama: buka modal pilih jenis sertifikat --}}
+            <button type="button" onclick="openCertTypeModal()"
                 class="flex items-center gap-2 rounded-[9px] bg-[#2D8659] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#1F5F3F]">
                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                Buat Sertifikat Magang
-            </a>
-            <a href="{{ route('admin.certificate.webinar.create') }}"
-                class="flex items-center gap-2 rounded-[9px] border border-[#DCE7E1] bg-white px-4 py-2 text-[13px] font-semibold text-[#1B3A34] transition hover:border-[#2D8659] hover:text-[#1F5F3F]">
-                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-                Sertifikat Webinar
-            </a>
+                + Buat Sertifikat
+            </button>
             {{-- Upload aset --}}
             <button type="button" onclick="openUploadModal('bg')"
                 class="flex items-center gap-2 rounded-[9px] border border-[#DCE7E1] bg-white px-3 py-2 text-[13px] font-semibold text-[#4B5F5A] transition hover:border-[#2D8659] hover:text-[#1F5F3F]">
@@ -244,7 +240,73 @@
     </div>
 </div>
 
+{{-- ===== Modal Pilih Jenis Sertifikat ===== --}}
+<div id="certTypeModal" class="fixed inset-0 z-[120] hidden">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onclick="closeCertTypeModal()"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+        <div class="w-full max-w-lg rounded-[20px] bg-white shadow-2xl overflow-hidden">
+            {{-- Header --}}
+            <div class="flex items-center justify-between border-b border-[#DCE7E1] px-6 py-5">
+                <div>
+                    <h3 class="text-[16px] font-extrabold text-[#1B3A34]">Buat Sertifikat</h3>
+                    <p class="mt-0.5 text-[12.5px] text-[#4B5F5A]">Pilih jenis sertifikat yang ingin dibuat</p>
+                </div>
+                <button onclick="closeCertTypeModal()" class="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F4F8F6] text-[#4B5F5A] hover:bg-[#DCE7E1]">
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            {{-- Pilihan --}}
+            <div class="grid grid-cols-1 gap-4 p-6 sm:grid-cols-2">
+                {{-- Sertifikat Selesai Magang --}}
+                <a href="{{ route('admin.certificate.create') }}"
+                    class="group flex flex-col items-center gap-3 rounded-[14px] border-2 border-[#DCE7E1] p-6 text-center transition hover:border-[#2D8659] hover:bg-[#F4F8F6]">
+                    <div class="flex h-14 w-14 items-center justify-center rounded-full bg-[#E8F5E9] transition group-hover:bg-[#C8E6C9]">
+                        <svg class="h-7 w-7 text-[#2D8659]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-[14px] font-bold text-[#1B3A34]">Sertifikat Selesai Magang</p>
+                        <p class="mt-1 text-[12px] text-[#4B5F5A] leading-relaxed">Untuk pemagang yang sudah menyelesaikan program magang. Bulk berdasarkan brand.</p>
+                    </div>
+                    <span class="mt-1 inline-flex items-center gap-1.5 rounded-full bg-[#2D8659] px-3 py-1 text-[11px] font-semibold text-white">
+                        Pilih Brand & Buat Massal
+                    </span>
+                </a>
+
+                {{-- Sertifikat Webinar --}}
+                <a href="{{ route('admin.certificate.webinar.create') }}"
+                    class="group flex flex-col items-center gap-3 rounded-[14px] border-2 border-[#DCE7E1] p-6 text-center transition hover:border-[#6366F1] hover:bg-[#EEF2FF]">
+                    <div class="flex h-14 w-14 items-center justify-center rounded-full bg-[#EEF2FF] transition group-hover:bg-[#E0E7FF]">
+                        <svg class="h-7 w-7 text-[#6366F1]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-[14px] font-bold text-[#1B3A34]">Sertifikat Webinar</p>
+                        <p class="mt-1 text-[12px] text-[#4B5F5A] leading-relaxed">Untuk pemagang aktif yang telah mengikuti webinar. Terintegrasi dengan data kehadiran webinar.</p>
+                    </div>
+                    <span class="mt-1 inline-flex items-center gap-1.5 rounded-full bg-[#6366F1] px-3 py-1 text-[11px] font-semibold text-white">
+                        Buat Sertifikat Webinar
+                    </span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+// ── Modal Pilih Jenis Sertifikat ──────────────────────────────────────────────
+function openCertTypeModal() {
+    document.getElementById('certTypeModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+function closeCertTypeModal() {
+    document.getElementById('certTypeModal').classList.add('hidden');
+    document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCertTypeModal(); });
+
 // ── Filter tabel ────────────────────────────────────────────────────────────
 function filterTable() {
     const q = (document.getElementById('searchInput').value || '').toLowerCase();

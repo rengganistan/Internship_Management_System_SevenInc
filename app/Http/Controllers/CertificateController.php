@@ -170,135 +170,131 @@ class CertificateController extends Controller
     // ====== WEBINAR CERTIFICATE ======
 
     /**
-     * Form create sertifikat webinar (manual, tanpa alur bukti kehadiran).
-     * Division dipaksa 'WBN' → otomatis pakai template webinar-pdf.
+     * Form create sertifikat webinar — alur baru:
+     * Admin pilih webinar dari dropdown → semua data auto-fill dari webinar →
+     * tampil peserta yang sudah submit bukti & di-approve → pilih → create bulk.
      */
     public function createWebinar()
     {
-        $backgroundFiles = collect(Storage::files('public/images/backgrounds'))
-            ->map(fn ($f) => basename($f))
-            ->filter(fn ($f) => str_starts_with($f, 'bg_'))
-            ->values();
+        // Daftar webinar yang punya peserta approved dan belum semua punya sertifikat
+        $webinars = \App\Models\Webinar::orderByDesc('event_date')
+            ->withCount([
+                'approvedAttendances',
+                'attendances as approved_without_cert_count' => function ($q) {
+                    $q->where('status', \App\Models\WebinarAttendance::STATUS_APPROVED)
+                      ->whereNull('certificate_id');
+                },
+            ])
+            ->get();
 
-        $logoFiles = collect(Storage::files('public/images/logos'))
-            ->map(fn ($f) => basename($f))
-            ->filter(fn ($f) => str_starts_with($f, 'logo_'))
-            ->values();
-
-        $signatureFiles = collect(Storage::files('public/images/signature'))
-            ->map(fn ($f) => basename($f))
-            ->filter(fn ($f) => str_starts_with($f, 'ttd_'))
-            ->values();
-
-        $brands = [
-            'MJ'=>'Magangjogja','AK'=>'Areakerja','RW'=>'Republikweb','TS'=>'Titipsini','AP'=>'Ambilpaket',
-            'BK'=>'Bikinkepo','BC'=>'Bimbelcerdas.com','LK'=>'Latihankerja.com','LJT'=>'Lowkerjateng.com',
-            'LJG'=>'Lowkerjogja.com','PJ'=>'Pijatjogja.com','SB'=>'Sayabantu.com','TV'=>'Titikvisual',
-            'TN'=>'Tuantanah','TL'=>'Tukanglas.org','AKI'=>'Adakamar.id','SI'=>'Seven Inc',
-        ];
-
-        // Prefill dari webinar_id jika ada (datang dari halaman attendances)
-        $prefill   = [];
-        $approvedParticipants = collect();
-
-        $webinarId = request('webinar_id');
-        if ($webinarId) {
-            $webinar = \App\Models\Webinar::find($webinarId);
-            if ($webinar) {
-                $prefill = [
-                    'webinar_title' => $webinar->title,
-                    'company'       => $webinar->certificate_company ?? 'Seven Inc',
-                    'city'          => $webinar->certificate_city ?? 'Yogyakarta',
-                    'brand'         => $webinar->certificate_brand ?? 'MJ',
-                    'event_date'    => $webinar->event_date->format('Y-m-d'),
-                    'background_image'  => $webinar->certificate_background,
-                    'logo1'             => $webinar->certificate_logo1,
-                    'signature_image1'  => $webinar->certificate_signature1,
-                    'name_signatory1'   => $webinar->certificate_signatory1_name,
-                    'role1'             => $webinar->certificate_signatory1_role,
-                ];
-
-                // Ambil nama peserta yang sudah approved & belum punya sertifikat
-                $approvedParticipants = \App\Models\WebinarAttendance::with('user')
-                    ->where('webinar_id', $webinar->id)
-                    ->where('status', \App\Models\WebinarAttendance::STATUS_APPROVED)
-                    ->whereNull('certificate_id')   // belum punya sertifikat
-                    ->get()
-                    ->map(fn ($a) => ['name' => $a->user->name, 'attendance_id' => $a->id]);
-            }
-        }
-
-        return view('certificates.create_webinar', compact(
-            'backgroundFiles','logoFiles','signatureFiles','brands',
-            'prefill','approvedParticipants','webinarId'
-        ));
+        return view('certificates.create_webinar', compact('webinars'));
     }
 
     /**
-     * Simpan sertifikat webinar manual (bulk).
-     * - Division = 'WBN'
-     * - start_date & end_date = event_date (1 hari)
-     * - Judul webinar disimpan sementara di session / tidak disimpan di DB certificate
-     *   (sudah muncul di template via webinar_attendances, tapi di sini manual jadi
-     *    kita simpan judul ke `division` metadata melalui trick: simpan ke notes via
-     *    `company` field tidak cocok → kita gunakan pendekatan berbeda)
-     * CATATAN: karena table certificates tidak punya kolom webinar_title,
-     * kita encode judul webinar ke dalam serial_number prefix saja, dan
-     * ambil dari relasi attendance. Untuk generate manual, judul ditampilkan
-     * lewat `certificate->company` yang sudah diisi company="[JudulWebinar]|[Company]"
-     * lalu dipecah di template.
-     * Alternatif simpel: gunakan `notes` kolom jika ada, atau kita modif template
-     * supaya judul diambil dari company dengan separator.
+     * API: ambil detail webinar + peserta approved yang belum punya sertifikat.
+     */
+    public function getWebinarParticipants(Request $request)
+    {
+        $webinarId = $request->get('webinar_id');
+        if (!$webinarId) {
+            return response()->json(['error' => 'webinar_id required'], 422);
+        }
+
+        $webinar = \App\Models\Webinar::find($webinarId);
+        if (!$webinar) {
+            return response()->json(['error' => 'Webinar tidak ditemukan'], 404);
+        }
+
+        // Peserta approved yang belum punya sertifikat
+        $attendances = \App\Models\WebinarAttendance::with('user')
+            ->where('webinar_id', $webinar->id)
+            ->where('status', \App\Models\WebinarAttendance::STATUS_APPROVED)
+            ->whereNull('certificate_id')
+            ->get()
+            ->map(fn($a) => [
+                'attendance_id' => $a->id,
+                'user_id'       => $a->user_id,
+                'name'          => $a->user->name,
+                'email'         => $a->user->email,
+            ])
+            ->values()
+            ->toArray();
+
+        // Brand label untuk company
+        $brandCode  = $webinar->certificate_brand ?? 'SI';
+        $brandLabel = \App\Models\Webinar::brandLabel($brandCode);
+
+        return response()->json([
+            'webinar' => [
+                'id'          => $webinar->id,
+                'title'       => $webinar->title,
+                'event_date'  => $webinar->event_date->format('Y-m-d'),
+                'city'        => $webinar->certificate_city ?? 'Yogyakarta',
+                'brand'       => $brandCode,
+                'brand_label' => $brandLabel,
+                'has_cert_config' => !empty($webinar->certificate_signatory1_name),
+            ],
+            'participants' => $attendances,
+        ]);
+    }
+
+    /**
+     * Simpan sertifikat webinar — bulk dari attendance_ids yang dipilih admin.
      */
     public function storeWebinar(Request $request)
     {
-        $validBrands = ['MJ','AK','RW','TS','AP','BK','BC','LK','LJT','LJG','PJ','SB','TV','TN','TL','AKI','SI'];
-
         $request->validate([
-            'webinar_title'    => ['required','string','max:255'],
-            'company'          => ['required','string','max:255'],
-            'city'             => ['required','string','max:255'],
-            'brand'            => ['required', Rule::in($validBrands)],
-            'event_date'       => ['required','date'],
-            'background_image' => ['nullable','string'],
-            'logo1'            => ['nullable','string'],
-            'signature_image1' => ['required','string'],
-            'name_signatory1'  => ['required','string','max:255'],
-            'role1'            => ['required','string','max:255'],
-            'participants'           => ['required','array','min:1'],
-            'participants.*.name'    => ['required','string','max:255'],
+            'webinar_id'           => ['required', 'integer', 'exists:webinars,id'],
+            'attendance_ids'       => ['required', 'array', 'min:1'],
+            'attendance_ids.*'     => ['integer', 'exists:webinar_attendances,id'],
         ], [
-            'webinar_title.required'    => 'Judul webinar wajib diisi.',
-            'signature_image1.required' => 'Tanda tangan wajib dipilih.',
-            'participants.required'     => 'Minimal satu peserta harus diisi.',
+            'webinar_id.required'     => 'Webinar wajib dipilih.',
+            'attendance_ids.required' => 'Pilih minimal satu peserta.',
         ]);
 
-        $data      = $request->all();
-        $eventDate = Carbon::parse($data['event_date']);
-        $brandCode = strtoupper($data['brand']);
+        $webinar = \App\Models\Webinar::findOrFail($request->webinar_id);
 
-        // Encode judul webinar ke company field dengan separator | agar bisa diambil di template
-        $companyEncoded = $data['webinar_title'] . '||' . $data['company'];
-
-        $companyCode  = $this->companyCode($data['company']);
-        $divisionCode = 'WBN';
-
-        $roman      = [1=>'I',2=>'II',3=>'III',4=>'IV',5=>'V',6=>'VI',7=>'VII',8=>'VIII',9=>'IX',10=>'X',11=>'XI',12=>'XII'];
-        $monthRoman = $roman[$eventDate->month];
-        $year       = $eventDate->year;
-
-        $bgPath  = $data['background_image'] ? "images/backgrounds/{$data['background_image']}" : null;
-        $l1Path  = $data['logo1'] ? "images/logos/{$data['logo1']}" : null;
-        $sig1Path = "images/signature/{$data['signature_image1']}";
-
-        // Cek file TTD ada
-        if (!Storage::exists("public/{$sig1Path}")) {
-            return back()->withErrors(['signature_image1' => 'File tanda tangan tidak ditemukan.'])->withInput();
+        // Cek webinar sudah dikonfigurasi sertifikatnya
+        if (empty($webinar->certificate_signatory1_name)) {
+            return back()->withErrors(['webinar_id' => 'Webinar ini belum memiliki konfigurasi sertifikat (penandatangan). Silakan edit webinar terlebih dahulu.'])->withInput();
         }
 
-        // Sequence
+        $startDate = $webinar->event_date;
+        $endDate   = $webinar->event_end_date ?? $webinar->event_date;
+
+        $brandCode   = strtoupper($webinar->certificate_brand ?? 'SI');
+        $companyName = \App\Models\Webinar::brandLabel($brandCode);
+        $companyCode = $this->companyCode($companyName);
+        $divisionCode = 'WBN';
+
+        $roman = [1=>'I',2=>'II',3=>'III',4=>'IV',5=>'V',6=>'VI',7=>'VII',8=>'VIII',9=>'IX',10=>'X',11=>'XI',12=>'XII'];
+        $monthRoman = $roman[$endDate->month];
+        $year       = $endDate->year;
+
+        $bg   = $webinar->certificate_background ? "images/backgrounds/{$webinar->certificate_background}" : null;
+        $l1   = $webinar->certificate_logo1      ? "images/logos/{$webinar->certificate_logo1}"            : null;
+        $l2   = $webinar->certificate_logo2      ? "images/logos/{$webinar->certificate_logo2}"            : null;
+        $sig1 = $webinar->certificate_signature1 ? "images/signature/{$webinar->certificate_signature1}"   : null;
+        $sig2 = $webinar->certificate_signature2 ? "images/signature/{$webinar->certificate_signature2}"   : null;
+
+        // Judul webinar di-encode ke field company
+        $companyEncoded = $webinar->title . '||' . $companyName;
+
+        // Ambil attendances yang dipilih, hanya yang approved & belum punya sertifikat
+        $attendances = \App\Models\WebinarAttendance::with('user')
+            ->whereIn('id', $request->attendance_ids)
+            ->where('webinar_id', $webinar->id)
+            ->where('status', \App\Models\WebinarAttendance::STATUS_APPROVED)
+            ->whereNull('certificate_id')
+            ->get();
+
+        if ($attendances->isEmpty()) {
+            return back()->withErrors(['attendance_ids' => 'Peserta yang dipilih sudah memiliki sertifikat atau belum diapprove.'])->withInput();
+        }
+
+        // Running number — ambil starting seq untuk bulan/tahun ini
         $last = Certificate::whereYear('created_at', $year)
-            ->whereMonth('created_at', $eventDate->month)
+            ->whereMonth('created_at', $endDate->month)
             ->orderByDesc('id')->first();
         $seq = 1;
         if ($last && preg_match('/^(\d{3})\/SERT\//', $last->serial_number, $m)) {
@@ -307,70 +303,62 @@ class CertificateController extends Controller
 
         $created = 0;
         DB::transaction(function () use (
-            $data, $companyEncoded, $companyCode, $brandCode, $divisionCode,
-            $eventDate, $monthRoman, $year, $bgPath, $l1Path, $sig1Path, &$seq, &$created
+            $attendances, $webinar, $companyEncoded, $companyCode, $brandCode, $divisionCode,
+            $startDate, $endDate, $monthRoman, $year, $bg, $l1, $l2, $sig1, $sig2, &$seq, &$created
         ) {
-            foreach ($data['participants'] as $p) {
-                $name = trim($p['name'] ?? '');
-                if ($name === '') continue;
-
+            foreach ($attendances as $attendance) {
                 $seqStr = str_pad($seq, 3, '0', STR_PAD_LEFT);
                 $serial = "{$seqStr}/SERT/{$divisionCode}/{$companyCode}.{$brandCode}/{$monthRoman}/{$year}";
                 $seq++;
 
                 $cert = Certificate::create([
-                    'name'             => $name,
-                    'division'         => $divisionCode,
-                    'company'          => $companyEncoded,
-                    'background_image' => $bgPath,
-                    'start_date'       => $eventDate,
-                    'end_date'         => $eventDate,
-                    'city'             => $data['city'],
-                    'brand'            => $brandCode,
-                    'serial_number'    => $serial,
-                    'logo1'            => $l1Path,
-                    'logo2'            => null,
-                    'signature_image1' => $sig1Path,
-                    'signature_image2' => null,
-                    'name_signatory1'  => $data['name_signatory1'],
-                    'name_signatory2'  => null,
-                    'role1'            => $data['role1'],
-                    'role2'            => null,
+                    'name'              => $attendance->user->name,
+                    'division'          => $divisionCode,
+                    'company'           => $companyEncoded,
+                    'description'       => $webinar->certificate_description ?: null,
+                    'background_image'  => $bg,
+                    'start_date'        => $startDate,
+                    'end_date'          => $endDate,
+                    'city'              => $webinar->certificate_city ?? 'Yogyakarta',
+                    'brand'             => $brandCode,
+                    'serial_number'     => $serial,
+                    'logo1'             => $l1,
+                    'logo2'             => $l2,
+                    'signature_image1'  => $sig1,
+                    'signature_image2'  => $sig2,
+                    'name_signatory1'   => $webinar->certificate_signatory1_name,
+                    'name_signatory2'   => $webinar->certificate_signatory2_name,
+                    'role1'             => $webinar->certificate_signatory1_role,
+                    'role2'             => $webinar->certificate_signatory2_role,
                 ]);
 
-                // Kalau dari alur webinar (ada attendance_id), update record attendance
-                $attendanceId = $p['attendance_id'] ?? null;
-                if ($attendanceId && $cert) {
-                    $attendance = \App\Models\WebinarAttendance::find($attendanceId);
-                    if ($attendance && !$attendance->certificate_id) {
-                        $attendance->update([
-                            'certificate_id' => $cert->id,
-                            'reviewed_by'    => $attendance->reviewed_by ?? auth()->id(),
-                            'reviewed_at'    => $attendance->reviewed_at ?? now(),
-                        ]);
+                // Update attendance dengan certificate_id
+                $attendance->update([
+                    'certificate_id' => $cert->id,
+                    'reviewed_by'    => $attendance->reviewed_by ?? auth()->id(),
+                    'reviewed_at'    => $attendance->reviewed_at ?? now(),
+                ]);
 
-                        // Simpan ke document_downloads agar muncul di Dokumen Saya pemagang
-                        \App\Models\DocumentDownload::firstOrCreate(
-                            [
-                                'user_id'  => $attendance->user_id,
-                                'doc_type' => \App\Models\DocumentDownload::TYPE_SERTIFIKAT_WEBINAR,
-                                'file_url' => route('admin.certificate.pdf', $cert->id),
-                            ],
-                            [
-                                'file_path'     => null,
-                                'downloaded_at' => now(),
-                                'status'        => 'success',
-                            ]
-                        );
-                    }
-                }
+                // Simpan ke document_downloads agar muncul di Dokumen Saya pemagang
+                \App\Models\DocumentDownload::firstOrCreate(
+                    [
+                        'user_id'  => $attendance->user_id,
+                        'doc_type' => \App\Models\DocumentDownload::TYPE_SERTIFIKAT_WEBINAR,
+                        'file_url' => route('admin.certificate.pdf', $cert->id),
+                    ],
+                    [
+                        'file_path'     => null,
+                        'downloaded_at' => now(),
+                        'status'        => 'success',
+                    ]
+                );
 
                 $created++;
             }
         });
 
-        return redirect()->route('admin.certificate.index')->with('success',
-            "✅ {$created} sertifikat webinar berhasil dibuat.");
+        return redirect()->route('admin.certificate.index')
+            ->with('success', "✅ {$created} sertifikat webinar berhasil dibuat untuk peserta {$webinar->title}.");
     }
 
     // ====== EXTERNAL PARTICIPANTS ======
@@ -801,35 +789,11 @@ class CertificateController extends Controller
     }
 
 
+    /**
+     * Form buat sertifikat selesai magang (alur baru: pilih brand → bulk).
+     */
     public function create(Request $request)
     {
-
-        $interns = IR::orderByDesc('id')
-            ->select('id','fullname','start_date','end_date','current_city','internship_interest','institution_name','brand')
-            ->get();
-
-        $internData = ($interns ?? collect())
-            ->map(function ($ir) {
-                return [
-                    'id'          => $ir->id,
-                    'fullname'    => $ir->fullname,
-                    'start_date'  => (string) $ir->start_date,
-                    'end_date'    => (string) $ir->end_date,
-                    'city'        => $ir->current_city,
-                    'interest'    => $ir->internship_interest,
-                    'institution' => $ir->institution_name,
-                    'brand'       => $ir->brand,
-                ];
-            })
-            ->values()
-            ->toArray();
-
-        // Pre-fill dari intern_id jika ada
-        $selectedIntern = null;
-        if ($request->filled('intern_id')) {
-            $selectedIntern = $interns->firstWhere('id', (int) $request->get('intern_id'));
-        }
-
         // List file dari storage (hanya nama file)
         $backgroundFiles = collect(Storage::files('public/images/backgrounds'))
             ->map(fn ($f) => basename($f))
@@ -845,27 +809,6 @@ class CertificateController extends Controller
             ->map(fn ($f) => basename($f))
             ->filter(fn ($f) => str_starts_with($f, 'ttd_'))
             ->values();
-
-        // Divisi (kode => label)
-        $divisions = [
-            'ADM'  => 'Administrasi',
-            'UIUX' => 'UI/UX Designer',
-            'PROG' => 'Programmer (Front end / Back end)',
-            'HR'   => 'Human Resource',
-            'SMM'  => 'Social Media Specialist',
-            'PV'   => 'Photographer',
-            'VID'  => 'Videographer',
-            'CW'   => 'Content Writer',
-            'MS'   => 'Marketing & Sales',
-            'CD'   => 'Content Creative (Desain Grafis)',
-            'DM'   => 'Digital Marketing',
-            'PR'   => 'Marcom/Public Relations',
-            'TC'   => 'Tik Tok Creator',
-            'CP'   => 'Content Planner',
-            'PM'   => 'Project Manager',
-            'LAS'  => 'Las',
-            'ANIM' => 'Animasi',
-        ];
 
         // Brand (kode => label)
         $brands = [
@@ -889,40 +832,93 @@ class CertificateController extends Controller
         ];
 
         return view('certificates.create', compact(
-            'backgroundFiles', 'logoFiles', 'signatureFiles', 'divisions', 'brands', 'interns', 'internData', 'selectedIntern'
+            'backgroundFiles', 'logoFiles', 'signatureFiles', 'brands'
         ));
+    }
+
+    /**
+     * API: ambil pemagang completed berdasarkan brand (untuk AJAX di halaman create).
+     */
+    public function getInternsByBrand(Request $request)
+    {
+        $brand = $request->get('brand', '');
+        if (!$brand) {
+            return response()->json(['interns' => []]);
+        }
+
+        // Map interest → division code
+        $interestToDivision = function(string $interest): string {
+            $map = [
+                'administration'=>'ADM','administrasi'=>'ADM',
+                'uiux'=>'UIUX','ui-ux'=>'UIUX','ui/ux'=>'UIUX',
+                'programmer'=>'PROG','programmer (front end / backend)'=>'PROG',
+                'hr'=>'HR','human resources (hr)'=>'HR',
+                'social-media-specialist'=>'SMM','spesialis media sosial'=>'SMM',
+                'photographer'=>'PV','fotografer'=>'PV',
+                'videographer'=>'VID','videografer'=>'VID',
+                'content-writer'=>'CW','penulis konten'=>'CW',
+                'marketing-and-sales'=>'MS','penjualan & pemasaran'=>'MS',
+                'graphic-designer'=>'CD','desainer grafis'=>'CD',
+                'digital-marketing'=>'DM','pemasaran digital'=>'DM',
+                'public-relation'=>'PR','public relations (marcomm)'=>'PR',
+                'tiktok-creator'=>'TC','kreator tiktok'=>'TC',
+                'content-planner'=>'CP','perencana konten'=>'CP',
+                'project-manager'=>'PM','manajer proyek'=>'PM',
+                'welding'=>'LAS','pengelasan'=>'LAS',
+                'animation'=>'ANIM','animasi'=>'ANIM',
+            ];
+            $key = Str::of($interest)->lower()->replace('/', '-')->toString();
+            return $map[$key] ?? 'ADM';
+        };
+
+        $interns = IR::where('brand', $brand)
+            ->where('internship_status', IR::STATUS_COMPLETED)
+            ->select('id','fullname','start_date','end_date','current_city','internship_interest','institution_name','brand')
+            ->orderBy('fullname')
+            ->get()
+            ->map(function ($ir) use ($interestToDivision) {
+                return [
+                    'id'            => $ir->id,
+                    'fullname'      => $ir->fullname,
+                    'start_date'    => (string) $ir->start_date,
+                    'end_date'      => (string) $ir->end_date,
+                    'city'          => $ir->current_city,
+                    'interest'      => $ir->internship_interest,
+                    'institution_name' => $ir->institution_name,
+                    'brand'         => $ir->brand,
+                    'division_code' => $interestToDivision($ir->internship_interest ?? ''),
+                ];
+            })
+            ->values()
+            ->toArray();
+
+        return response()->json(['interns' => $interns]);
     }
 
 
 
     public function store(Request $request)
     {
-        // List kode yang valid
-        $validDivisions = ['ADM','UIUX','PROG','HR','SMM','PV','CW','MS','CD','DM','PR','TC','CP','PM','LAS','ANIM'];
-        $validBrands    = ['MJ','AK','RW','TS','AP','BK','BC','LK','LJT','LJG','PJ','SB','TV','TN','TL','AKI','SI'];
+        $validBrands = ['MJ','AK','RW','TS','AP','BK','BC','LK','LJT','LJG','PJ','SB','TV','TN','TL','AKI','SI'];
 
-        // Validasi
+        // Validasi fields umum
         $request->validate([
-            'name'             => ['required','string','max:255'],
-            'division'         => ['required', Rule::in($validDivisions)],
-            'company'          => ['required','string','max:255'],
-            // dropdown file (bukan upload), wajib prefix tertentu
-            'background_image' => ['required','string','starts_with:bg_'],
-            'logo1'            => ['required','string','starts_with:logo_'],
-            'logo2'            => ['nullable','string','starts_with:logo_'],
-            'signature_image1' => ['required','string','starts_with:ttd_'],
-            'signature_image2' => ['nullable','string','starts_with:ttd_'],
-
-            'start_date'       => ['required','date','before_or_equal:end_date'],
-            'end_date'         => ['required','date','after_or_equal:start_date'],
-
-            'city'             => ['required','string','max:255'],
-            'brand'            => ['required', Rule::in($validBrands)],
-            // serial_number auto-generate
-            'name_signatory1'  => ['required','string','max:255'],
-            'name_signatory2'  => ['nullable','string','max:255'],
-            'role1'            => ['required','string','max:255'],
-            'role2'            => ['nullable','string','max:255'],
+            'intern_ids'        => ['required','array','min:1'],
+            'intern_ids.*'      => ['integer','exists:internship_registrations,id'],
+            'company'           => ['required','string','max:255'],
+            'city'              => ['required','string','max:255'],
+            'brand'             => ['required', Rule::in($validBrands)],
+            'background_image'  => ['required','string','starts_with:bg_'],
+            'logo1'             => ['required','string','starts_with:logo_'],
+            'logo2'             => ['nullable','string','starts_with:logo_'],
+            'signature_image1'  => ['required','string','starts_with:ttd_'],
+            'signature_image2'  => ['nullable','string','starts_with:ttd_'],
+            'name_signatory1'   => ['required','string','max:255'],
+            'name_signatory2'   => ['nullable','string','max:255'],
+            'role1'             => ['required','string','max:255'],
+            'role2'             => ['nullable','string','max:255'],
+        ], [
+            'intern_ids.required' => 'Pilih minimal satu pemagang.',
         ]);
 
         $data = $request->all();
@@ -930,9 +926,9 @@ class CertificateController extends Controller
         // Normalisasi path (disimpan relatif dari disk 'public')
         $backgroundPath = "images/backgrounds/{$data['background_image']}";
         $logo1Path      = "images/logos/{$data['logo1']}";
-        $logo2Path      = $data['logo2'] ? "images/logos/{$data['logo2']}" : null;
+        $logo2Path      = !empty($data['logo2']) ? "images/logos/{$data['logo2']}" : null;
         $sig1Path       = "images/signature/{$data['signature_image1']}";
-        $sig2Path       = $data['signature_image2'] ? "images/signature/{$data['signature_image2']}" : null;
+        $sig2Path       = !empty($data['signature_image2']) ? "images/signature/{$data['signature_image2']}" : null;
 
         // Pastikan file ada
         foreach ([$backgroundPath, $logo1Path, $sig1Path, $logo2Path, $sig2Path] as $checkPath) {
@@ -941,56 +937,98 @@ class CertificateController extends Controller
             }
         }
 
-        // Tanggal
-        $startDate = Carbon::parse($data['start_date']);
-        $endDate   = Carbon::parse($data['end_date']);
+        $brandCode   = strtoupper($data['brand']);
+        $company     = $data['company'];
+        $companyCode = $this->companyCode($company);
+        $city        = $data['city'];
 
-        // Map bulan ke romawi berdasarkan END DATE
         $roman = [1=>'I',2=>'II',3=>'III',4=>'IV',5=>'V',6=>'VI',7=>'VII',8=>'VIII',9=>'IX',10=>'X',11=>'XI',12=>'XII'];
-        $monthRoman = $roman[$endDate->month];
-        $year       = $endDate->year;
 
-        // Codes
-        $companyCode  = $this->companyCode($data['company']); // contoh: "SEVEN"
-        $brandCode    = strtoupper($data['brand']);
-        $divisionCode = strtoupper($data['division']);
+        // Preload interns (hanya yang berstatus completed)
+        $interns = IR::whereIn('id', $data['intern_ids'])
+            ->where('internship_status', IR::STATUS_COMPLETED)
+            ->get();
 
-        // Running number 3 digit per bulan-tahun (reset tiap bulan)
-        $last = Certificate::whereYear('created_at', $endDate->year)
-                ->whereMonth('created_at', $endDate->month)
-                ->orderByDesc('id')
-                ->first();
-
-        $seq = 1;
-        if ($last && preg_match('/^(\d{3})\/SERT\//', $last->serial_number, $m)) {
-            $seq = (int)$m[1] + 1;
+        if ($interns->isEmpty()) {
+            return back()->withErrors(['intern_ids' => 'Tidak ada pemagang dengan status Selesai yang dipilih.'])->withInput();
         }
-        $seqStr = str_pad($seq, 3, '0', STR_PAD_LEFT);
 
-        $serial = "{$seqStr}/SERT/{$divisionCode}/{$companyCode}.{$brandCode}/{$monthRoman}/{$year}";
+        $seqCache = []; // cache sequence per (YYYY-MM) end date
 
-        // Simpan
-        Certificate::create([
-            'name'              => $data['name'],
-            'division'          => $data['division'],  // simpan kode divisi
-            'company'           => $data['company'],
-            'background_image'  => $backgroundPath,
-            'start_date'        => $startDate,
-            'end_date'          => $endDate,
-            'city'              => $data['city'],
-            'brand'             => $brandCode,         // simpan kode brand
-            'serial_number'     => $serial,
-            'logo1'             => $logo1Path,
-            'logo2'             => $logo2Path,
-            'signature_image1'  => $sig1Path,
-            'signature_image2'  => $sig2Path,
-            'name_signatory1'   => $data['name_signatory1'],
-            'name_signatory2'   => $data['name_signatory2'],
-            'role1'             => $data['role1'],
-            'role2'             => $data['role2'],
-        ]);
+        $created = 0;
+        DB::transaction(function () use (
+            $interns, $data, $company, $companyCode, $brandCode, $city,
+            $backgroundPath, $logo1Path, $logo2Path, $sig1Path, $sig2Path,
+            $roman, &$seqCache, &$created
+        ) {
+            foreach ($interns as $ir) {
+                $name  = $ir->fullname;
+                $start = Carbon::parse($ir->start_date);
+                $end   = Carbon::parse($ir->end_date);
 
-        return redirect()->route('admin.certificate.index')->with('success', 'Sertifikat berhasil dibuat');
+                // Divisi otomatis dari interest pemagang
+                $divisionCode = $this->divisionFromInterest((string)($ir->internship_interest ?? '')) ?? 'ADM';
+
+                // Sequence per (YYYY-MM) end date
+                $ym = $end->format('Y-m');
+                if (!isset($seqCache[$ym])) {
+                    $last = Certificate::whereYear('created_at', $end->year)
+                        ->whereMonth('created_at', $end->month)
+                        ->orderByDesc('id')->first();
+                    $seq = 1;
+                    if ($last && preg_match('/^(\d{3})\/SERT\//', $last->serial_number, $m)) {
+                        $seq = (int)$m[1] + 1;
+                    }
+                    $seqCache[$ym] = $seq;
+                }
+
+                $seq    = $seqCache[$ym]++;
+                $seqStr = str_pad((string)$seq, 3, '0', STR_PAD_LEFT);
+                $serial = "{$seqStr}/SERT/{$divisionCode}/{$companyCode}.{$brandCode}/{$roman[$end->month]}/{$end->year}";
+
+                $cert = Certificate::create([
+                    'name'              => $name,
+                    'division'          => $divisionCode,
+                    'company'           => $company,
+                    'background_image'  => $backgroundPath,
+                    'start_date'        => $start,
+                    'end_date'          => $end,
+                    'city'              => $city,
+                    'brand'             => $brandCode,
+                    'serial_number'     => $serial,
+                    'logo1'             => $logo1Path,
+                    'logo2'             => $logo2Path,
+                    'signature_image1'  => $sig1Path,
+                    'signature_image2'  => $sig2Path,
+                    'name_signatory1'   => $data['name_signatory1'],
+                    'name_signatory2'   => $data['name_signatory2'] ?? null,
+                    'role1'             => $data['role1'],
+                    'role2'             => $data['role2'] ?? null,
+                ]);
+
+                // Simpan ke document_downloads supaya pemagang bisa lihat di Dokumen Saya
+                if ($ir->user_id && $cert) {
+                    \App\Models\DocumentDownload::firstOrCreate(
+                        [
+                            'user_id'  => $ir->user_id,
+                            'doc_type' => \App\Models\DocumentDownload::TYPE_SERTIFIKAT,
+                            'file_url' => route('admin.certificate.pdf', $cert->id),
+                        ],
+                        [
+                            'internship_registration_id' => $ir->id,
+                            'file_path'     => null,
+                            'downloaded_at' => now(),
+                            'status'        => 'success',
+                        ]
+                    );
+                }
+
+                $created++;
+            }
+        });
+
+        return redirect()->route('admin.certificate.index')
+            ->with('success', "✅ {$created} sertifikat selesai magang berhasil dibuat.");
     }
 
 

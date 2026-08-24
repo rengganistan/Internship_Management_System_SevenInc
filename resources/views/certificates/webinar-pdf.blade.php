@@ -263,14 +263,18 @@
 
     {{-- DESKRIPSI --}}
     <div class="webinar-desc">
-      Dalam Kegiatan
-      @if($finalWebinarTitle)
-        <strong>"{{ $finalWebinarTitle }}"</strong>
+      @if(!empty($certificate->description))
+        {!! nl2br(e($certificate->description)) !!}
       @else
-        <strong>"Webinar"</strong>
+        Dalam Kegiatan
+        @if($finalWebinarTitle)
+          <strong>"{{ $finalWebinarTitle }}"</strong>
+        @else
+          <strong>"Webinar"</strong>
+        @endif
+        yang diselenggarakan oleh <strong>{{ $company }}</strong>
+        pada tanggal <strong>{{ $eventDate }}</strong>
       @endif
-      yang diselenggarakan oleh <strong>{{ $company }}</strong>
-      pada tanggal <strong>{{ $eventDate }}</strong>
     </div>
 
     {{-- LOKASI & TANGGAL --}}

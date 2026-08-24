@@ -12,7 +12,8 @@ class Certificate extends Model
     protected $fillable = [
         'name', 
         'division', 
-        'company', 
+        'company',
+        'description',
         'background_image', 
         'start_date', 
         'end_date', 
