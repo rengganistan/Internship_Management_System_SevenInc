@@ -438,18 +438,118 @@ document.addEventListener('DOMContentLoaded', () => {
     bindPreview('sel_ttd1',  'prev_ttd1',  'images/signature');
     bindPreview('sel_ttd2',  'prev_ttd2',  'images/signature');
 
-    // Konfirmasi sebelum submit
-    document.getElementById('certBulkForm').addEventListener('submit', function(e) {
+    // Konfirmasi sebelum submit → ganti ke AJAX + modal
+    const certForm = document.getElementById('certBulkForm');
+    certForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
         const count = tableBody.querySelectorAll('.intern-check:checked').length;
         if (count === 0) {
-            e.preventDefault();
             alert('Pilih minimal satu pemagang terlebih dahulu.');
             return;
         }
+
         if (!confirm(`Buat sertifikat untuk ${count} pemagang? Proses ini tidak dapat dibatalkan.`)) {
-            e.preventDefault();
+            return;
         }
+
+        submitBtn.disabled = true;
+        submitBtnText.textContent = 'Sedang membuat sertifikat...';
+
+        const fd = new FormData(certForm);
+
+        try {
+            const res = await fetch(certForm.action, {
+                method: 'POST',
+                body: fd,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+            });
+
+            const contentType = res.headers.get('Content-Type') || '';
+
+            let success = false;
+            let message = '';
+            let details = [];
+
+            if (contentType.includes('application/json')) {
+                const json = await res.json();
+                success = json.success ?? res.ok;
+                message = json.message || (res.ok ? `${count} sertifikat berhasil dibuat.` : 'Terjadi kesalahan.');
+                details = json.details || [];
+            } else if (res.ok) {
+                success = true;
+                message = `${count} sertifikat berhasil dibuat dan tersedia untuk pemagang di halaman Dokumen Saya.`;
+            } else {
+                message = 'Terjadi kesalahan di server. Coba lagi.';
+            }
+
+            showCertModal(success ? 'success' : 'error',
+                success ? 'Sertifikat Berhasil Dibuat!' : 'Gagal Membuat Sertifikat',
+                message, details);
+
+        } catch (err) {
+            showCertModal('error', 'Gagal Membuat Sertifikat', 'Koneksi gagal. Periksa server.', []);
+        }
+
+        submitBtn.disabled = false;
+        updateCount();
     });
+
+    function showCertModal(type, title, message, details) {
+        // Buat modal on-the-fly kalau belum ada
+        let modal = document.getElementById('certResultModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'certResultModal';
+            modal.className = 'fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm p-4';
+            modal.innerHTML = `
+                <div class="w-full max-w-md rounded-[16px] bg-white shadow-2xl p-6">
+                    <div id="certModalIcon" class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full"></div>
+                    <h3 id="certModalTitle" class="mb-2 text-center text-lg font-bold text-[#1B3A34]"></h3>
+                    <p id="certModalMessage" class="mb-5 text-center text-[13px] text-[#4B5F5A]"></p>
+                    <div id="certModalDetails" class="mb-4 hidden rounded-[10px] bg-[#F4F8F6] p-3 text-[12px] text-[#4B5F5A] space-y-1 max-h-40 overflow-y-auto"></div>
+                    <button id="certModalClose" class="w-full rounded-[10px] bg-[#2D8659] py-2.5 text-sm font-semibold text-white transition hover:bg-[#1F5F3F]">Tutup</button>
+                </div>`;
+            document.body.appendChild(modal);
+        }
+
+        const icon    = document.getElementById('certModalIcon');
+        const titleEl = document.getElementById('certModalTitle');
+        const msgEl   = document.getElementById('certModalMessage');
+        const detailEl = document.getElementById('certModalDetails');
+
+        if (type === 'success') {
+            icon.className = 'mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100';
+            icon.innerHTML = '<svg class="h-7 w-7 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>';
+        } else {
+            icon.className = 'mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-100';
+            icon.innerHTML = '<svg class="h-7 w-7 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+        }
+
+        titleEl.textContent = title;
+        msgEl.textContent   = message;
+
+        if (details && details.length > 0) {
+            detailEl.classList.remove('hidden');
+            detailEl.innerHTML = details.map(d => `<p>• ${d}</p>`).join('');
+        } else {
+            detailEl.classList.add('hidden');
+        }
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+
+        document.getElementById('certModalClose').onclick = () => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            if (type === 'success') {
+                window.location.href = "{{ route('admin.certificate.index') }}";
+            }
+        };
+    }
 });
 </script>
 @endpush

@@ -871,7 +871,53 @@ class CertificateController extends Controller
             return $map[$key] ?? 'ADM';
         };
 
-        $interns = IR::where('brand', $brand)
+        // Mapping kode brand → semua kemungkinan nama yang mungkin tersimpan di DB
+        $brandNamesMap = [
+            'MJ'  => ['Magangjogja', 'Magangjogja.com'],
+            'AK'  => ['Areakerja', 'Areakerja.com'],
+            'RW'  => ['Republikweb', 'Republikweb.com'],
+            'TS'  => ['Titipsini', 'Titipsini.com'],
+            'AP'  => ['Ambilpaket', 'Ambilpaket.com'],
+            'BK'  => ['Bikinkepo'],
+            'BC'  => ['Bimbelcerdas.com', 'Bimbelcerdas'],
+            'LK'  => ['Latihankerja.com', 'Latihankerja'],
+            'LJT' => ['Lowkerjateng.com', 'Lowkerjateng'],
+            'LJG' => ['Lowkerjogja.com', 'Lowkerjogja'],
+            'PJ'  => ['Pijatjogja.com', 'Pijatjogja'],
+            'SB'  => ['Sayabantu.com', 'Sayabantu'],
+            'TV'  => ['Titikvisual', 'Titikvisual.com', 'TitikVisual'],
+            'TN'  => ['Tuantanah', 'Tuantanah.com'],
+            'TL'  => ['Tukanglas.org', 'Tukanglas'],
+            'AKI' => ['Adakamar.id', 'Adakamar'],
+            'SI'  => ['Seven Inc', 'SevenInc', 'Seveninc'],
+        ];
+
+        // Bangun daftar nilai valid: kode + semua nama yang mungkin
+        $brandValues = [$brand]; // kode asli (misal "TV")
+        if (isset($brandNamesMap[$brand])) {
+            $brandValues = array_merge($brandValues, $brandNamesMap[$brand]);
+        }
+        // Handle jika brand yang dikirim adalah nama (bukan kode) — cari kodenya
+        foreach ($brandNamesMap as $code => $names) {
+            foreach ($names as $name) {
+                if (strtolower($name) === strtolower($brand)) {
+                    $brandValues[] = $code;
+                    $brandValues = array_merge($brandValues, $names);
+                    break 2;
+                }
+            }
+        }
+        $brandValues = array_unique($brandValues);
+
+        $interns = IR::where(function($q) use ($brandValues, $brand) {
+                $q->whereIn('brand', $brandValues);
+                // Fallback: LIKE case-insensitive untuk variasi penulisan
+                foreach ($brandValues as $bv) {
+                    if (strlen($bv) >= 3) {
+                        $q->orWhereRaw('LOWER(brand) LIKE ?', [strtolower($bv) . '%']);
+                    }
+                }
+            })
             ->where('internship_status', IR::STATUS_COMPLETED)
             ->select('id','fullname','start_date','end_date','current_city','internship_interest','institution_name','brand')
             ->orderBy('fullname')
@@ -1027,10 +1073,23 @@ class CertificateController extends Controller
             }
         });
 
-        return redirect()->route('admin.certificate.index')
-            ->with('success', "✅ {$created} sertifikat selesai magang berhasil dibuat.");
-    }
+        $successMsg = "✅ {$created} sertifikat selesai magang berhasil dibuat dan tersedia untuk pemagang.";
 
+        // AJAX request → return JSON (tidak redirect)
+        if (request()->header('X-Requested-With') === 'XMLHttpRequest' || request()->wantsJson()) {
+            $names = $interns->pluck('fullname')->toArray();
+            $details = array_map(fn($n) => "Sertifikat {$n} berhasil dibuat", $names);
+            return response()->json([
+                'success' => true,
+                'message' => $successMsg,
+                'details' => $details,
+                'count'   => $created,
+            ]);
+        }
+
+        return redirect()->route('admin.certificate.index')
+            ->with('success', $successMsg);
+    }
 
 
     /**
