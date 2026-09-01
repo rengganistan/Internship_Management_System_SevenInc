@@ -340,6 +340,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin', 'preve
     Route::get('/user/{user}/pending-tasks', [DashboardController::class, 'showTasks'])->name('user.pendingTasks');
 
     Route::get('/skl/editor', [SKLController::class, 'edit'])->name('skl.editor');
+    Route::post('/skl/editor', [SKLController::class, 'update'])->name('skl.update');
+    Route::get('/skl/interns-by-brand', [SKLController::class, 'getInternsByBrand'])->name('skl.interns_by_brand');
+    Route::post('/skl/generate-brand', [SKLController::class, 'generateForBrand'])->name('skl.generate_brand');
     Route::get('/skl/generate/{intern}', [SKLController::class, 'generateForm'])->name('skl.generate.form');
     Route::post('/skl/generate/{intern}', [SKLController::class, 'generateDownload'])->name('skl.generate.download');
 
@@ -375,9 +378,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin', 'preve
     Route::get('/rekomendasi/editor',              [\App\Http\Controllers\Admin\RekomendasiController::class, 'edit'])->name('rekomendasi.editor');
     Route::post('/rekomendasi/editor',             [\App\Http\Controllers\Admin\RekomendasiController::class, 'update'])->name('rekomendasi.update');
     Route::get('/rekomendasi/preview',             [\App\Http\Controllers\Admin\RekomendasiController::class, 'preview'])->name('rekomendasi.preview');
+    Route::get('/rekomendasi/interns-by-brand',    [\App\Http\Controllers\Admin\RekomendasiController::class, 'getInternsByBrand'])->name('rekomendasi.interns_by_brand');
+    Route::post('/rekomendasi/generate-brand',     [\App\Http\Controllers\Admin\RekomendasiController::class, 'generateBulk'])->name('rekomendasi.generate_brand');
     Route::post('/rekomendasi/generate/{intern}',  [\App\Http\Controllers\Admin\RekomendasiController::class, 'generate'])->name('rekomendasi.generate');
 
-    Route::post('/skl/editor', [SKLController::class, 'update'])->name('skl.update');
     // Preview untuk panel editor (dipanggil dari iframe)
     Route::get('/skl/preview', [SKLController::class, 'preview'])->name('skl.preview');
 
@@ -403,7 +407,13 @@ Route::middleware(['auth'])->group(function () {
     // CRUD sederhana data pemagang (opsional jika sudah ada halaman lain)
     Route::get('/admin/loa/interns', [LoaController::class, 'indexInterns'])->name('admin.loa.interns');
     Route::post('/admin/loa/generate', [LoaController::class, 'generate'])->name('admin.loa.generate'); // single
-    Route::post('/admin/loa/generate-batch', [LoaController::class, 'generateBatch'])->name('admin.loa.generateBatch'); // multiple
+    Route::post('/admin/loa/generate-batch', [LoaController::class, 'generateBatch'])->name('admin.loa.generateBatch'); // multiple (legacy)
+
+    // API: pemagang accepted belum ada LOA berdasarkan brand
+    Route::get('/admin/loa/interns-by-brand', [LoaController::class, 'getInternsByBrand'])->name('admin.loa.interns_by_brand');
+
+    // Generate LOA per-pemagang berdasarkan brand (1 PDF per orang, ZIP kalau banyak)
+    Route::post('/admin/loa/generate-brand', [LoaController::class, 'generateForBrand'])->name('admin.loa.generate_brand');
 
     // Preview (tanpa simpan)
     Route::get('/user/loa/preview', [LoaController::class, 'preview'])->name('user.loa.preview');
@@ -469,6 +479,15 @@ Route::middleware(['auth', 'role:admin'])
     Route::get('/assessment/list', [InternAssessmentController::class, 'index'])->name('interns.assessment.index');
     Route::get('/assessment/create', [InternAssessmentController::class, 'create'])->name('interns.assessment.create');
     Route::post('/assessment/store', [InternAssessmentController::class, 'store'])->name('interns.assessment.store');
+
+    // === Bulk store (banyak pemagang sekaligus) ===
+    Route::post('/assessment/store-bulk', [InternAssessmentController::class, 'storeBulk'])->name('interns.assessment.store_bulk');
+
+    // === API: pemagang selesai per brand ===
+    Route::get('/assessment/interns-by-brand', [InternAssessmentController::class, 'getInternsByBrand'])->name('interns.assessment.interns_by_brand');
+
+    // === AJAX: simpan setting penandatangan per brand ===
+    Route::post('/assessment/save-signatory', [InternAssessmentController::class, 'saveSignatoryAjax'])->name('interns.assessment.save_signatory');
 
     // === PDF Routes ===
     Route::get('/assessment/{id}/pdf', [InternAssessmentController::class, 'downloadPDF'])->name('interns.assessment.pdf');
