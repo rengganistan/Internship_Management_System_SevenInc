@@ -17,22 +17,24 @@ class LoaController extends Controller
     public function edit()
     {
         $loaSettings = LoaSettings::first();
-        // untuk dropdown/checkbox multiple pemagang
-        $registrations = IR::query()
-            ->latest('id')
-            ->select(
-                'id','user_id','fullname',
-                'student_id',            // ← pakai ini
-                'study_program',         // ← pakai ini
-                'institution_name',
-                'start_date','end_date',
-                'phone_number',          // ← pakai ini
-                'internship_status'
-            )
-            ->get();
 
+        // Ambil daftar brand yang punya pemagang accepted & belum punya LOA
+        $brands = IR::query()
+            ->where('internship_status', IR::STATUS_ACCEPTED)
+            ->whereNotNull('brand')
+            ->where('brand', '!=', '')
+            ->whereNotIn('id', function ($q) {
+                $q->select('internship_registration_id')
+                  ->from('document_downloads')
+                  ->where('doc_type', DocumentDownload::TYPE_LOA)
+                  ->whereNotNull('internship_registration_id');
+            })
+            ->distinct()
+            ->pluck('brand')
+            ->sort()
+            ->values();
 
-        return view('admin.loa_editor', compact('loaSettings','registrations'));
+        return view('admin.loa_editor', compact('loaSettings', 'brands'));
     }
 
     public function update(Request $request)
@@ -55,6 +57,208 @@ class LoaController extends Controller
         $loaSettings->update($data);
 
         return redirect()->route('admin.loa.editor')->with('success', 'LOA Settings updated successfully');
+    }
+
+    /**
+     * GET /admin/loa/interns-by-brand?brand=XXX
+     * API: ambil pemagang accepted yang belum punya LOA untuk brand tertentu
+     */
+    public function getInternsByBrand(Request $request)
+    {
+        $brand = $request->query('brand');
+
+        if (!$brand) {
+            return response()->json(['interns' => []]);
+        }
+
+        // ID pemagang yang sudah punya LOA
+        $alreadyHasLoa = DocumentDownload::where('doc_type', DocumentDownload::TYPE_LOA)
+            ->whereNotNull('internship_registration_id')
+            ->pluck('internship_registration_id')
+            ->toArray();
+
+        $interns = IR::query()
+            ->where('internship_status', IR::STATUS_ACCEPTED)
+            ->where('brand', $brand)
+            ->whereNotIn('id', $alreadyHasLoa)
+            ->select('id', 'fullname', 'student_id', 'study_program', 'institution_name', 'start_date', 'end_date', 'phone_number')
+            ->latest('id')
+            ->get()
+            ->map(fn ($r) => [
+                'id'               => $r->id,
+                'fullname'         => $r->fullname,
+                'student_id'       => $r->student_id ?? '',
+                'study_program'    => $r->study_program ?? '',
+                'institution_name' => $r->institution_name ?? '',
+                'start_date'       => $r->start_date ?? '',
+                'end_date'         => $r->end_date ?? '',
+                'phone_number'     => $r->phone_number ?? '',
+            ]);
+
+        return response()->json(['interns' => $interns]);
+    }
+
+    /**
+     * POST /admin/loa/generate-brand
+     * Generate LOA untuk setiap intern yang dipilih (1 PDF per pemagang), dikemas dalam ZIP
+     */
+    public function generateForBrand(Request $request)
+    {
+        $validated = $request->validate([
+            'intern_ids'         => ['required', 'array', 'min:1'],
+            'intern_ids.*'       => ['integer', 'exists:internship_registrations,id'],
+            'signatory_name'     => ['required', 'string', 'max:255'],
+            'signatory_position' => ['required', 'string', 'max:255'],
+        ]);
+
+        $user = $request->user();
+
+        $interns = IR::whereIn('id', $validated['intern_ids'])->get();
+
+        if ($interns->isEmpty()) {
+            return back()->with('error', 'Data pemagang tidak ditemukan.');
+        }
+
+        $loaSettings = LoaSettings::firstOrNew([]);
+
+        // Override dengan input dari form
+        $loaSettings = clone $loaSettings;
+        $loaSettings->signatory_name     = $validated['signatory_name'];
+        $loaSettings->signatory_position = $validated['signatory_position'];
+
+        if ($request->filled('company_contact_email')) {
+            $loaSettings->company_contact_email = $request->input('company_contact_email');
+        }
+
+        // Logo: pakai upload baru atau fallback ke saved setting atau default
+        $logoData  = $this->resolveBase64Image($request, 'logo_upload',  $loaSettings->logo_path,  'images/logos/logo_seveninc.png');
+        $stampData = $this->resolveBase64Image($request, 'stamp_upload', $loaSettings->stamp_path, 'images/signature/ttd_arisetiahusbana.png');
+
+        $dir = 'documents/loa';
+        $this->ensurePublicDir($dir);
+
+        $generatedFiles = [];
+        $errors         = [];
+
+        foreach ($interns as $intern) {
+            try {
+                // Brand → nama perusahaan untuk surat ini
+                $loaSettings->company_name = $intern->brand ?: ($loaSettings->company_name ?? 'Seven Inc');
+
+                $rows = $this->buildRows([$intern]);
+
+                $pdf = Pdf::loadView('user.loa', [
+                    'intern'          => $intern,
+                    'user'            => $user,
+                    'loaSettings'     => $loaSettings,
+                    'rows'            => $rows,
+                    'openingGreeting' => $request->input('opening_greeting', 'Dengan ini kami mengonfirmasi bahwa pendaftar di bawah ini telah diterima untuk mengikuti program magang.'),
+                    'closingGreeting' => $request->input('closing_greeting', 'Harap konfirmasi kehadiran Anda melalui email atau telepon yang tertera.'),
+                    'logoData'        => $logoData,
+                    'stampData'       => $stampData,
+                ])->setPaper('A4', 'portrait');
+
+                $pdf->setOptions(['isRemoteEnabled' => true, 'isPhpEnabled' => true]);
+
+                $safeName = Str::slug($intern->fullname ?? 'intern', '-');
+                $fileName = 'LOA-' . $intern->id . '-' . $safeName . '-' . now()->format('Ymd_His') . '.pdf';
+                $path     = $dir . '/' . $fileName;
+
+                Storage::disk('public')->put($path, $pdf->output());
+                $publicUrl = asset('storage/' . $path);
+
+                // Simpan record ke document_downloads (target = user pemagang)
+                $targetUserId = $intern->user_id ?? $user->id;
+
+                DocumentDownload::create([
+                    'user_id'                    => $targetUserId,
+                    'internship_registration_id' => $intern->id,
+                    'doc_type'                   => DocumentDownload::TYPE_LOA,
+                    'file_path'                  => $path,
+                    'file_url'                   => $publicUrl,
+                    'downloaded_at'              => now(),
+                    'ip_address'                 => $request->ip(),
+                    'user_agent'                 => $request->userAgent(),
+                    'status'                     => 'success',
+                ]);
+
+                $generatedFiles[$intern->id] = [
+                    'fullname' => $intern->fullname,
+                    'path'     => storage_path("app/public/{$path}"),
+                    'filename' => $fileName,
+                ];
+
+            } catch (\Throwable $e) {
+                Log::error('Gagal generate LOA (brand)', ['err' => $e->getMessage(), 'intern_id' => $intern->id]);
+                $errors[] = $intern->fullname;
+            }
+        }
+
+        if (empty($generatedFiles)) {
+            return back()->with('error', 'Gagal membuat LOA. Silakan coba lagi.');
+        }
+
+        // Kalau hanya 1 pemagang → langsung download PDF
+        if (count($generatedFiles) === 1) {
+            $file = reset($generatedFiles);
+            $errMsg = !empty($errors) ? ' (Gagal: ' . implode(', ', $errors) . ')' : '';
+            return response()->download($file['path'], $file['filename'])->deleteFileAfterSend(false);
+        }
+
+        // Multiple → kemas ke ZIP
+        $zipName = 'LOA-BATCH-' . now()->format('Ymd_His') . '.zip';
+        $zipPath = storage_path("app/public/documents/loa/{$zipName}");
+
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            return back()->with('error', 'Gagal membuat file ZIP.');
+        }
+
+        foreach ($generatedFiles as $file) {
+            if (file_exists($file['path'])) {
+                $zip->addFile($file['path'], $file['filename']);
+            }
+        }
+        $zip->close();
+
+        $successMsg = '✅ LOA untuk <strong>' . count($generatedFiles) . ' pemagang</strong> berhasil dibuat dan sudah tersimpan.';
+        if (!empty($errors)) {
+            $successMsg .= ' <span class="text-red-600">Gagal: ' . implode(', ', $errors) . '</span>';
+        }
+
+        return response()->download($zipPath, $zipName)->deleteFileAfterSend(false);
+    }
+
+    /**
+     * Resolve gambar: dari upload baru → dari path tersimpan → dari fallback default
+     * Kembalikan base64 data URI atau null
+     */
+    protected function resolveBase64Image(Request $request, string $inputName, ?string $savedPath, string $fallbackRelative): ?string
+    {
+        // 1. Upload baru dari form
+        if ($request->hasFile($inputName) && $request->file($inputName)->isValid()) {
+            $file = $request->file($inputName);
+            $mime = $file->getMimeType();
+            return 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($file->getRealPath()));
+        }
+
+        // 2. Path tersimpan di settings
+        if ($savedPath) {
+            $fullPath = storage_path('app/public/' . $savedPath);
+            if (file_exists($fullPath)) {
+                $mime = mime_content_type($fullPath);
+                return 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($fullPath));
+            }
+        }
+
+        // 3. Fallback default
+        $fallbackPath = storage_path('app/public/' . $fallbackRelative);
+        if (file_exists($fallbackPath)) {
+            $mime = mime_content_type($fallbackPath);
+            return 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($fallbackPath));
+        }
+
+        return null;
     }
 
     /**
@@ -97,16 +301,41 @@ class LoaController extends Controller
         $user = $request->user();
 
         // Admin bisa generate LOA untuk intern siapapun
-        // Pemagang hanya bisa generate untuk dirinya sendiri
+        // Pemagang hanya bisa download file yang sudah di-generate admin
         if ($user->role === 'admin') {
             $intern = IR::where('id', $validated['intern_id'])->firstOrFail();
         } else {
             $intern = IR::where('id', $validated['intern_id'])
                 ->where('user_id', $user->id)
                 ->firstOrFail();
-            // Pastikan pemagang sudah completed
+            // Pastikan status memenuhi syarat
             $this->ensureCanAccessCompletedDocs($user, $intern);
+
+            // Pemagang: cari file LOA yang sudah di-generate admin
+            $record = DocumentDownload::where(function($q) use ($user, $intern) {
+                    $q->where('user_id', $user->id)
+                      ->orWhere('internship_registration_id', $intern->id);
+                })
+                ->where('doc_type', DocumentDownload::TYPE_LOA)
+                ->whereNotNull('file_path')
+                ->where('status', 'success')
+                ->latest('downloaded_at')
+                ->first();
+
+            if (!$record) {
+                return back()->with('error', 'LOA belum tersedia. Hubungi admin untuk mendapatkan LOA Anda.');
+            }
+
+            $fullPath = storage_path('app/public/' . $record->file_path);
+            if (!file_exists($fullPath)) {
+                return back()->with('error', 'File LOA tidak ditemukan. Hubungi admin.');
+            }
+
+            $safeName = \Illuminate\Support\Str::slug($intern->fullname ?? $user->name, '-');
+            return response()->download($fullPath, "LOA-{$safeName}.pdf", ['Content-Type' => 'application/pdf']);
         }
+
+        // === Mulai dari sini: hanya admin ===
 
         // Get the LOA settings (e.g., logo, signature)
         $loaSettings = LoaSettings::first();
