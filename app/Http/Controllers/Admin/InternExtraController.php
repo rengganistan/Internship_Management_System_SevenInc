@@ -4,27 +4,48 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\InternExtra;
+use App\Models\RekomendasiSetting;
 use App\Models\InternshipRegistration as IR;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class InternExtraController extends Controller
 {
     /**
      * Daftar semua pemagang completed beserta status extras-nya.
+     * Bisa difilter by brand.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $interns = IR::where('internship_status', IR::STATUS_COMPLETED)
-            ->with('user')
-            ->orderByDesc('updated_at')
-            ->paginate(20);
+        // Ambil semua brand dari pemagang completed
+        $brands = IR::where('internship_status', IR::STATUS_COMPLETED)
+            ->whereNotNull('brand')
+            ->where('brand', '!=', '')
+            ->distinct()
+            ->orderBy('brand')
+            ->pluck('brand')
+            ->values();
 
-        return view('admin.intern_extras.index', compact('interns'));
+        $selectedBrand = $request->get('brand');
+
+        $query = IR::where('internship_status', IR::STATUS_COMPLETED)
+            ->with('user')
+            ->orderByDesc('updated_at');
+
+        if ($selectedBrand) {
+            $query->where('brand', $selectedBrand);
+        }
+
+        $interns = $query->paginate(20)->appends($request->only('brand'));
+
+        return view('admin.intern_extras.index', compact('interns', 'brands', 'selectedBrand'));
     }
 
     /**
-     * Form edit extras untuk satu intern.
+     * Form edit extras untuk satu intern — termasuk template rekomendasi.
      */
     public function edit(IR $intern)
     {
@@ -32,11 +53,30 @@ class InternExtraController extends Controller
             'internship_registration_id' => $intern->id,
         ]);
 
-        return view('admin.intern_extras.edit', compact('intern', 'extra'));
+        // Load konfigurasi rekomendasi — override nama perusahaan dengan brand pemagang jika ada
+        $config = RekomendasiSetting::first() ?? new RekomendasiSetting([
+            'company_name'    => 'SEVEN INC.',
+            'company_address' => 'Jl. Raya Janti, Gang Arjuna No. 59, Karangjambe, Banguntapan, Bantul, Yogyakarta',
+            'company_city'    => 'Yogyakarta',
+            'company_phone'   => '0274-4534571',
+            'company_postal_code' => '55198',
+            'leader_name'     => 'Rekario Danny Sanjaya, S.Kom',
+            'leader_title'    => 'CEO',
+            'company_brand'   => 'Seven Inc (Magangjogja.com)',
+        ]);
+
+        // Override brand & company name dengan brand pemagang jika ada
+        if (!empty($intern->brand)) {
+            $config = clone $config;
+            $config->company_name  = $intern->brand;
+            $config->company_brand = $intern->brand;
+        }
+
+        return view('admin.intern_extras.edit', compact('intern', 'extra', 'config'));
     }
 
     /**
-     * Simpan/update extras untuk satu intern.
+     * Simpan/update extras (link alumni + info kerja) untuk satu intern.
      */
     public function update(Request $request, IR $intern)
     {
@@ -96,6 +136,227 @@ class InternExtraController extends Controller
     }
 
     /**
+     * Simpan template rekomendasi (AJAX) — dari halaman edit single intern.
+     * Return JSON.
+     */
+    public function saveTemplate(Request $request, IR $intern)
+    {
+        $request->validate([
+            'company_name'        => 'required|string|max:100',
+            'company_address'     => 'required|string|max:500',
+            'company_city'        => 'required|string|max:100',
+            'company_phone'       => 'nullable|string|max:50',
+            'company_postal_code' => 'nullable|string|max:10',
+            'leader_name'         => 'required|string|max:150',
+            'leader_title'        => 'required|string|max:100',
+            'company_brand'       => 'nullable|string|max:150',
+            'body_template'       => 'nullable|string',
+            'logo'                => 'nullable|image|mimes:png,jpg,jpeg|max:2048',
+            'stamp'               => 'nullable|image|mimes:png,jpg,jpeg|max:2048',
+        ]);
+
+        $config = RekomendasiSetting::firstOrCreate([]);
+        $config->fill($request->only([
+            'company_name', 'company_address', 'company_city', 'company_phone',
+            'company_postal_code', 'leader_name', 'leader_title', 'company_brand', 'body_template',
+        ]));
+
+        if ($request->hasFile('logo')) {
+            $brandSlug = Str::slug($request->company_brand ?? $request->company_name, '_');
+            $config->logo_path = $request->file('logo')
+                ->storeAs('images/logos', 'logo_rekomendasi_' . $brandSlug . '.png', 'public');
+        }
+        if ($request->hasFile('stamp')) {
+            $brandSlug = Str::slug($request->company_brand ?? $request->company_name, '_');
+            $config->stamp_path = $request->file('stamp')
+                ->storeAs('images/signature', 'ttd_rekomendasi_' . $brandSlug . '.png', 'public');
+        }
+
+        $config->save();
+
+        return response()->json(['success' => true, 'message' => 'Template berhasil disimpan.']);
+    }
+
+    /**
+     * Generate + kirim surat rekomendasi untuk satu atau semua intern (by brand).
+     * Return JSON { success, generated, failed, names }.
+     */
+    public function generateAndSend(Request $request, IR $intern)
+    {
+        // mode: 'single' atau 'all_brand'
+        $mode = $request->input('mode', 'single');
+
+        // Kumpulkan data template dari request
+        $request->validate([
+            'company_name'        => 'required|string|max:100',
+            'company_address'     => 'required|string|max:500',
+            'company_city'        => 'required|string|max:100',
+            'company_phone'       => 'nullable|string|max:50',
+            'company_postal_code' => 'nullable|string|max:10',
+            'leader_name'         => 'required|string|max:150',
+            'leader_title'        => 'required|string|max:100',
+            'company_brand'       => 'nullable|string|max:150',
+            'body_template'       => 'nullable|string',
+        ]);
+
+        // Simpan template ke DB
+        $config = RekomendasiSetting::firstOrCreate([]);
+        $config->fill($request->only([
+            'company_name', 'company_address', 'company_city', 'company_phone',
+            'company_postal_code', 'leader_name', 'leader_title', 'company_brand', 'body_template',
+        ]));
+        if ($request->hasFile('logo')) {
+            $brandSlug = Str::slug($request->company_brand ?? $request->company_name, '_');
+            $config->logo_path = $request->file('logo')
+                ->storeAs('images/logos', 'logo_rekomendasi_' . $brandSlug . '.png', 'public');
+        }
+        if ($request->hasFile('stamp')) {
+            $brandSlug = Str::slug($request->company_brand ?? $request->company_name, '_');
+            $config->stamp_path = $request->file('stamp')
+                ->storeAs('images/signature', 'ttd_rekomendasi_' . $brandSlug . '.png', 'public');
+        }
+        $config->save();
+
+        // Tentukan daftar pemagang yang akan diproses
+        if ($mode === 'all_brand' && !empty($intern->brand)) {
+            $targetInterns = IR::where('internship_status', IR::STATUS_COMPLETED)
+                ->where('brand', $intern->brand)
+                ->get();
+        } else {
+            $targetInterns = collect([$intern]);
+        }
+
+        if ($targetInterns->isEmpty()) {
+            return response()->json([
+                'success'   => false,
+                'message'   => 'Tidak ada pemagang valid yang ditemukan.',
+                'generated' => 0,
+                'failed'    => 0,
+                'names'     => [],
+            ]);
+        }
+
+        Storage::disk('public')->makeDirectory('documents/rekomendasi');
+        $logoData  = $this->toDataUri($config->logo_path);
+        $stampData = $this->toDataUri($config->stamp_path);
+
+        Carbon::setLocale('id');
+
+        $generated = [];
+        $failed    = [];
+
+        foreach ($targetInterns as $target) {
+            try {
+                $startStr = $target->start_date
+                    ? Carbon::parse($target->start_date)->isoFormat('MMMM Y')
+                    : '-';
+                $endStr = $target->end_date
+                    ? Carbon::parse($target->end_date)->isoFormat('MMMM Y')
+                    : '-';
+
+                $durationStr = 'beberapa bulan';
+                if ($target->start_date && $target->end_date) {
+                    $months = (int) round(
+                        Carbon::parse($target->start_date)->diffInDays(Carbon::parse($target->end_date)) / 30
+                    );
+                    $durationStr = $months . ' bulan';
+                }
+
+                $running      = str_pad((string) $target->id, 3, '0', STR_PAD_LEFT);
+                $letterNumber = $running . '/SR/' . Str::upper(Str::slug($config->company_brand ?? $config->company_name, '.')) . '/' . now()->format('m/Y');
+                $letterDateStr = now()->isoFormat('D MMMM Y');
+
+                $bodyText = $this->buildBodyText(
+                    $config->body_template ?? RekomendasiSetting::defaultBodyTemplate(),
+                    [
+                        'nama'          => $target->fullname,
+                        'divisi'        => $target->internship_interest ?? '-',
+                        'mulai'         => $startStr,
+                        'selesai'       => $endStr,
+                        'durasi'        => $durationStr,
+                        'instansi'      => $target->institution_name ?? '-',
+                        'nim'           => $target->student_id ?? '-',
+                        'company_brand' => $config->company_brand ?? $config->company_name,
+                    ]
+                );
+
+                $html = view('admin.rekomendasi_letter', [
+                    'companyName'          => $config->company_name,
+                    'companyAddress'       => $config->company_address,
+                    'companyCity'          => $config->company_city,
+                    'companyPhone'         => $config->company_phone,
+                    'companyPostalCode'    => $config->company_postal_code,
+                    'companyBrand'         => $config->company_brand,
+                    'leaderName'           => $config->leader_name,
+                    'leaderTitle'          => $config->leader_title,
+                    'letterNumber'         => $letterNumber,
+                    'letterDateStr'        => $letterDateStr,
+                    'participantName'      => $target->fullname,
+                    'participantId'        => $target->student_id ?? '-',
+                    'participantMajor'     => $target->study_program ?? '-',
+                    'participantInstitute' => $target->institution_name ?? '-',
+                    'bodyText'             => $bodyText,
+                    'logoData'             => $logoData,
+                    'stampData'            => $stampData,
+                ])->render();
+
+                $safeName = Str::slug($target->fullname ?? 'pemagang', '-');
+                $fileName = "rekomendasi-{$target->id}-{$safeName}-" . now()->format('Ymd_His') . '.pdf';
+                $relPath  = "documents/rekomendasi/{$fileName}";
+
+                $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHtml($html)
+                    ->setPaper('A4', 'portrait')
+                    ->setOptions([
+                        'isRemoteEnabled'      => true,
+                        'isHtml5ParserEnabled' => true,
+                        'defaultPaperSize'     => 'A4',
+                    ]);
+
+                $pdfContents = $pdf->output();
+                if ($pdfContents === false) {
+                    throw new \RuntimeException('Gagal menghasilkan PDF.');
+                }
+
+                if (!Storage::disk('public')->put($relPath, $pdfContents)) {
+                    throw new \RuntimeException("Gagal menyimpan file ke: {$relPath}");
+                }
+
+                $extra = InternExtra::firstOrNew(['internship_registration_id' => $target->id]);
+
+                if ($extra->rekomendasi_path && file_exists(storage_path('app/public/' . $extra->rekomendasi_path))) {
+                    @unlink(storage_path('app/public/' . $extra->rekomendasi_path));
+                }
+
+                $extra->internship_registration_id = $target->id;
+                $extra->rekomendasi_path           = $relPath;
+                $extra->rekomendasi_url            = asset('storage/' . $relPath);
+                $extra->rekomendasi_granted_at     = now();
+                $extra->save();
+
+                $generated[] = $target->fullname;
+
+            } catch (\Throwable $e) {
+                Log::error('Generate rekomendasi gagal', [
+                    'intern_id' => $target->id,
+                    'error'     => $e->getMessage(),
+                ]);
+                $failed[] = $target->fullname;
+            }
+        }
+
+        return response()->json([
+            'success'       => count($generated) > 0,
+            'message'       => count($generated) > 0
+                ? count($generated) . ' surat rekomendasi berhasil dikirim ke pemagang.'
+                : 'Semua surat gagal digenerate.',
+            'generated'     => count($generated),
+            'failed'        => count($failed),
+            'names'         => $generated,
+            'failed_names'  => $failed,
+        ]);
+    }
+
+    /**
      * Hapus surat rekomendasi.
      */
     public function destroyRekomendasi(IR $intern)
@@ -111,5 +372,34 @@ class InternExtraController extends Controller
         }
 
         return back()->with('success', 'Surat rekomendasi berhasil dihapus.');
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    private function buildBodyText(string $template, array $vars): string
+    {
+        foreach ($vars as $key => $value) {
+            $template = str_replace('{' . $key . '}', $value, $template);
+        }
+        return $template;
+    }
+
+    private function toDataUri(?string $path): ?string
+    {
+        if (!$path) return null;
+
+        $candidates = [
+            storage_path('app/public/' . $path),
+            public_path($path),
+        ];
+
+        foreach ($candidates as $file) {
+            if (file_exists($file)) {
+                $ext  = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+                $mime = in_array($ext, ['jpg', 'jpeg']) ? 'image/jpeg' : 'image/png';
+                return "data:{$mime};base64," . base64_encode(file_get_contents($file));
+            }
+        }
+        return null;
     }
 }
