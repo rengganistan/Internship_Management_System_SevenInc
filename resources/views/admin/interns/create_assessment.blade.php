@@ -225,14 +225,17 @@ const DIVISIONS = @json($divisions);
 const CSRF      = '{{ csrf_token() }}';
 
 // Data dari server (kalau ada selectedIntern)
-const preSelectedIntern = @json($selectedIntern ? [
+@php
+$preSelectedInternData = $selectedIntern ? [
     'id'                  => $selectedIntern->id,
     'fullname'            => $selectedIntern->fullname,
     'student_id'          => $selectedIntern->student_id ?? '',
     'study_program'       => $selectedIntern->study_program ?? '',
     'internship_interest' => $selectedIntern->internship_interest ?? '',
     'brand'               => $selectedIntern->brand ?? '',
-] : null);
+] : null;
+@endphp
+const preSelectedIntern = @json($preSelectedInternData);
 </script>
 
 <script>

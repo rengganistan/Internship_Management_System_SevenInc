@@ -9,6 +9,7 @@ use App\Models\InternshipRegistration as IR;
 use App\Models\Certificate;
 use App\Models\DocumentDownload;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -241,27 +242,32 @@ class WebinarController extends Controller
             return back()->with('error', 'Bukti kehadiran ini sudah diproses sebelumnya.');
         }
 
-        // Generate sertifikat webinar
-        $cert = $this->generateWebinarCertificate($webinar, $attendance->user);
+        try {
+            // Generate sertifikat webinar
+            $cert = $this->generateWebinarCertificate($webinar, $attendance->user);
 
-        // Update attendance
-        $attendance->update([
-            'status'         => WebinarAttendance::STATUS_APPROVED,
-            'reviewed_by'    => auth()->id(),
-            'reviewed_at'    => now(),
-            'certificate_id' => $cert?->id,
-        ]);
-
-        // Simpan ke document_downloads supaya muncul di Dokumen Saya pemagang
-        if ($cert) {
-            DocumentDownload::create([
-                'user_id'       => $attendance->user_id,
-                'doc_type'      => DocumentDownload::TYPE_SERTIFIKAT_WEBINAR,
-                'file_path'     => null,
-                'file_url'      => route('admin.certificate.pdf', $cert->id),
-                'downloaded_at' => now(),
-                'status'        => 'success',
+            // Update attendance
+            $attendance->update([
+                'status'         => WebinarAttendance::STATUS_APPROVED,
+                'reviewed_by'    => auth()->id(),
+                'reviewed_at'    => now(),
+                'certificate_id' => $cert?->id,
             ]);
+
+            // Simpan ke document_downloads supaya muncul di Dokumen Saya pemagang
+            if ($cert) {
+                DocumentDownload::create([
+                    'user_id'       => $attendance->user_id,
+                    'doc_type'      => DocumentDownload::TYPE_SERTIFIKAT_WEBINAR,
+                    'file_path'     => null,
+                    'file_url'      => route('admin.certificate.pdf', $cert->id),
+                    'downloaded_at' => now(),
+                    'status'        => 'success',
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Log::error("Approve webinar attendance #{$attendance->id} gagal: " . $e->getMessage());
+            return back()->with('error', 'Gagal generate sertifikat: ' . $e->getMessage());
         }
 
         return back()->with('success',
@@ -298,30 +304,44 @@ class WebinarController extends Controller
             ->where('status', WebinarAttendance::STATUS_PENDING)
             ->get();
 
+        $success = 0;
+        $failed  = 0;
+
         foreach ($pendings as $attendance) {
-            $cert = $this->generateWebinarCertificate($webinar, $attendance->user);
+            try {
+                $cert = $this->generateWebinarCertificate($webinar, $attendance->user);
 
-            $attendance->update([
-                'status'         => WebinarAttendance::STATUS_APPROVED,
-                'reviewed_by'    => auth()->id(),
-                'reviewed_at'    => now(),
-                'certificate_id' => $cert?->id,
-            ]);
-
-            if ($cert) {
-                DocumentDownload::create([
-                    'user_id'       => $attendance->user_id,
-                    'doc_type'      => DocumentDownload::TYPE_SERTIFIKAT_WEBINAR,
-                    'file_path'     => null,
-                    'file_url'      => route('admin.certificate.pdf', $cert->id),
-                    'downloaded_at' => now(),
-                    'status'        => 'success',
+                $attendance->update([
+                    'status'         => WebinarAttendance::STATUS_APPROVED,
+                    'reviewed_by'    => auth()->id(),
+                    'reviewed_at'    => now(),
+                    'certificate_id' => $cert?->id,
                 ]);
+
+                if ($cert) {
+                    DocumentDownload::create([
+                        'user_id'       => $attendance->user_id,
+                        'doc_type'      => DocumentDownload::TYPE_SERTIFIKAT_WEBINAR,
+                        'file_path'     => null,
+                        'file_url'      => route('admin.certificate.pdf', $cert->id),
+                        'downloaded_at' => now(),
+                        'status'        => 'success',
+                    ]);
+                }
+
+                $success++;
+            } catch (\Exception $e) {
+                \Log::error("Approve webinar attendance #{$attendance->id} gagal: " . $e->getMessage());
+                $failed++;
             }
         }
 
+        if ($failed > 0) {
+            return back()->with('error', "⚠️ {$success} berhasil diapprove, {$failed} gagal. Silakan coba approve yang gagal secara manual.");
+        }
+
         return back()->with('success',
-            "✅ {$pendings->count()} bukti kehadiran disetujui. Sertifikat sudah tersedia untuk masing-masing pemagang."
+            "✅ {$success} bukti kehadiran disetujui. Sertifikat sudah tersedia untuk masing-masing pemagang."
         );
     }
 
@@ -329,6 +349,8 @@ class WebinarController extends Controller
 
     /**
      * Generate sertifikat webinar untuk satu peserta.
+     * Menggunakan DB transaction + lock untuk mencegah duplicate serial number
+     * ketika banyak peserta di-approve bersamaan.
      */
     private function generateWebinarCertificate(Webinar $webinar, $user): ?Certificate
     {
@@ -340,23 +362,11 @@ class WebinarController extends Controller
         $year       = $endDate->year;
 
         $brandCode    = strtoupper($webinar->certificate_brand ?? 'SI');
-        // Company = nama brand (bukan field terpisah)
         $companyName  = Webinar::brandLabel($brandCode);
         $companyCode  = $this->companyCode($companyName);
         $divisionCode = 'WBN';
 
-        // Running number per bulan-tahun (atomic)
-        $last = Certificate::whereYear('created_at', $year)
-            ->whereMonth('created_at', $endDate->month)
-            ->orderByDesc('id')->first();
-        $seq = 1;
-        if ($last && preg_match('/^(\d{3})\/SERT\//', $last->serial_number, $m)) {
-            $seq = (int)$m[1] + 1;
-        }
-        $seqStr = str_pad($seq, 3, '0', STR_PAD_LEFT);
-        $serial = "{$seqStr}/SERT/{$divisionCode}/{$companyCode}.{$brandCode}/{$monthRoman}/{$year}";
-
-        // Normalisasi path
+        // Normalisasi path aset
         $bg   = $webinar->certificate_background ? "images/backgrounds/{$webinar->certificate_background}" : null;
         $l1   = $webinar->certificate_logo1      ? "images/logos/{$webinar->certificate_logo1}"            : null;
         $l2   = $webinar->certificate_logo2      ? "images/logos/{$webinar->certificate_logo2}"            : null;
@@ -366,26 +376,52 @@ class WebinarController extends Controller
         // Judul webinar di-encode ke field company agar template bisa membacanya
         $companyEncoded = $webinar->title . '||' . $companyName;
 
-        return Certificate::create([
-            'name'              => $user->name,
-            'division'          => $divisionCode,
-            'company'           => $companyEncoded,
-            'description'       => $webinar->certificate_description ?: null,
-            'background_image'  => $bg,
-            'start_date'        => $startDate,
-            'end_date'          => $endDate,
-            'city'              => $webinar->certificate_city ?? 'Yogyakarta',
-            'brand'             => $brandCode,
-            'serial_number'     => $serial,
-            'logo1'             => $l1,
-            'logo2'             => $l2,
-            'signature_image1'  => $sig1,
-            'signature_image2'  => $sig2,
-            'name_signatory1'   => $webinar->certificate_signatory1_name ?? 'Penandatangan',
-            'name_signatory2'   => $webinar->certificate_signatory2_name,
-            'role1'             => $webinar->certificate_signatory1_role ?? 'Penyelenggara',
-            'role2'             => $webinar->certificate_signatory2_role,
-        ]);
+        // Gunakan transaction + lockForUpdate untuk mencegah race condition
+        // saat approve semua sekaligus (serial number bisa duplikat tanpa lock)
+        return DB::transaction(function () use (
+            $user, $webinar, $startDate, $endDate,
+            $monthRoman, $year, $brandCode, $companyName, $companyCode,
+            $divisionCode, $companyEncoded, $bg, $l1, $l2, $sig1, $sig2
+        ) {
+            // Suffix unik per divisi/brand/bulan/tahun
+            // Format serial: NNN/SERT/{divisionCode}/{companyCode}.{brandCode}/{monthRoman}/{year}
+            $serialSuffix = "/SERT/{$divisionCode}/{$companyCode}.{$brandCode}/{$monthRoman}/{$year}";
+
+            // Cari serial terakhir berdasarkan suffix yang sama (bukan created_at),
+            // karena event_date bisa berbeda bulan dengan created_at record sertifikat.
+            $last = Certificate::where('serial_number', 'LIKE', "%{$serialSuffix}")
+                ->orderByDesc('id')
+                ->lockForUpdate()
+                ->first();
+
+            $seq = 1;
+            if ($last && preg_match('/^(\d{3})\/SERT\//', $last->serial_number, $m)) {
+                $seq = (int)$m[1] + 1;
+            }
+            $seqStr = str_pad($seq, 3, '0', STR_PAD_LEFT);
+            $serial = "{$seqStr}{$serialSuffix}";
+
+            return Certificate::create([
+                'name'              => $user->name,
+                'division'          => $divisionCode,
+                'company'           => $companyEncoded,
+                'description'       => $webinar->certificate_description ?: null,
+                'background_image'  => $bg,
+                'start_date'        => $startDate,
+                'end_date'          => $endDate,
+                'city'              => $webinar->certificate_city ?? 'Yogyakarta',
+                'brand'             => $brandCode,
+                'serial_number'     => $serial,
+                'logo1'             => $l1,
+                'logo2'             => $l2,
+                'signature_image1'  => $sig1,
+                'signature_image2'  => $sig2,
+                'name_signatory1'   => $webinar->certificate_signatory1_name ?? 'Penandatangan',
+                'name_signatory2'   => $webinar->certificate_signatory2_name,
+                'role1'             => $webinar->certificate_signatory1_role ?? 'Penyelenggara',
+                'role2'             => $webinar->certificate_signatory2_role,
+            ]);
+        });
     }
 
     /**
