@@ -8,6 +8,7 @@ use App\Models\DocumentDownload;
 use App\Models\InternAssessment;
 use App\Models\InternExtra;
 use App\Models\WebinarAttendance;
+use App\Models\Certificate;
 use Illuminate\Http\Request;
 
 class DocumentController extends Controller
@@ -23,9 +24,11 @@ class DocumentController extends Controller
      * Dokumen yang ditampilkan:
      * - Bukti Pendaftaran  → tersedia setelah submit form
      * - Surat Diterima     → tersedia setelah status = accepted
-     * - LOA                → tersedia setelah status = completed
-     * - SKL                → tersedia setelah status = completed
-     * - Sertifikat         → tersedia setelah status = completed
+     * - LOA                → tersedia setelah admin generate (doc_downloads)
+     * - SKL                → tersedia setelah admin generate (doc_downloads)
+     * - Sertifikat         → tersedia setelah admin generate (certificates table)
+     * - Surat Penilaian    → tersedia setelah admin generate (intern_assessments)
+     * - Membercard         → tersedia setelah admin generate (downloads table)
      */
     public function index()
     {
@@ -33,6 +36,57 @@ class DocumentController extends Controller
         $registration = IR::where('user_id', $user->id)->latest('id')->first();
 
         $status = $registration?->internship_status;
+        $isCompleted = $status === IR::STATUS_COMPLETED;
+        $isAccepted  = in_array($status, [IR::STATUS_ACCEPTED, IR::STATUS_ACTIVE, IR::STATUS_COMPLETED]);
+
+        // --- Cek apakah masing-masing dokumen sudah di-generate admin ---
+
+        // SKL: cek di document_downloads
+        $sklDownload = $registration
+            ? DocumentDownload::where('user_id', $user->id)
+                ->where('doc_type', DocumentDownload::TYPE_SKL)
+                ->whereNotNull('file_path')
+                ->latest('downloaded_at')
+                ->first()
+            : null;
+
+        // LOA: cek di document_downloads
+        $loaDownload = $registration
+            ? DocumentDownload::where(function($q) use ($user, $registration) {
+                $q->where('user_id', $user->id)
+                  ->orWhere('internship_registration_id', $registration->id);
+              })
+                ->where('doc_type', DocumentDownload::TYPE_LOA)
+                ->whereNotNull('file_path')
+                ->latest('downloaded_at')
+                ->first()
+            : null;
+
+        // Sertifikat: cek di tabel certificates berdasarkan nama pemagang
+        $sertifikatRecord = null;
+        if ($isCompleted && $registration) {
+            $sertifikatRecord = Certificate::whereRaw('LOWER(TRIM(name)) = ?', [
+                    strtolower(trim($registration->fullname))
+                ])->latest()->first();
+
+            // Fallback LIKE
+            if (!$sertifikatRecord) {
+                $sertifikatRecord = Certificate::where('name', 'LIKE', '%' . trim($registration->fullname) . '%')
+                    ->latest()->first();
+            }
+        }
+
+        // Surat Penilaian: cek di intern_assessments
+        $assessmentRecord = null;
+        if ($isCompleted && $registration) {
+            $assessmentRecord = InternAssessment::where('intern_id', $registration->id)->latest()->first()
+                ?? InternAssessment::where('fullname', $registration->fullname)->latest()->first();
+        }
+
+        // Membercard: cek di tabel downloads
+        $membercardRecord = $isCompleted
+            ? \App\Models\Download::where('user_id', $user->id)->latest()->first()
+            : null;
 
         // Tentukan availability tiap dokumen
         $docs = [
@@ -40,9 +94,8 @@ class DocumentController extends Controller
                 'label'       => 'LOA (Letter of Acceptance)',
                 'description' => 'Surat penerimaan magang dari perusahaan',
                 'icon'        => 'fa-file-signature',
-                'available'   => in_array($status, [
-                    IR::STATUS_ACCEPTED, IR::STATUS_ACTIVE, IR::STATUS_COMPLETED
-                ]),
+                'available'   => $isAccepted && $loaDownload !== null,
+                'pending'     => $isAccepted && $loaDownload === null,
                 'route'       => null, // pakai form POST di view karena butuh intern_id
                 'intern_id'   => $registration?->id,
                 'date'        => null,
@@ -51,8 +104,9 @@ class DocumentController extends Controller
                 'label'       => 'SKL (Surat Keterangan Lulus)',
                 'description' => 'Diberikan setelah magang selesai',
                 'icon'        => 'fa-certificate',
-                'available'   => $status === IR::STATUS_COMPLETED,
-                'route'       => $status === IR::STATUS_COMPLETED
+                'available'   => $isCompleted && $sklDownload !== null,
+                'pending'     => $isCompleted && $sklDownload === null,
+                'route'       => ($isCompleted && $sklDownload !== null)
                     ? route('user.skl.download')
                     : null,
                 'date'        => null,
@@ -61,8 +115,9 @@ class DocumentController extends Controller
                 'label'       => 'Sertifikat Magang',
                 'description' => 'Diberikan setelah masa magang selesai',
                 'icon'        => 'fa-award',
-                'available'   => $status === IR::STATUS_COMPLETED,
-                'route'       => $status === IR::STATUS_COMPLETED
+                'available'   => $isCompleted && $sertifikatRecord !== null,
+                'pending'     => $isCompleted && $sertifikatRecord === null,
+                'route'       => ($isCompleted && $sertifikatRecord !== null)
                     ? route('pemagang.documents.sertifikat')
                     : null,
                 'date'        => null,
@@ -71,8 +126,9 @@ class DocumentController extends Controller
                 'label'       => 'Surat Penilaian',
                 'description' => 'Penilaian kinerja selama magang',
                 'icon'        => 'fa-star-half-alt',
-                'available'   => $status === IR::STATUS_COMPLETED,
-                'route'       => $status === IR::STATUS_COMPLETED
+                'available'   => $isCompleted && $assessmentRecord !== null,
+                'pending'     => $isCompleted && $assessmentRecord === null,
+                'route'       => ($isCompleted && $assessmentRecord !== null)
                     ? route('pemagang.documents.surat_penilaian')
                     : null,
                 'date'        => null,
@@ -81,8 +137,9 @@ class DocumentController extends Controller
                 'label'       => 'Membercard Digital',
                 'description' => 'Kartu anggota alumni magang Seveninc',
                 'icon'        => 'fa-id-card',
-                'available'   => $status === IR::STATUS_COMPLETED,
-                'route'       => $status === IR::STATUS_COMPLETED
+                'available'   => $isCompleted && $membercardRecord !== null,
+                'pending'     => $isCompleted && $membercardRecord === null,
+                'route'       => ($isCompleted && $membercardRecord !== null)
                     ? route('pemagang.membercard')
                     : null,
                 'date'        => null,

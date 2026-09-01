@@ -18,7 +18,7 @@
 
     {{-- Icon --}}
     <div class="w-12 h-12 rounded-xl flex items-center justify-center mb-4
-      {{ $doc['available'] ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-400' }}">
+      {{ $doc['available'] ? 'bg-green-50 text-green-700' : (isset($doc['pending']) && $doc['pending'] ? 'bg-amber-50 text-amber-600' : 'bg-gray-100 text-gray-400') }}">
       <i class="fas {{ $doc['icon'] }} text-xl"></i>
     </div>
 
@@ -60,6 +60,11 @@
       @elseif($doc['available'])
         <span class="flex items-center justify-center gap-2 w-full py-2 text-sm font-medium text-gray-500 bg-gray-100 rounded-lg cursor-not-allowed">
           <i class="fas fa-check text-xs text-green-600"></i> Tersedia
+        </span>
+      @elseif(isset($doc['pending']) && $doc['pending'])
+        {{-- Status selesai tapi admin belum generate dokumen --}}
+        <span class="flex items-center justify-center gap-1.5 w-full py-2 text-xs text-amber-700 bg-amber-50 rounded-lg border border-dashed border-amber-300">
+          <i class="fas fa-clock"></i> Menunggu admin
         </span>
       @else
         <span class="flex items-center justify-center w-full py-2 text-xs text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-200">
