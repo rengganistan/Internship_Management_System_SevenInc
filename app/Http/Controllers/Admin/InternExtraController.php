@@ -81,58 +81,72 @@ class InternExtraController extends Controller
     public function update(Request $request, IR $intern)
     {
         $request->validate([
-            'alumni_group_url'       => 'nullable|url|max:500',
-            'alumni_group_label'     => 'nullable|string|max:100',
-            'job_info_url'           => 'nullable|url|max:500',
-            'job_info_description'   => 'nullable|string|max:500',
+            'alumni_group_url'     => 'nullable|url|max:500',
+            'alumni_group_label'   => 'nullable|string|max:100',
+            'job_info_url'         => 'nullable|url|max:500',
+            'job_info_description' => 'nullable|string|max:500',
         ]);
 
-        $extra = InternExtra::firstOrNew([
-            'internship_registration_id' => $intern->id,
-        ]);
+        // Jika mode all_brand, simpan ke semua pemagang brand yang sama
+        $allBrandMode = $request->input('mode') === 'all_brand';
+        $targets = ($allBrandMode && !empty($intern->brand))
+            ? IR::where('internship_status', IR::STATUS_COMPLETED)->where('brand', $intern->brand)->get()
+            : collect([$intern]);
 
-        // Alumni group
-        if ($request->input('clear_alumni') === '1') {
-            $extra->alumni_group_url        = null;
-            $extra->alumni_group_label      = null;
-            $extra->alumni_group_granted_at = null;
-        } elseif ($request->has('alumni_group_url')) {
-            if ($request->filled('alumni_group_url')) {
-                $extra->alumni_group_url   = $request->alumni_group_url;
-                $extra->alumni_group_label = $request->alumni_group_label ?: 'Grup Alumni Seveninc';
-                if (!$extra->alumni_group_granted_at) {
-                    $extra->alumni_group_granted_at = now();
-                }
-            } else {
+        foreach ($targets as $target) {
+            $extra = InternExtra::firstOrNew([
+                'internship_registration_id' => $target->id,
+            ]);
+
+            // Alumni group
+            if ($request->input('clear_alumni') === '1') {
                 $extra->alumni_group_url        = null;
                 $extra->alumni_group_label      = null;
                 $extra->alumni_group_granted_at = null;
-            }
-        }
-
-        // Job info
-        if ($request->input('clear_job_info') === '1') {
-            $extra->job_info_url         = null;
-            $extra->job_info_description = null;
-            $extra->job_info_granted_at  = null;
-        } elseif ($request->has('job_info_url')) {
-            if ($request->filled('job_info_url')) {
-                $extra->job_info_url         = $request->job_info_url;
-                $extra->job_info_description = $request->job_info_description;
-                if (!$extra->job_info_granted_at) {
-                    $extra->job_info_granted_at = now();
+            } elseif ($request->has('alumni_group_url')) {
+                if ($request->filled('alumni_group_url')) {
+                    $extra->alumni_group_url   = $request->alumni_group_url;
+                    $extra->alumni_group_label = $request->alumni_group_label ?: 'Grup Alumni Seveninc';
+                    if (!$extra->alumni_group_granted_at) {
+                        $extra->alumni_group_granted_at = now();
+                    }
+                } else {
+                    $extra->alumni_group_url        = null;
+                    $extra->alumni_group_label      = null;
+                    $extra->alumni_group_granted_at = null;
                 }
-            } else {
+            }
+
+            // Job info
+            if ($request->input('clear_job_info') === '1') {
                 $extra->job_info_url         = null;
                 $extra->job_info_description = null;
                 $extra->job_info_granted_at  = null;
+            } elseif ($request->has('job_info_url')) {
+                if ($request->filled('job_info_url')) {
+                    $extra->job_info_url         = $request->job_info_url;
+                    $extra->job_info_description = $request->job_info_description;
+                    if (!$extra->job_info_granted_at) {
+                        $extra->job_info_granted_at = now();
+                    }
+                } else {
+                    $extra->job_info_url         = null;
+                    $extra->job_info_description = null;
+                    $extra->job_info_granted_at  = null;
+                }
             }
+
+            $extra->save();
         }
 
-        $extra->save();
+        $redirectUrl = route('admin.intern_extras.edit', $intern->id)
+            . ($allBrandMode ? '?mode=all_brand' : '');
 
-        return redirect()->route('admin.intern_extras.edit', $intern->id)
-            ->with('success', "Akses eksklusif untuk <strong>{$intern->fullname}</strong> berhasil diperbarui.");
+        $msg = ($allBrandMode && $targets->count() > 1)
+            ? "Link grup alumni & info kerja berhasil disimpan untuk <strong>{$targets->count()} pemagang</strong> brand <strong>{$intern->brand}</strong>."
+            : "Akses eksklusif untuk <strong>{$intern->fullname}</strong> berhasil diperbarui.";
+
+        return redirect($redirectUrl)->with('success', $msg);
     }
 
     /**
@@ -178,28 +192,31 @@ class InternExtraController extends Controller
     }
 
     /**
-     * Generate + kirim surat rekomendasi untuk satu atau semua intern (by brand).
-     * Return JSON { success, generated, failed, names }.
+     * Kirim semua sekaligus: generate surat rekomendasi + simpan link alumni + info kerja
+     * untuk satu pemagang atau semua pemagang satu brand.
+     * Return JSON.
      */
-    public function generateAndSend(Request $request, IR $intern)
+    public function sendAll(Request $request, IR $intern)
     {
-        // mode: 'single' atau 'all_brand'
-        $mode = $request->input('mode', 'single');
+        $allBrandMode = $request->input('mode') === 'all_brand';
 
-        // Kumpulkan data template dari request
         $request->validate([
-            'company_name'        => 'required|string|max:100',
-            'company_address'     => 'required|string|max:500',
-            'company_city'        => 'required|string|max:100',
-            'company_phone'       => 'nullable|string|max:50',
-            'company_postal_code' => 'nullable|string|max:10',
-            'leader_name'         => 'required|string|max:150',
-            'leader_title'        => 'required|string|max:100',
-            'company_brand'       => 'nullable|string|max:150',
-            'body_template'       => 'nullable|string',
+            'company_name'         => 'required|string|max:100',
+            'company_address'      => 'required|string|max:500',
+            'company_city'         => 'required|string|max:100',
+            'company_phone'        => 'nullable|string|max:50',
+            'company_postal_code'  => 'nullable|string|max:10',
+            'leader_name'          => 'required|string|max:150',
+            'leader_title'         => 'required|string|max:100',
+            'company_brand'        => 'nullable|string|max:150',
+            'body_template'        => 'nullable|string',
+            'alumni_group_url'     => 'nullable|url|max:500',
+            'alumni_group_label'   => 'nullable|string|max:100',
+            'job_info_url'         => 'nullable|url|max:500',
+            'job_info_description' => 'nullable|string|max:500',
         ]);
 
-        // Simpan template ke DB
+        // Simpan template rekomendasi
         $config = RekomendasiSetting::firstOrCreate([]);
         $config->fill($request->only([
             'company_name', 'company_address', 'company_city', 'company_phone',
@@ -217,43 +234,31 @@ class InternExtraController extends Controller
         }
         $config->save();
 
-        // Tentukan daftar pemagang yang akan diproses
-        if ($mode === 'all_brand' && !empty($intern->brand)) {
-            $targetInterns = IR::where('internship_status', IR::STATUS_COMPLETED)
-                ->where('brand', $intern->brand)
-                ->get();
-        } else {
-            $targetInterns = collect([$intern]);
-        }
+        // Tentukan daftar target
+        $targets = ($allBrandMode && !empty($intern->brand))
+            ? IR::where('internship_status', IR::STATUS_COMPLETED)->where('brand', $intern->brand)->get()
+            : collect([$intern]);
 
-        if ($targetInterns->isEmpty()) {
+        if ($targets->isEmpty()) {
             return response()->json([
-                'success'   => false,
-                'message'   => 'Tidak ada pemagang valid yang ditemukan.',
-                'generated' => 0,
-                'failed'    => 0,
-                'names'     => [],
+                'success' => false, 'message' => 'Tidak ada pemagang valid yang ditemukan.',
+                'generated' => 0, 'failed' => 0, 'names' => [],
             ]);
         }
 
         Storage::disk('public')->makeDirectory('documents/rekomendasi');
         $logoData  = $this->toDataUri($config->logo_path);
         $stampData = $this->toDataUri($config->stamp_path);
-
         Carbon::setLocale('id');
 
         $generated = [];
         $failed    = [];
 
-        foreach ($targetInterns as $target) {
+        foreach ($targets as $target) {
             try {
-                $startStr = $target->start_date
-                    ? Carbon::parse($target->start_date)->isoFormat('MMMM Y')
-                    : '-';
-                $endStr = $target->end_date
-                    ? Carbon::parse($target->end_date)->isoFormat('MMMM Y')
-                    : '-';
-
+                // ── 1. Generate PDF surat rekomendasi ──
+                $startStr    = $target->start_date ? Carbon::parse($target->start_date)->isoFormat('MMMM Y') : '-';
+                $endStr      = $target->end_date   ? Carbon::parse($target->end_date)->isoFormat('MMMM Y')   : '-';
                 $durationStr = 'beberapa bulan';
                 if ($target->start_date && $target->end_date) {
                     $months = (int) round(
@@ -262,8 +267,8 @@ class InternExtraController extends Controller
                     $durationStr = $months . ' bulan';
                 }
 
-                $running      = str_pad((string) $target->id, 3, '0', STR_PAD_LEFT);
-                $letterNumber = $running . '/SR/' . Str::upper(Str::slug($config->company_brand ?? $config->company_name, '.')) . '/' . now()->format('m/Y');
+                $running       = str_pad((string) $target->id, 3, '0', STR_PAD_LEFT);
+                $letterNumber  = $running . '/SR/' . Str::upper(Str::slug($config->company_brand ?? $config->company_name, '.')) . '/' . now()->format('m/Y');
                 $letterDateStr = now()->isoFormat('D MMMM Y');
 
                 $bodyText = $this->buildBodyText(
@@ -300,8 +305,9 @@ class InternExtraController extends Controller
                     'stampData'            => $stampData,
                 ])->render();
 
+                // Nama file unik per pemagang — uniqid() cegah collision saat bulk
                 $safeName = Str::slug($target->fullname ?? 'pemagang', '-');
-                $fileName = "rekomendasi-{$target->id}-{$safeName}-" . now()->format('Ymd_His') . '.pdf';
+                $fileName = "rekomendasi-{$target->id}-{$safeName}-" . now()->format('Ymd_His') . '-' . uniqid() . '.pdf';
                 $relPath  = "documents/rekomendasi/{$fileName}";
 
                 $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHtml($html)
@@ -310,19 +316,22 @@ class InternExtraController extends Controller
                         'isRemoteEnabled'      => true,
                         'isHtml5ParserEnabled' => true,
                         'defaultPaperSize'     => 'A4',
+                        'defaultFont'          => 'serif',
+                        'dpi'                  => 96,
                     ]);
 
                 $pdfContents = $pdf->output();
                 if ($pdfContents === false) {
                     throw new \RuntimeException('Gagal menghasilkan PDF.');
                 }
-
                 if (!Storage::disk('public')->put($relPath, $pdfContents)) {
                     throw new \RuntimeException("Gagal menyimpan file ke: {$relPath}");
                 }
 
+                // ── 2. Simpan semua ke InternExtra ──
                 $extra = InternExtra::firstOrNew(['internship_registration_id' => $target->id]);
 
+                // Hapus file PDF lama
                 if ($extra->rekomendasi_path && file_exists(storage_path('app/public/' . $extra->rekomendasi_path))) {
                     @unlink(storage_path('app/public/' . $extra->rekomendasi_path));
                 }
@@ -331,28 +340,44 @@ class InternExtraController extends Controller
                 $extra->rekomendasi_path           = $relPath;
                 $extra->rekomendasi_url            = asset('storage/' . $relPath);
                 $extra->rekomendasi_granted_at     = now();
-                $extra->save();
 
+                // Link grup alumni (jika diisi)
+                if ($request->filled('alumni_group_url')) {
+                    $extra->alumni_group_url   = $request->alumni_group_url;
+                    $extra->alumni_group_label = $request->alumni_group_label ?: 'Grup Alumni Seveninc';
+                    if (!$extra->alumni_group_granted_at) {
+                        $extra->alumni_group_granted_at = now();
+                    }
+                }
+
+                // Info kerja (jika diisi)
+                if ($request->filled('job_info_url')) {
+                    $extra->job_info_url         = $request->job_info_url;
+                    $extra->job_info_description = $request->job_info_description;
+                    if (!$extra->job_info_granted_at) {
+                        $extra->job_info_granted_at = now();
+                    }
+                }
+
+                $extra->save();
                 $generated[] = $target->fullname;
 
             } catch (\Throwable $e) {
-                Log::error('Generate rekomendasi gagal', [
-                    'intern_id' => $target->id,
-                    'error'     => $e->getMessage(),
-                ]);
+                Log::error('sendAll gagal', ['intern_id' => $target->id, 'error' => $e->getMessage()]);
                 $failed[] = $target->fullname;
             }
         }
 
+        $total = count($generated);
         return response()->json([
-            'success'       => count($generated) > 0,
-            'message'       => count($generated) > 0
-                ? count($generated) . ' surat rekomendasi berhasil dikirim ke pemagang.'
-                : 'Semua surat gagal digenerate.',
-            'generated'     => count($generated),
-            'failed'        => count($failed),
-            'names'         => $generated,
-            'failed_names'  => $failed,
+            'success'      => $total > 0,
+            'message'      => $total > 0
+                ? "Berhasil mengirim ke {$total} pemagang: surat rekomendasi, link grup alumni, dan info kerja."
+                : 'Semua proses gagal.',
+            'generated'    => $total,
+            'failed'       => count($failed),
+            'names'        => $generated,
+            'failed_names' => $failed,
         ]);
     }
 

@@ -251,7 +251,7 @@ class RekomendasiController extends Controller
                 ])->render();
 
                 $safeName = Str::slug($intern->fullname ?? 'pemagang', '-');
-                $fileName = "rekomendasi-{$intern->id}-{$safeName}-" . now()->format('Ymd_His') . '.pdf';
+                $fileName = "rekomendasi-{$intern->id}-{$safeName}-" . now()->format('Ymd_His') . '-' . uniqid() . '.pdf';
                 $relPath  = "documents/rekomendasi/{$fileName}";
                 $fullPath = storage_path("app/public/{$relPath}");
 
@@ -261,6 +261,8 @@ class RekomendasiController extends Controller
                         'isRemoteEnabled'      => true,
                         'isHtml5ParserEnabled' => true,
                         'defaultPaperSize'     => 'A4',
+                        'defaultFont'          => 'serif',
+                        'dpi'                  => 96,
                     ]);
 
                 $pdfContents = $pdf->output();
@@ -493,7 +495,7 @@ class RekomendasiController extends Controller
 
             // Simpan PDF
             $safeName = Str::slug($intern->fullname ?? 'pemagang', '-');
-            $fileName = "rekomendasi-{$intern->id}-{$safeName}-" . now()->format('Ymd_His') . '.pdf';
+            $fileName = "rekomendasi-{$intern->id}-{$safeName}-" . now()->format('Ymd_His') . '-' . uniqid() . '.pdf';
             $relPath  = "documents/rekomendasi/{$fileName}";
             $fullPath = storage_path("app/public/{$relPath}");
 
@@ -505,6 +507,8 @@ class RekomendasiController extends Controller
                     'isRemoteEnabled'      => true,
                     'isHtml5ParserEnabled' => true,
                     'defaultPaperSize'     => 'A4',
+                    'defaultFont'          => 'serif',
+                    'dpi'                  => 96,
                 ]);
 
             $pdfContents = $pdf->output();

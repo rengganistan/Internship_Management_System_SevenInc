@@ -208,24 +208,12 @@
               </div>
             </div>
 
-            {{-- Link Grup Alumni & Info Kerja (dalam context rekomendasi — hanya info, tidak diedit di sini) --}}
-            {{-- diedit di bagian bawah form utama --}}
-
-            {{-- Tombol Aksi --}}
+            {{-- Tombol Aksi — hanya Simpan Perubahan (Kirim Semua ada di bawah Info Kerja) --}}
             <div class="flex gap-2 pt-1">
               <button type="button" id="btnSaveTemplate"
                 class="flex items-center gap-1.5 rounded-[9px] border border-[#2D8659] px-4 py-2 text-[13px] font-semibold text-[#2D8659] transition hover:bg-[#F4F8F6]">
                 <i class="fas fa-save text-xs"></i>
                 Simpan Perubahan
-              </button>
-              <button type="button" id="btnSendSurat"
-                class="flex flex-1 items-center justify-center gap-1.5 rounded-[9px] bg-[#2D8659] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#1F5F3F]">
-                <i class="fas fa-paper-plane text-xs"></i>
-                @if($allBrandMode)
-                  Kirim Semua
-                @else
-                  Kirim Surat
-                @endif
               </button>
             </div>
 
@@ -263,6 +251,10 @@
   <form action="{{ route('admin.intern_extras.update', $intern->id) }}" method="POST" enctype="multipart/form-data">
     @csrf
     @method('PUT')
+    {{-- Kirim mode agar simpan otomatis ke semua brand bila mode all_brand --}}
+    @if($allBrandMode)
+      <input type="hidden" name="mode" value="all_brand">
+    @endif
 
     <div class="space-y-4">
 
@@ -273,17 +265,22 @@
             <i class="fas fa-users"></i>
           </div>
           <h3 class="font-bold text-[#1B3A34]">Link Grup Alumni</h3>
+          @if($allBrandMode && $intern->brand)
+            <span class="text-xs text-[#4B5F5A] ml-1">— berlaku untuk semua brand <strong>{{ $intern->brand }}</strong></span>
+          @endif
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium text-[#1B3A34] mb-1.5">URL Grup <span class="text-gray-400 text-xs">(WhatsApp/Telegram/dll)</span></label>
-            <input type="url" name="alumni_group_url" value="{{ old('alumni_group_url', $extra->alumni_group_url) }}"
+            <input type="url" name="alumni_group_url" id="inp_alumni_group_url"
+                   value="{{ old('alumni_group_url', $extra->alumni_group_url) }}"
                    placeholder="https://chat.whatsapp.com/..."
                    class="w-full px-3 py-2 text-sm border border-[#DCE7E1] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D8659]">
           </div>
           <div>
             <label class="block text-sm font-medium text-[#1B3A34] mb-1.5">Label Tombol</label>
-            <input type="text" name="alumni_group_label" value="{{ old('alumni_group_label', $extra->alumni_group_label) }}"
+            <input type="text" name="alumni_group_label" id="inp_alumni_group_label"
+                   value="{{ old('alumni_group_label', $extra->alumni_group_label) }}"
                    placeholder="Grup Alumni Seveninc"
                    class="w-full px-3 py-2 text-sm border border-[#DCE7E1] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D8659]">
           </div>
@@ -303,17 +300,22 @@
             <i class="fas fa-briefcase"></i>
           </div>
           <h3 class="font-bold text-[#1B3A34]">Info Kerja</h3>
+          @if($allBrandMode && $intern->brand)
+            <span class="text-xs text-[#4B5F5A] ml-1">— berlaku untuk semua brand <strong>{{ $intern->brand }}</strong></span>
+          @endif
         </div>
         <div class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-[#1B3A34] mb-1.5">URL Info Kerja</label>
-            <input type="url" name="job_info_url" value="{{ old('job_info_url', $extra->job_info_url) }}"
+            <input type="url" name="job_info_url" id="inp_job_info_url"
+                   value="{{ old('job_info_url', $extra->job_info_url) }}"
                    placeholder="https://..."
                    class="w-full px-3 py-2 text-sm border border-[#DCE7E1] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D8659]">
           </div>
           <div>
             <label class="block text-sm font-medium text-[#1B3A34] mb-1.5">Deskripsi singkat <span class="text-gray-400 text-xs">(opsional)</span></label>
-            <textarea name="job_info_description" rows="2" placeholder="Contoh: Lowongan Full Stack Developer di partner Seveninc..."
+            <textarea name="job_info_description" id="inp_job_info_description" rows="2"
+                      placeholder="Contoh: Lowongan Full Stack Developer di partner Seveninc..."
                       class="w-full px-3 py-2 text-sm border border-[#DCE7E1] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D8659] resize-none">{{ old('job_info_description', $extra->job_info_description) }}</textarea>
           </div>
         </div>
@@ -327,7 +329,7 @@
 
     </div>
 
-    <div class="mt-5 flex gap-3">
+    <div class="mt-5 flex flex-wrap items-center gap-3">
       <button type="submit"
               class="px-6 py-2.5 text-sm font-semibold text-white rounded-xl"
               style="background-color:#2D8659;">
@@ -337,6 +339,21 @@
          class="px-6 py-2.5 text-sm font-semibold text-[#4B5F5A] border border-[#DCE7E1] bg-white rounded-xl hover:bg-[#F4F8F6] transition">
         Batal
       </a>
+
+      {{-- Tombol Kirim Semua: generate surat rekomendasi + simpan link alumni + info kerja sekaligus --}}
+      <div class="ml-auto text-right">
+        <button type="button" id="btnKirimSemua"
+          class="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-white rounded-xl"
+          style="background-color:#1B3A34;">
+          <i class="fas fa-paper-plane text-xs"></i>
+          @if($allBrandMode && $intern->brand)
+            Kirim Semua ke Brand {{ $intern->brand }}
+          @else
+            Kirim Semua
+          @endif
+        </button>
+        <p class="text-xs text-[#4B5F5A] mt-1">Surat rekomendasi + link alumni + info kerja</p>
+      </div>
     </div>
 
   </form>
@@ -402,13 +419,14 @@
 (function () {
   const PREVIEW_URL    = @json(route('admin.rekomendasi.preview'));
   const SAVE_URL       = @json(route('admin.intern_extras.rekomendasi.save_template', $intern->id));
-  const GENERATE_URL   = @json(route('admin.intern_extras.rekomendasi.generate', $intern->id));
+  const SEND_ALL_URL   = @json(route('admin.intern_extras.send_all', $intern->id));
   const ALL_BRAND_MODE = @json($allBrandMode);
   const INTERN_ID      = {{ $intern->id }};
+  const INTERN_BRAND   = @json($intern->brand ?? '');
   const csrf           = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
-  const iframe       = document.getElementById('rekPreview');
-  const watchFields  = ['f_company_name','f_company_address','f_company_city','f_company_brand','f_leader_name','f_leader_title','f_body_template'];
+  const iframe      = document.getElementById('rekPreview');
+  const watchFields = ['f_company_name','f_company_address','f_company_city','f_company_brand','f_leader_name','f_leader_title','f_body_template'];
 
   // ── Preview live update ──────────────────────────────────────────
   function buildPreviewParams() {
@@ -436,10 +454,10 @@
   document.getElementById('btnRefresh')?.addEventListener('click', refreshPreview);
 
   // ── Modal helpers ─────────────────────────────────────────────────
-  const modal       = document.getElementById('modalResult');
-  const mSuccess    = document.getElementById('modalSuccess');
-  const mError      = document.getElementById('modalError');
-  const mLoading    = document.getElementById('modalLoading');
+  const modal    = document.getElementById('modalResult');
+  const mSuccess = document.getElementById('modalSuccess');
+  const mError   = document.getElementById('modalError');
+  const mLoading = document.getElementById('modalLoading');
 
   function showModal(state, opts = {}) {
     modal.classList.remove('hidden');
@@ -483,15 +501,13 @@
   modal.addEventListener('click', e => { if (e.target === modal) hideModal(); });
 
   // ── Helper: kumpulkan FormData dari rekomendasiForm ───────────────
-  function buildFormData(extra = {}) {
+  function buildRekomendasiFormData(extra = {}) {
     const form     = document.getElementById('rekomendasiForm');
     const formData = new FormData(form);
-    // Pastikan logo & stamp terbaca
     const logoFile  = document.getElementById('f_logo')?.files[0];
     const stampFile = document.getElementById('f_stamp')?.files[0];
     if (logoFile)  formData.set('logo',  logoFile);
     if (stampFile) formData.set('stamp', stampFile);
-    // Extra params
     for (const [k, v] of Object.entries(extra)) formData.set(k, v);
     return formData;
   }
@@ -504,7 +520,7 @@
       const res  = await fetch(SAVE_URL, {
         method: 'POST',
         headers: { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
-        body: buildFormData(),
+        body: buildRekomendasiFormData(),
         credentials: 'same-origin',
       });
       const json = await res.json();
@@ -523,38 +539,62 @@
     }
   });
 
-  // ── Kirim Surat ──────────────────────────────────────────────────
-  document.getElementById('btnSendSurat')?.addEventListener('click', async function () {
-    const modeLabel = ALL_BRAND_MODE ? 'semua pemagang brand ini' : 'pemagang ini';
-    if (!confirm(`Kirim surat rekomendasi untuk ${modeLabel}?\n\nSurat akan tersedia di halaman Dokumen masing-masing pemagang setelah dikirim.`)) return;
+  // ── Kirim Semua (rekomendasi + grup alumni + info kerja) ─────────
+  document.getElementById('btnKirimSemua')?.addEventListener('click', async function () {
+    const targetLabel = ALL_BRAND_MODE && INTERN_BRAND
+      ? `semua pemagang brand "${INTERN_BRAND}"`
+      : 'pemagang ini';
+
+    if (!confirm(
+      `Kirim semua ke ${targetLabel}?\n\n` +
+      `• Surat rekomendasi akan digenerate\n` +
+      `• Link grup alumni akan disimpan\n` +
+      `• Info kerja akan disimpan\n\n` +
+      `Pemagang dapat mengakses semuanya di halaman Dokumen mereka.`
+    )) return;
 
     showModal('loading', {
-      title: 'Mengirim Surat...',
-      msg:   ALL_BRAND_MODE ? 'Membuat surat rekomendasi untuk semua pemagang...' : 'Membuat dan mengirim surat rekomendasi...',
+      title: ALL_BRAND_MODE ? 'Mengirim ke Semua Pemagang...' : 'Mengirim...',
+      msg:   'Membuat surat rekomendasi dan menyimpan informasi alumni...',
     });
 
     try {
-      const res  = await fetch(GENERATE_URL, {
+      // Gabungkan data rekomendasi + alumni + info kerja dalam satu FormData
+      const formData = buildRekomendasiFormData({
+        mode: ALL_BRAND_MODE ? 'all_brand' : 'single',
+      });
+
+      // Ambil nilai link alumni & info kerja dari field form bawah
+      const alumniUrl   = document.getElementById('inp_alumni_group_url')?.value   || '';
+      const alumniLabel = document.getElementById('inp_alumni_group_label')?.value  || '';
+      const jobUrl      = document.getElementById('inp_job_info_url')?.value        || '';
+      const jobDesc     = document.getElementById('inp_job_info_description')?.value || '';
+
+      if (alumniUrl)   formData.set('alumni_group_url',   alumniUrl);
+      if (alumniLabel) formData.set('alumni_group_label', alumniLabel);
+      if (jobUrl)      formData.set('job_info_url',       jobUrl);
+      if (jobDesc)     formData.set('job_info_description', jobDesc);
+
+      const res  = await fetch(SEND_ALL_URL, {
         method: 'POST',
         headers: { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
-        body: buildFormData({ mode: ALL_BRAND_MODE ? 'all_brand' : 'single' }),
+        body: formData,
         credentials: 'same-origin',
       });
       const json = await res.json();
 
       if (json.success || json.generated > 0) {
         showModal('success', {
-          title:       'Surat Terkirim!',
+          title:       'Berhasil Dikirim!',
           msg:         json.message,
-          subtitle:    'Pemagang dapat mengakses surat di halaman Dokumen mereka.',
+          subtitle:    'Pemagang dapat mengakses surat dan informasi di halaman Dokumen mereka.',
           failedNames: json.failed_names || [],
         });
-        // Reload halaman setelah modal ditutup agar status surat ter-update
         document.getElementById('btnModalClose').addEventListener('click', () => location.reload(), { once: true });
       } else {
-        showModal('error', { msg: json.message || 'Gagal mengirim surat rekomendasi.' });
+        showModal('error', { msg: json.message || 'Gagal mengirim ke pemagang.' });
       }
-    } catch {
+    } catch (err) {
       showModal('error', { msg: 'Terjadi kesalahan jaringan. Silakan coba lagi.' });
     }
   });

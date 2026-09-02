@@ -3,13 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <style>
-  @page { size: A4; margin: 2.5cm 3cm 2.5cm 3cm; }
+  @page { size: A4 portrait; margin: 2.5cm 3cm 2.5cm 3cm; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  html {
+    width: 210mm;
+  }
   body {
     font-family: 'Times New Roman', Times, serif;
     font-size: 12pt;
     color: #000;
     line-height: 1.8;
+    width: 210mm;
   }
 
   /* ── Kop Surat ── */

@@ -374,7 +374,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin', 'preve
     Route::put('/intern-extras/{intern}', [\App\Http\Controllers\Admin\InternExtraController::class, 'update'])->name('intern_extras.update');
     Route::delete('/intern-extras/{intern}/rekomendasi', [\App\Http\Controllers\Admin\InternExtraController::class, 'destroyRekomendasi'])->name('intern_extras.rekomendasi.destroy');
     Route::post('/intern-extras/{intern}/rekomendasi/save-template', [\App\Http\Controllers\Admin\InternExtraController::class, 'saveTemplate'])->name('intern_extras.rekomendasi.save_template');
-    Route::post('/intern-extras/{intern}/rekomendasi/generate', [\App\Http\Controllers\Admin\InternExtraController::class, 'generateAndSend'])->name('intern_extras.rekomendasi.generate');
+    Route::post('/intern-extras/{intern}/send-all', [\App\Http\Controllers\Admin\InternExtraController::class, 'sendAll'])->name('intern_extras.send_all');
 
     // Template & Generate Surat Rekomendasi
     Route::get('/rekomendasi/editor',              [\App\Http\Controllers\Admin\RekomendasiController::class, 'edit'])->name('rekomendasi.editor');
